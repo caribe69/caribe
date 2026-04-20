@@ -15,6 +15,7 @@ import {
   Wallet,
   Building,
   Users,
+  FileBarChart,
 } from 'lucide-react';
 import { useAuthStore, UsuarioInfo } from '@/store/auth';
 import { api } from '@/lib/api';
@@ -50,6 +51,12 @@ const PAGES: Record<string, PageMeta> = {
     eyebrow: 'Reservas y ocupación',
     Icon: ClipboardList,
     gradient: 'from-rose-500 to-pink-600',
+  },
+  '/historial': {
+    title: 'Historial',
+    eyebrow: 'Reportes y exportación',
+    Icon: FileBarChart,
+    gradient: 'from-cyan-500 to-blue-600',
   },
   '/ventas': {
     title: 'Venta directa',

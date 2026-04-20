@@ -8,6 +8,7 @@ import Productos from '@/pages/Productos';
 import ProductosLimpieza from '@/pages/ProductosLimpieza';
 import Ventas from '@/pages/Ventas';
 import Alquileres from '@/pages/Alquileres';
+import Historial from '@/pages/Historial';
 import Limpieza from '@/pages/Limpieza';
 import Caja from '@/pages/Caja';
 import Sedes from '@/pages/Sedes';
@@ -37,6 +38,7 @@ export default function App() {
         <Route path="productos-limpieza" element={<ProductosLimpieza />} />
         <Route path="ventas" element={<Ventas />} />
         <Route path="alquileres" element={<Alquileres />} />
+        <Route path="historial" element={<Historial />} />
         <Route path="limpieza" element={<Limpieza />} />
         <Route path="caja" element={<Caja />} />
         <Route path="sedes" element={<Sedes />} />

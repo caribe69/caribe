@@ -45,6 +45,37 @@ export class AlquileresService {
     });
   }
 
+  /** Historial completo con rango de fechas para reportes */
+  async historial(
+    user: JwtPayload,
+    desde: string | undefined,
+    hasta: string | undefined,
+    sedeIdQuery?: number,
+  ) {
+    const sedeId = resolveSedeId(user, sedeIdQuery);
+    const where: any = { sedeId };
+    if (desde || hasta) {
+      where.creadoEn = {};
+      if (desde) where.creadoEn.gte = new Date(desde);
+      if (hasta) {
+        const h = new Date(hasta);
+        h.setHours(23, 59, 59, 999);
+        where.creadoEn.lte = h;
+      }
+    }
+    return this.prisma.alquiler.findMany({
+      where,
+      include: {
+        habitacion: { include: { piso: true } },
+        sede: { select: { nombre: true } },
+        consumos: { include: { producto: true } },
+        creadoPor: { select: { nombre: true, username: true } },
+      },
+      orderBy: { creadoEn: 'desc' },
+      take: 5000,
+    });
+  }
+
   async findOne(id: number, user: JwtPayload) {
     const a = await this.prisma.alquiler.findUnique({
       where: { id },

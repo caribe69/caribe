@@ -12,6 +12,7 @@ import {
   LayoutDashboard,
   Hotel,
   Crown,
+  FileBarChart,
 } from 'lucide-react';
 import { useAuthStore, Rol } from '@/store/auth';
 import TopBar from './TopBar';
@@ -28,6 +29,12 @@ const items: Item[] = [
   { to: '/', label: 'Dashboard', icon: LayoutDashboard },
   { to: '/habitaciones', label: 'Habitaciones', icon: BedDouble },
   { to: '/alquileres', label: 'Alquileres', icon: ClipboardList },
+  {
+    to: '/historial',
+    label: 'Historial',
+    icon: FileBarChart,
+    roles: ['SUPERADMIN', 'ADMIN_SEDE', 'HOTELERO', 'CAJERO'],
+  },
   {
     to: '/ventas',
     label: 'Venta directa',

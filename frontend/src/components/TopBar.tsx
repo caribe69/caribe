@@ -1,27 +1,106 @@
 import { useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Bell, Search, ChevronDown, MapPin } from 'lucide-react';
+import {
+  Bell,
+  Search,
+  ChevronDown,
+  MapPin,
+  LayoutDashboard,
+  BedDouble,
+  ClipboardList,
+  ShoppingCart,
+  Package,
+  Sparkles,
+  Wallet,
+  Building,
+  Users,
+} from 'lucide-react';
 import { useAuthStore, UsuarioInfo } from '@/store/auth';
 import { api } from '@/lib/api';
 import SedeSwitchOverlay from './SedeSwitchOverlay';
 
-const TITULOS: Record<string, string> = {
-  '/': 'Dashboard',
-  '/habitaciones': 'Habitaciones',
-  '/alquileres': 'Alquileres',
-  '/ventas': 'Venta directa',
-  '/productos': 'Productos',
-  '/limpieza': 'Limpieza',
-  '/productos-limpieza': 'Productos de limpieza',
-  '/caja': 'Caja',
-  '/sedes': 'Sedes',
-  '/usuarios': 'Usuarios',
+interface PageMeta {
+  title: string;
+  eyebrow: string;
+  Icon: React.ComponentType<{ size?: number; className?: string }>;
+  gradient: string;
+}
+
+const PAGES: Record<string, PageMeta> = {
+  '/': {
+    title: 'Dashboard',
+    eyebrow: 'Panel general',
+    Icon: LayoutDashboard,
+    gradient: 'from-violet-500 to-violet-700',
+  },
+  '/habitaciones': {
+    title: 'Habitaciones',
+    eyebrow: 'Gestión de inventario',
+    Icon: BedDouble,
+    gradient: 'from-emerald-500 to-teal-600',
+  },
+  '/alquileres': {
+    title: 'Alquileres',
+    eyebrow: 'Reservas y ocupación',
+    Icon: ClipboardList,
+    gradient: 'from-rose-500 to-pink-600',
+  },
+  '/ventas': {
+    title: 'Venta directa',
+    eyebrow: 'Productos al mostrador',
+    Icon: ShoppingCart,
+    gradient: 'from-amber-500 to-orange-600',
+  },
+  '/productos': {
+    title: 'Productos',
+    eyebrow: 'Almacén de consumibles',
+    Icon: Package,
+    gradient: 'from-blue-500 to-indigo-600',
+  },
+  '/limpieza': {
+    title: 'Limpieza',
+    eyebrow: 'Tareas y evidencias',
+    Icon: Sparkles,
+    gradient: 'from-amber-500 to-yellow-600',
+  },
+  '/productos-limpieza': {
+    title: 'Productos de limpieza',
+    eyebrow: 'Insumos operativos',
+    Icon: Package,
+    gradient: 'from-teal-500 to-cyan-600',
+  },
+  '/caja': {
+    title: 'Caja',
+    eyebrow: 'Turno actual y cierres',
+    Icon: Wallet,
+    gradient: 'from-emerald-500 to-green-600',
+  },
+  '/sedes': {
+    title: 'Sedes',
+    eyebrow: 'Red hotelera',
+    Icon: Building,
+    gradient: 'from-violet-500 to-purple-700',
+  },
+  '/usuarios': {
+    title: 'Usuarios',
+    eyebrow: 'Personal del sistema',
+    Icon: Users,
+    gradient: 'from-indigo-500 to-violet-600',
+  },
 };
 
 export default function TopBar({ usuario }: { usuario: UsuarioInfo | null }) {
   const { pathname } = useLocation();
-  const title = TITULOS[pathname] || 'Caribe Hotel';
+  const meta =
+    PAGES[pathname] || {
+      title: 'Caribe Hotel',
+      eyebrow: 'Sistema de gestión',
+      Icon: LayoutDashboard,
+      gradient: 'from-violet-500 to-violet-700',
+    };
+  const PageIcon = meta.Icon;
+
   const activeSedeId = useAuthStore((s) => s.activeSedeId);
   const setActiveSede = useAuthStore((s) => s.setActiveSede);
   const qc = useQueryClient();
@@ -43,30 +122,42 @@ export default function TopBar({ usuario }: { usuario: UsuarioInfo | null }) {
     if (!sede) return;
     setSwitching(sede.nombre);
     setActiveSede(id);
-    // Purga cache de queries para que se refetcheen con la nueva sede
     qc.clear();
-    // Oculta el overlay después de la animación
-    setTimeout(() => {
-      setSwitching(null);
-    }, 1500);
+    setTimeout(() => setSwitching(null), 1500);
   };
 
   return (
     <>
-      <div className="flex items-center gap-4 flex-wrap animate-fade-in">
-        <h1 className="font-hotel text-2xl sm:text-3xl font-bold text-slate-900 mr-auto">
-          {title}
-        </h1>
+      <div className="bg-white rounded-3xl px-5 py-3 shadow-sm flex items-center gap-4 flex-wrap animate-fade-in">
+        {/* Page identifier con ícono premium */}
+        <div className="flex items-center gap-3 mr-auto">
+          <div
+            className={`relative w-12 h-12 rounded-2xl bg-gradient-to-br ${meta.gradient} flex items-center justify-center shadow-lg shadow-violet-500/20`}
+          >
+            <PageIcon size={22} className="text-white" />
+            <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full bg-white flex items-center justify-center">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+            </span>
+          </div>
+          <div className="leading-tight">
+            <div className="text-[10px] uppercase tracking-[0.2em] text-slate-400 font-semibold">
+              {meta.eyebrow}
+            </div>
+            <h1 className="font-hotel text-2xl font-bold text-slate-900">
+              {meta.title}
+            </h1>
+          </div>
+        </div>
 
         {/* Search */}
         <div className="relative hidden md:block">
           <Search
-            size={16}
+            size={15}
             className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
           />
           <input
             placeholder="Buscar..."
-            className="pl-9 pr-4 py-2.5 bg-white rounded-full text-sm border border-slate-200 focus:outline-none focus:border-violet-400 focus:ring-2 focus:ring-violet-100 w-64 transition-all"
+            className="pl-9 pr-4 py-2 bg-slate-50 rounded-xl text-sm border border-slate-200 focus:outline-none focus:border-violet-400 focus:ring-2 focus:ring-violet-100 focus:bg-white w-48 lg:w-56 transition-all"
           />
         </div>
 
@@ -79,7 +170,7 @@ export default function TopBar({ usuario }: { usuario: UsuarioInfo | null }) {
                 const id = Number(e.target.value);
                 if (id && id !== activeSedeId) handleSedeChange(id);
               }}
-              className="appearance-none bg-white rounded-full text-sm pl-9 pr-9 py-2.5 border border-slate-200 focus:outline-none focus:border-violet-400 focus:ring-2 focus:ring-violet-100 font-medium cursor-pointer btn-press"
+              className="appearance-none bg-slate-50 hover:bg-white rounded-xl text-sm pl-8 pr-8 py-2 border border-slate-200 focus:outline-none focus:border-violet-400 focus:ring-2 focus:ring-violet-100 font-medium cursor-pointer btn-press transition"
             >
               {sedes.map((s: any) => (
                 <option key={s.id} value={s.id}>
@@ -88,41 +179,41 @@ export default function TopBar({ usuario }: { usuario: UsuarioInfo | null }) {
               ))}
             </select>
             <MapPin
-              size={14}
-              className="absolute left-3 top-1/2 -translate-y-1/2 text-violet-500"
+              size={13}
+              className="absolute left-2.5 top-1/2 -translate-y-1/2 text-violet-500"
             />
             <ChevronDown
-              size={14}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"
+              size={13}
+              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"
             />
           </div>
         ) : sedeActual ? (
-          <div className="hidden sm:flex items-center gap-2 bg-white rounded-full px-4 py-2.5 border border-slate-200 text-sm font-medium text-slate-700">
-            <MapPin size={14} className="text-violet-500" />
+          <div className="hidden sm:flex items-center gap-1.5 bg-slate-50 rounded-xl px-3 py-2 border border-slate-200 text-sm font-medium text-slate-700">
+            <MapPin size={13} className="text-violet-500" />
             {sedeActual.nombre}
           </div>
         ) : null}
 
         {/* Notifications */}
-        <button className="relative w-10 h-10 rounded-full bg-white border border-slate-200 flex items-center justify-center hover:bg-slate-50 btn-press transition">
-          <Bell size={16} className="text-slate-600" />
-          <span className="absolute top-2 right-2 w-2 h-2 rounded-full bg-rose-500 animate-pulse" />
+        <button className="relative w-10 h-10 rounded-xl bg-slate-50 hover:bg-slate-100 border border-slate-200 flex items-center justify-center btn-press transition">
+          <Bell size={15} className="text-slate-600" />
+          <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-rose-500 animate-pulse" />
         </button>
 
         {/* User */}
-        <div className="flex items-center gap-3 bg-white rounded-full pl-1 pr-4 py-1 border border-slate-200 btn-press cursor-pointer">
-          <div className="w-9 h-9 rounded-full bg-gradient-to-br from-violet-500 to-violet-700 flex items-center justify-center text-white font-bold text-sm">
+        <div className="flex items-center gap-2.5 bg-slate-50 rounded-xl pl-1 pr-3 py-1 border border-slate-200 btn-press cursor-pointer">
+          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-violet-500 to-violet-700 flex items-center justify-center text-white font-bold text-sm">
             {usuario?.nombre?.[0]?.toUpperCase() || '?'}
           </div>
           <div className="hidden sm:block leading-tight">
-            <div className="text-sm font-semibold text-slate-800">
+            <div className="text-xs font-semibold text-slate-800">
               {usuario?.nombre?.split(' ')[0]}
             </div>
-            <div className="text-[11px] text-slate-400 uppercase tracking-wider">
+            <div className="text-[10px] text-slate-400 uppercase tracking-wider">
               {usuario?.rol?.replace('_', ' ')}
             </div>
           </div>
-          <ChevronDown size={14} className="text-slate-400 hidden sm:block" />
+          <ChevronDown size={13} className="text-slate-400 hidden sm:block" />
         </div>
       </div>
 

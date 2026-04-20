@@ -46,7 +46,7 @@ const ESTADOS: Array<{
   Icon: React.ComponentType<{ size?: number; className?: string }>;
   dotClass: string;
 }> = [
-  { key: 'TODAS', label: 'Todas', Icon: BedDouble, dotClass: 'bg-caribe-600' },
+  { key: 'TODAS', label: 'Todas', Icon: BedDouble, dotClass: 'bg-violet-600' },
   {
     key: 'DISPONIBLE',
     label: 'Disponibles',
@@ -163,27 +163,26 @@ export default function Habitaciones() {
 
   return (
     <div>
-      {/* Header premium */}
-      <div className="flex items-start justify-between gap-4 flex-wrap mb-6">
-        <div>
-          <h1 className="font-hotel text-3xl sm:text-4xl font-bold text-caribe-900">
-            Gestión de habitaciones
-          </h1>
-          <p className="text-slate-500 text-sm mt-1">
-            Estado en tiempo real · {habs?.length || 0} habitaciones registradas
-          </p>
+      {/* Header limpio */}
+      <div className="flex items-center justify-between gap-3 flex-wrap mb-5">
+        <div className="text-sm text-slate-500">
+          Estado en tiempo real ·{' '}
+          <span className="font-semibold text-slate-700">
+            {habs?.length || 0} habitaciones
+          </span>{' '}
+          en esta sede
         </div>
         <div className="flex gap-2">
           <button
             onClick={() => setShowPisoModal(true)}
-            className="flex items-center gap-2 bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 px-4 py-2.5 rounded-xl text-sm font-medium shadow-sm transition"
+            className="inline-flex items-center gap-2 bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 px-4 py-2.5 rounded-xl text-sm font-medium shadow-sm transition btn-press"
           >
             <Layers size={16} /> Nuevo piso
           </button>
           <button
             onClick={() => setShowHabModal(true)}
             disabled={!pisos || pisos.length === 0}
-            className="flex items-center gap-2 bg-gradient-to-r from-caribe-700 to-caribe-600 hover:from-caribe-800 hover:to-caribe-700 text-white px-4 py-2.5 rounded-xl text-sm font-medium shadow-md transition disabled:opacity-60 disabled:cursor-not-allowed"
+            className="inline-flex items-center gap-2 bg-gradient-to-r from-violet-600 to-violet-500 hover:from-violet-700 hover:to-violet-600 text-white px-4 py-2.5 rounded-xl text-sm font-medium shadow-md shadow-violet-500/30 transition disabled:opacity-60 disabled:cursor-not-allowed btn-press"
           >
             <Plus size={16} /> Nueva habitación
           </button>
@@ -202,8 +201,8 @@ export default function Habitaciones() {
               onClick={() => setFiltro(e.key)}
               className={`inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm transition-all ${
                 active
-                  ? 'bg-caribe-900 text-white shadow-md scale-[1.02]'
-                  : 'bg-white text-slate-600 border border-slate-200 hover:border-caribe-400 hover:text-caribe-700'
+                  ? 'bg-violet-900 text-white shadow-md scale-[1.02]'
+                  : 'bg-white text-slate-600 border border-slate-200 hover:border-violet-400 hover:text-violet-700'
               }`}
             >
               <span
@@ -264,7 +263,7 @@ export default function Habitaciones() {
               </div>
 
               {/* Número */}
-              <div className="font-hotel text-3xl font-bold text-caribe-900 leading-none">
+              <div className="font-hotel text-3xl font-bold text-slate-900 leading-none">
                 Nro. {h.numero}
               </div>
               <div className="text-xs text-slate-500 mt-1">
@@ -290,7 +289,7 @@ export default function Habitaciones() {
                   <div className="text-[10px] uppercase tracking-widest text-slate-400">
                     Por hora
                   </div>
-                  <div className="text-lg font-bold text-caribe-900">
+                  <div className="text-lg font-bold text-slate-900">
                     S/ {Number(h.precioHora).toFixed(0)}
                   </div>
                 </div>
@@ -298,7 +297,7 @@ export default function Habitaciones() {
                   <div className="text-[10px] uppercase tracking-widest text-slate-400">
                     Por noche
                   </div>
-                  <div className="text-lg font-bold text-caribe-900">
+                  <div className="text-lg font-bold text-slate-900">
                     S/ {Number(h.precioNoche).toFixed(0)}
                   </div>
                 </div>
@@ -387,7 +386,7 @@ function CambiarEstadoModal({
             className={`w-full flex items-center gap-3 p-3 rounded-xl border transition ${
               e.key === habitacion.estado
                 ? 'bg-slate-50 border-slate-200 opacity-60 cursor-not-allowed'
-                : 'bg-white border-slate-200 hover:border-caribe-400 hover:bg-caribe-50'
+                : 'bg-white border-slate-200 hover:border-violet-400 hover:bg-violet-50'
             }`}
           >
             <span className={`w-3 h-3 rounded-full ${e.color}`} />
@@ -428,14 +427,14 @@ function PisoModal({ onClose }: { onClose: () => void }) {
       <Field label="Número de piso">
         <input
           type="number"
-          className="w-full border border-slate-200 rounded-lg px-3 py-2.5 focus:ring-2 focus:ring-caribe-500 focus:border-caribe-500 outline-none"
+          className="w-full border border-slate-200 rounded-lg px-3 py-2.5 focus:ring-2 focus:ring-violet-500 focus:border-violet-500 outline-none"
           value={numero}
           onChange={(e) => setNumero(e.target.value)}
         />
       </Field>
       <Field label="Nombre (opcional)">
         <input
-          className="w-full border border-slate-200 rounded-lg px-3 py-2.5 focus:ring-2 focus:ring-caribe-500 focus:border-caribe-500 outline-none"
+          className="w-full border border-slate-200 rounded-lg px-3 py-2.5 focus:ring-2 focus:ring-violet-500 focus:border-violet-500 outline-none"
           value={nombre}
           onChange={(e) => setNombre(e.target.value)}
         />
@@ -451,7 +450,7 @@ function PisoModal({ onClose }: { onClose: () => void }) {
         <button
           onClick={() => crear.mutate()}
           disabled={crear.isPending || !numero}
-          className="flex-1 bg-gradient-to-r from-caribe-700 to-caribe-600 text-white py-2.5 rounded-lg disabled:opacity-50"
+          className="flex-1 bg-gradient-to-r from-violet-700 to-violet-600 text-white py-2.5 rounded-lg disabled:opacity-50"
         >
           {crear.isPending ? 'Creando...' : 'Crear piso'}
         </button>
@@ -498,7 +497,7 @@ function HabitacionModal({
   });
 
   const inputCls =
-    'w-full border border-slate-200 rounded-lg px-3 py-2.5 focus:ring-2 focus:ring-caribe-500 focus:border-caribe-500 outline-none';
+    'w-full border border-slate-200 rounded-lg px-3 py-2.5 focus:ring-2 focus:ring-violet-500 focus:border-violet-500 outline-none';
 
   return (
     <Modal title="Nueva habitación" onClose={onClose}>
@@ -570,7 +569,7 @@ function HabitacionModal({
         <button
           onClick={() => crear.mutate()}
           disabled={crear.isPending || !form.pisoId || !form.numero}
-          className="flex-1 bg-gradient-to-r from-caribe-700 to-caribe-600 text-white py-2.5 rounded-lg disabled:opacity-50"
+          className="flex-1 bg-gradient-to-r from-violet-700 to-violet-600 text-white py-2.5 rounded-lg disabled:opacity-50"
         >
           {crear.isPending ? 'Creando...' : 'Crear habitación'}
         </button>
@@ -609,7 +608,7 @@ function Modal({
     <div className="fixed inset-0 bg-violet-950/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-fade-in">
       <div className="bg-white rounded-2xl w-full max-w-md p-6 shadow-2xl border border-white animate-scale-in">
         <div className="flex justify-between items-center mb-5">
-          <h2 className="font-hotel text-xl font-semibold text-caribe-900">
+          <h2 className="font-hotel text-xl font-semibold text-slate-900">
             {title}
           </h2>
           <button

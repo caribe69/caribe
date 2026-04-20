@@ -97,6 +97,22 @@ export class LimpiezaService {
 
   async iniciar(id: number, user: JwtPayload) {
     const t = await this.findOne(id, user);
+
+    // Idempotente: si ya está EN_PROCESO y la tiene el mismo usuario,
+    // devuelve el estado actual (así cliente con cache viejo no se rompe).
+    if (t.estado === EstadoTareaLimpieza.EN_PROCESO) {
+      if (t.asignadaAId === user.sub) return t;
+      throw new BadRequestException(
+        `${t.asignadaA?.nombre || 'Otro usuario'} ya está limpiando esta habitación`,
+      );
+    }
+
+    if (t.estado === EstadoTareaLimpieza.COMPLETADA)
+      throw new BadRequestException('Esta tarea ya fue completada');
+
+    if (t.estado === EstadoTareaLimpieza.CANCELADA)
+      throw new BadRequestException('Esta tarea fue cancelada');
+
     if (t.estado !== EstadoTareaLimpieza.PENDIENTE)
       throw new BadRequestException('Tarea no está pendiente');
 

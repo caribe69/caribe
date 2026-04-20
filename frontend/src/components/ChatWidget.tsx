@@ -10,6 +10,7 @@ import {
   XCircle,
   CheckCircle2,
   ChevronDown,
+  Search,
   Users as UsersIcon,
 } from 'lucide-react';
 import { api } from '@/lib/api';
@@ -489,12 +490,40 @@ function Inbox({
   online: Set<number>;
   onSelect: (uid: number) => void;
 }) {
+  const [q, setQ] = useState('');
   const onlineCount = contactos.filter((c) => online.has(c.id)).length;
   const yaConversando = new Set(conversaciones.map((c) => c.usuario.id));
   const nuevos = contactos.filter((c) => !yaConversando.has(c.id));
 
+  const needle = q.trim().toLowerCase();
+  const match = (u: Contacto) =>
+    !needle ||
+    u.nombre.toLowerCase().includes(needle) ||
+    u.username.toLowerCase().includes(needle) ||
+    u.rol.toLowerCase().includes(needle);
+
+  const convsFilt = conversaciones.filter((c) => match(c.usuario));
+  const nuevosFilt = nuevos.filter(match);
+  const sinResultados = needle && convsFilt.length === 0 && nuevosFilt.length === 0;
+
   return (
     <div>
+      {/* Buscador */}
+      <div className="px-3 pt-3 pb-2 sticky top-0 z-10 bg-slate-50 border-b border-slate-100">
+        <div className="relative">
+          <Search
+            size={13}
+            className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
+          />
+          <input
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            placeholder="Buscar contacto o rol..."
+            className="w-full bg-white border border-slate-200 rounded-xl pl-8 pr-3 py-2 text-xs focus:outline-none focus:border-violet-400 focus:ring-2 focus:ring-violet-100"
+          />
+        </div>
+      </div>
+
       {/* Indicador de gente online */}
       <div className="px-4 py-2 bg-emerald-50/40 border-b border-emerald-100 flex items-center gap-2 text-xs">
         <span className="relative flex w-2 h-2">
@@ -506,12 +535,18 @@ function Inbox({
         </span>
       </div>
 
-      {conversaciones.length > 0 && (
+      {sinResultados && (
+        <div className="text-center text-slate-400 text-xs py-8 px-4">
+          Sin resultados para <b>"{q}"</b>
+        </div>
+      )}
+
+      {convsFilt.length > 0 && (
         <div>
           <div className="px-4 py-2 text-[10px] font-bold uppercase tracking-widest text-slate-400">
             Conversaciones
           </div>
-          {conversaciones.map((c) => (
+          {convsFilt.map((c) => (
             <button
               key={c.usuario.id}
               onClick={() => onSelect(c.usuario.id)}
@@ -557,12 +592,12 @@ function Inbox({
         </div>
       )}
 
-      {nuevos.length > 0 && (
+      {nuevosFilt.length > 0 && (
         <div>
           <div className="px-4 py-2 text-[10px] font-bold uppercase tracking-widest text-slate-400 flex items-center gap-1.5">
             <UsersIcon size={11} /> Personal de la sede
           </div>
-          {nuevos.map((u) => (
+          {nuevosFilt.map((u) => (
             <button
               key={u.id}
               onClick={() => onSelect(u.id)}
@@ -596,7 +631,7 @@ function Inbox({
         </div>
       )}
 
-      {conversaciones.length === 0 && nuevos.length === 0 && (
+      {conversaciones.length === 0 && nuevos.length === 0 && !needle && (
         <div className="text-center text-slate-400 text-sm py-12 px-4">
           Sin contactos en esta sede
         </div>

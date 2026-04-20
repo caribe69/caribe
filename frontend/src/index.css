@@ -70,9 +70,13 @@ h3 {
   letter-spacing: -0.01em;
 }
 
+/* Scrollbar global (fino, neutro) */
 ::-webkit-scrollbar {
   width: 8px;
   height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
 }
 ::-webkit-scrollbar-thumb {
   background: #e2e8f0;
@@ -80,6 +84,35 @@ h3 {
 }
 ::-webkit-scrollbar-thumb:hover {
   background: #cbd5e1;
+}
+
+/* Scrollbar personalizado (violeta, para áreas principales) */
+.scroll-premium {
+  scrollbar-width: thin;
+  scrollbar-color: #c4b5fd transparent;
+}
+.scroll-premium::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+.scroll-premium::-webkit-scrollbar-track {
+  background: transparent;
+  margin: 6px 0;
+}
+.scroll-premium::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, #c4b5fd 0%, #a78bfa 100%);
+  border-radius: 10px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+  transition: background 0.2s;
+}
+.scroll-premium::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, #8b5cf6 0%, #7c3aed 100%);
+  background-clip: padding-box;
+  border: 2px solid transparent;
+}
+.scroll-premium::-webkit-scrollbar-corner {
+  background: transparent;
 }
 
 @media print {

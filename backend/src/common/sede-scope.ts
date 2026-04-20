@@ -17,9 +17,10 @@ export function resolveSedeId(
   sedeIdFromQuery?: number,
 ): number {
   if (user.rol === Rol.SUPERADMIN) {
-    if (!sedeIdFromQuery)
-      throw new ForbiddenException('SUPERADMIN debe indicar sedeId');
-    return sedeIdFromQuery;
+    // SUPERADMIN: prioridad al query param; si no, usa la sede por defecto del token
+    if (sedeIdFromQuery) return sedeIdFromQuery;
+    if (user.sedeId) return user.sedeId;
+    throw new ForbiddenException('SUPERADMIN debe indicar sedeId');
   }
   if (!user.sedeId) throw new ForbiddenException('Sin sede asignada');
   return user.sedeId;

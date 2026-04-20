@@ -21,6 +21,9 @@ import { api } from '@/lib/api';
 import SedeSwitchOverlay from './SedeSwitchOverlay';
 import { useSocketStatus } from '@/hooks/useSocketStatus';
 import { switchSocketSede } from '@/lib/socket';
+import ChangePasswordModal from './ChangePasswordModal';
+import { useNavigate } from 'react-router-dom';
+import { LogOut, KeyRound } from 'lucide-react';
 
 interface PageMeta {
   title: string;
@@ -105,8 +108,12 @@ export default function TopBar({ usuario }: { usuario: UsuarioInfo | null }) {
 
   const activeSedeId = useAuthStore((s) => s.activeSedeId);
   const setActiveSede = useAuthStore((s) => s.setActiveSede);
+  const logout = useAuthStore((s) => s.logout);
   const qc = useQueryClient();
+  const navigate = useNavigate();
   const [switching, setSwitching] = useState<string | null>(null);
+  const [showMenu, setShowMenu] = useState(false);
+  const [showChangePwd, setShowChangePwd] = useState(false);
   const wsConnected = useSocketStatus();
 
   const { data: sedes } = useQuery({
@@ -213,24 +220,79 @@ export default function TopBar({ usuario }: { usuario: UsuarioInfo | null }) {
           />
         </button>
 
-        {/* User */}
-        <div className="flex items-center gap-2.5 bg-slate-50 rounded-xl pl-1 pr-3 py-1 border border-slate-200 btn-press cursor-pointer">
-          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-violet-500 to-violet-700 flex items-center justify-center text-white font-bold text-sm">
-            {usuario?.nombre?.[0]?.toUpperCase() || '?'}
-          </div>
-          <div className="hidden sm:block leading-tight">
-            <div className="text-xs font-semibold text-slate-800">
-              {usuario?.nombre?.split(' ')[0]}
+        {/* User dropdown */}
+        <div className="relative">
+          <button
+            onClick={() => setShowMenu((s) => !s)}
+            className="flex items-center gap-2.5 bg-slate-50 hover:bg-white rounded-xl pl-1 pr-3 py-1 border border-slate-200 btn-press cursor-pointer transition"
+          >
+            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-violet-500 to-violet-700 flex items-center justify-center text-white font-bold text-sm">
+              {usuario?.nombre?.[0]?.toUpperCase() || '?'}
             </div>
-            <div className="text-[10px] text-slate-400 uppercase tracking-wider">
-              {usuario?.rol?.replace('_', ' ')}
+            <div className="hidden sm:block leading-tight text-left">
+              <div className="text-xs font-semibold text-slate-800">
+                {usuario?.nombre?.split(' ')[0]}
+              </div>
+              <div className="text-[10px] text-slate-400 uppercase tracking-wider">
+                {usuario?.rol?.replace('_', ' ')}
+              </div>
             </div>
-          </div>
-          <ChevronDown size={13} className="text-slate-400 hidden sm:block" />
+            <ChevronDown size={13} className="text-slate-400 hidden sm:block" />
+          </button>
+
+          {showMenu && (
+            <>
+              <div
+                className="fixed inset-0 z-[50]"
+                onClick={() => setShowMenu(false)}
+              />
+              <div className="absolute right-0 top-full mt-2 w-64 bg-white rounded-2xl shadow-xl border border-slate-100 z-[51] overflow-hidden animate-scale-in">
+                <div className="p-4 border-b border-slate-100 flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-500 to-violet-700 flex items-center justify-center text-white font-bold">
+                    {usuario?.nombre?.[0]?.toUpperCase() || '?'}
+                  </div>
+                  <div className="min-w-0">
+                    <div className="text-sm font-semibold text-slate-900 truncate">
+                      {usuario?.nombre}
+                    </div>
+                    <div className="text-[10px] text-slate-400 uppercase tracking-wider">
+                      {usuario?.rol?.replace('_', ' ')}
+                    </div>
+                  </div>
+                </div>
+                <div className="p-1">
+                  <button
+                    onClick={() => {
+                      setShowMenu(false);
+                      setShowChangePwd(true);
+                    }}
+                    className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-violet-50 text-sm text-slate-700 transition"
+                  >
+                    <KeyRound size={15} className="text-violet-600" />
+                    Cambiar contraseña
+                  </button>
+                  <button
+                    onClick={() => {
+                      setShowMenu(false);
+                      logout();
+                      navigate('/login');
+                    }}
+                    className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-rose-50 text-sm text-slate-700 transition"
+                  >
+                    <LogOut size={15} className="text-rose-600" />
+                    Cerrar sesión
+                  </button>
+                </div>
+              </div>
+            </>
+          )}
         </div>
       </div>
 
       {switching && <SedeSwitchOverlay sedeNombre={switching} />}
+      {showChangePwd && (
+        <ChangePasswordModal onClose={() => setShowChangePwd(false)} />
+      )}
     </>
   );
 }

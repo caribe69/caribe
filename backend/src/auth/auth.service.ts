@@ -73,4 +73,31 @@ export class AuthService {
       throw new BadRequestException('La contraseña debe tener al menos 6 caracteres');
     return bcrypt.hash(password, 10);
   }
+
+  async changePassword(
+    userId: number,
+    currentPassword: string,
+    newPassword: string,
+  ) {
+    if (currentPassword === newPassword) {
+      throw new BadRequestException(
+        'La contraseña nueva debe ser diferente a la actual',
+      );
+    }
+    const user = await this.prisma.usuario.findUnique({
+      where: { id: userId },
+    });
+    if (!user) throw new UnauthorizedException('Usuario no encontrado');
+
+    const ok = await bcrypt.compare(currentPassword, user.passwordHash);
+    if (!ok)
+      throw new BadRequestException('La contraseña actual es incorrecta');
+
+    const newHash = await this.hashPassword(newPassword);
+    await this.prisma.usuario.update({
+      where: { id: userId },
+      data: { passwordHash: newHash },
+    });
+    return { ok: true };
+  }
 }

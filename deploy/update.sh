@@ -17,11 +17,11 @@ log "Git pull..."
 git fetch --all
 git reset --hard origin/main
 
+log "Instalando dependencias (workspaces)..."
+NODE_ENV=development npm ci --no-audit --no-fund --include=dev
+
 # ---------- Backend ----------
 cd "${APP_DIR}/backend"
-log "Instalando dependencias backend (si cambiaron)..."
-npm ci --no-audit --no-fund
-
 log "Generando cliente Prisma y aplicando cambios de schema..."
 npx prisma generate
 if [ -d "prisma/migrations" ] && [ -n "$(ls -A prisma/migrations 2>/dev/null | grep -v migration_lock.toml || true)" ]; then
@@ -33,11 +33,13 @@ fi
 log "Compilando backend..."
 npm run build
 
+if [ ! -f "${APP_DIR}/backend/dist/main.js" ]; then
+  echo "ERROR: el build del backend no produjo dist/main.js" >&2
+  exit 1
+fi
+
 # ---------- Frontend ----------
 cd "${APP_DIR}/frontend"
-log "Instalando dependencias frontend (si cambiaron)..."
-npm ci --no-audit --no-fund
-
 log "Compilando frontend..."
 npm run build
 

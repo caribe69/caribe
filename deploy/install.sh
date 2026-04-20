@@ -100,7 +100,7 @@ else
   git -C "${APP_DIR}" reset --hard origin/main
 fi
 
-# ---------- 8. Backend ----------
+# ---------- 8. Backend config (.env) ----------
 log "Configurando backend..."
 JWT_SECRET_FILE="/root/.hotel_jwt_secret"
 if [ ! -f "$JWT_SECRET_FILE" ]; then
@@ -119,19 +119,22 @@ NODE_ENV=production
 ENV
 chmod 600 "${APP_DIR}/backend/.env"
 
-cd "${APP_DIR}/backend"
-log "Instalando dependencias backend..."
-npm ci --no-audit --no-fund
+# ---------- 9. Instalar dependencias (desde raíz del monorepo) ----------
+log "Instalando dependencias de todos los workspaces..."
+cd "${APP_DIR}"
+# npm ci desde root para respetar los workspaces y garantizar devDependencies
+NODE_ENV=development npm ci --no-audit --no-fund --include=dev
 
+# ---------- 10. Backend: Prisma + seed + build ----------
+cd "${APP_DIR}/backend"
 log "Generando cliente Prisma y aplicando schema a la BD..."
 npx prisma generate
-# Usamos db push (no hay carpeta de migraciones aún) — crea/actualiza tablas desde schema.prisma
 npx prisma db push --skip-generate --accept-data-loss
 
 # Seed solo si no hay usuarios aún
 if ! sudo -u postgres psql -d "${DB_NAME}" -t -c "SELECT COUNT(*) FROM \"Usuario\";" 2>/dev/null | grep -qE '[1-9]'; then
   log "Ejecutando seed inicial..."
-  npm run seed || warn "Seed falló (posiblemente ya ejecutado)"
+  npm run seed || warn "Seed falló"
 else
   ok "Datos ya existen, omitiendo seed"
 fi
@@ -139,13 +142,22 @@ fi
 log "Compilando backend..."
 npm run build
 
-# ---------- 9. Frontend ----------
-log "Configurando frontend..."
+if [ ! -f "${APP_DIR}/backend/dist/main.js" ]; then
+  echo "ERROR: el build del backend no produjo dist/main.js" >&2
+  exit 1
+fi
+ok "Backend compilado: dist/main.js"
+
+# ---------- 11. Frontend build ----------
 cd "${APP_DIR}/frontend"
-log "Instalando dependencias frontend..."
-npm ci --no-audit --no-fund
 log "Compilando frontend..."
 npm run build
+
+if [ ! -f "${APP_DIR}/frontend/dist/index.html" ]; then
+  echo "ERROR: el build del frontend no produjo dist/index.html" >&2
+  exit 1
+fi
+ok "Frontend compilado: dist/index.html"
 
 mkdir -p "${WEB_ROOT}"
 rsync -a --delete "${APP_DIR}/frontend/dist/" "${WEB_ROOT}/"

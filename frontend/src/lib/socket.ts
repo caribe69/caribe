@@ -33,13 +33,18 @@ export function getSocket(): Socket {
   });
 
   socket.on('connect', () => {
-    console.log('[socket] connected', socket?.id);
+    console.log('[socket] ✓ connected', socket?.id);
   });
   socket.on('disconnect', (reason) => {
-    console.log('[socket] disconnected:', reason);
+    console.log('[socket] ✗ disconnected:', reason);
   });
   socket.on('connect_error', (err) => {
-    console.warn('[socket] connect error:', err.message);
+    console.warn('[socket] ⚠ connect error:', err.message);
+  });
+
+  // Log de cualquier evento que llegue (útil para debug)
+  socket.onAny((event, ...args) => {
+    console.log('[socket] ◀ event:', event, args);
   });
 
   return socket;

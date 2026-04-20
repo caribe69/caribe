@@ -100,6 +100,12 @@ export class EventsGateway implements OnGatewayConnection, OnGatewayDisconnect {
   /** Emite a todos los usuarios de una sede + a cualquier SUPERADMIN */
   emitToSede(sedeId: number, event: string, payload: any) {
     const body = { ...payload, sedeId };
+    // Count clients in rooms for debugging
+    const sedeRoom = this.server.sockets.adapter.rooms.get(`sede:${sedeId}`);
+    const superRoom = this.server.sockets.adapter.rooms.get('superadmin');
+    this.logger.log(
+      `emit ${event} → sede:${sedeId} (${sedeRoom?.size || 0} clientes) + superadmin (${superRoom?.size || 0})`,
+    );
     this.server.to(`sede:${sedeId}`).emit(event, body);
     this.server.to('superadmin').emit(event, body);
   }

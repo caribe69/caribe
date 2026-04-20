@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { getSocket } from '@/lib/socket';
 import { useToast } from '@/components/ToastProvider';
@@ -7,53 +7,67 @@ import { useAuthStore } from '@/store/auth';
 /**
  * Se conecta al socket y muestra toasts + invalida queries cuando llegan
  * eventos en vivo desde el backend.
+ *
+ * Usa refs para show/qc así los handlers de socket.io se registran UNA SOLA
+ * VEZ aunque el componente re-renderice muchas veces (clave para rendimiento
+ * cuando hay muchos usuarios y eventos frecuentes).
  */
 export function useLiveEvents() {
   const qc = useQueryClient();
   const { show } = useToast();
   const token = useAuthStore((s) => s.token);
 
+  const showRef = useRef(show);
+  const qcRef = useRef(qc);
+  useEffect(() => {
+    showRef.current = show;
+  }, [show]);
+  useEffect(() => {
+    qcRef.current = qc;
+  }, [qc]);
+
   useEffect(() => {
     if (!token) return;
     const s = getSocket();
 
-    const onIniciada = (p: any) => {
-      show({
+    // --- Handlers ---
+    const onLimpIniciada = (p: any) => {
+      showRef.current({
         type: 'info',
-        title: `Limpieza iniciada · Hab. ${p.habitacionNumero}`,
+        title: `🧹 Limpieza iniciada · Hab. ${p.habitacionNumero}`,
         description: `${p.porUsuario} comenzó a limpiar`,
       });
-      qc.invalidateQueries({ queryKey: ['limpieza'] });
-      qc.invalidateQueries({ queryKey: ['habitaciones'] });
+      qcRef.current.invalidateQueries({ queryKey: ['limpieza'] });
+      qcRef.current.invalidateQueries({ queryKey: ['habitaciones'] });
     };
 
-    const onFotos = (p: any) => {
-      show({
+    const onLimpFotos = (p: any) => {
+      showRef.current({
         type: 'info',
         title: `📸 Evidencia subida · Hab. ${p.habitacionNumero}`,
-        description: `${p.porUsuario} subió ${p.cantidadFotos} foto(s). Total: ${p.totalFotos}`,
+        description: `${p.porUsuario} subió ${p.cantidadFotos} foto${p.cantidadFotos === 1 ? '' : 's'} (total ${p.totalFotos})`,
       });
-      qc.invalidateQueries({ queryKey: ['limpieza'] });
+      qcRef.current.invalidateQueries({ queryKey: ['limpieza'] });
     };
 
-    const onCompletada = (p: any) => {
-      show({
+    const onLimpCompletada = (p: any) => {
+      showRef.current({
         type: 'success',
-        title: `Limpieza completada · Hab. ${p.habitacionNumero}`,
-        description: `${p.porUsuario} finalizó la limpieza. Habitación disponible.`,
+        title: `✨ Limpieza completada · Hab. ${p.habitacionNumero}`,
+        description: `${p.porUsuario} finalizó. Habitación disponible.`,
       });
-      qc.invalidateQueries({ queryKey: ['limpieza'] });
-      qc.invalidateQueries({ queryKey: ['habitaciones'] });
+      qcRef.current.invalidateQueries({ queryKey: ['limpieza'] });
+      qcRef.current.invalidateQueries({ queryKey: ['habitaciones'] });
     };
 
-    s.on('limpieza:iniciada', onIniciada);
-    s.on('limpieza:fotos', onFotos);
-    s.on('limpieza:completada', onCompletada);
+    s.on('limpieza:iniciada', onLimpIniciada);
+    s.on('limpieza:fotos', onLimpFotos);
+    s.on('limpieza:completada', onLimpCompletada);
 
     return () => {
-      s.off('limpieza:iniciada', onIniciada);
-      s.off('limpieza:fotos', onFotos);
-      s.off('limpieza:completada', onCompletada);
+      s.off('limpieza:iniciada', onLimpIniciada);
+      s.off('limpieza:fotos', onLimpFotos);
+      s.off('limpieza:completada', onLimpCompletada);
     };
-  }, [token, qc, show]);
+  }, [token]); // solo depende del token (auth), no de show/qc
 }

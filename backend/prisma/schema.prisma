@@ -1,0 +1,333 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================================
+// ROLES Y USUARIOS
+// ============================================================
+enum Rol {
+  SUPERADMIN
+  ADMIN_SEDE
+  HOTELERO
+  LIMPIEZA
+  CAJERO
+}
+
+model Sede {
+  id          Int      @id @default(autoincrement())
+  nombre      String
+  direccion   String?
+  telefono    String?
+  activa      Boolean  @default(true)
+  creadaEn    DateTime @default(now())
+
+  usuarios          Usuario[]
+  pisos             Piso[]
+  habitaciones      Habitacion[]
+  productos         Producto[]
+  productosLimpieza ProductoLimpieza[]
+  alquileres        Alquiler[]
+  tareasLimpieza    TareaLimpieza[]
+  turnosCaja        TurnoCaja[]
+}
+
+model Usuario {
+  id           Int      @id @default(autoincrement())
+  sedeId       Int?
+  sede         Sede?    @relation(fields: [sedeId], references: [id])
+  nombre       String
+  username     String   @unique
+  email        String?  @unique
+  passwordHash String
+  rol          Rol
+  activo       Boolean  @default(true)
+  creadoEn     DateTime @default(now())
+
+  alquileresCreados    Alquiler[]        @relation("AlquilerCreadoPor")
+  alquileresAnulados   Alquiler[]        @relation("AlquilerAnuladoPor")
+  tareasAsignadas      TareaLimpieza[]   @relation("TareaAsignadaA")
+  turnosCaja           TurnoCaja[]
+  movimientosStock     MovimientoStock[]
+
+  @@index([sedeId])
+}
+
+// ============================================================
+// HABITACIONES
+// ============================================================
+enum EstadoHabitacion {
+  DISPONIBLE
+  OCUPADA
+  ALISTANDO
+  MANTENIMIENTO
+  FUERA_SERVICIO
+}
+
+model Piso {
+  id           Int      @id @default(autoincrement())
+  sedeId       Int
+  sede         Sede     @relation(fields: [sedeId], references: [id])
+  numero       Int
+  nombre       String?
+  creadoEn     DateTime @default(now())
+
+  habitaciones Habitacion[]
+
+  @@unique([sedeId, numero])
+  @@index([sedeId])
+}
+
+model Habitacion {
+  id              Int               @id @default(autoincrement())
+  sedeId          Int
+  sede            Sede              @relation(fields: [sedeId], references: [id])
+  pisoId          Int
+  piso            Piso              @relation(fields: [pisoId], references: [id])
+  numero          String
+  descripcion     String?
+  caracteristicas String?
+  precioHora      Decimal           @db.Decimal(10, 2)
+  precioNoche     Decimal           @db.Decimal(10, 2)
+  estado          EstadoHabitacion  @default(DISPONIBLE)
+  activa          Boolean           @default(true)
+  creadoEn        DateTime          @default(now())
+
+  alquileres      Alquiler[]
+  tareasLimpieza  TareaLimpieza[]
+
+  @@unique([sedeId, numero])
+  @@index([sedeId, estado])
+}
+
+// ============================================================
+// PRODUCTOS (consumibles para venta)
+// ============================================================
+model Producto {
+  id          Int      @id @default(autoincrement())
+  sedeId      Int
+  sede        Sede     @relation(fields: [sedeId], references: [id])
+  nombre      String
+  descripcion String?
+  precio      Decimal  @db.Decimal(10, 2)
+  stock       Int      @default(0)
+  stockMinimo Int      @default(0)
+  activo      Boolean  @default(true)
+  creadoEn    DateTime @default(now())
+
+  consumos    ConsumoProducto[]
+  movimientos MovimientoStock[]
+
+  @@index([sedeId])
+}
+
+// ============================================================
+// PRODUCTOS DE LIMPIEZA
+// ============================================================
+model ProductoLimpieza {
+  id          Int      @id @default(autoincrement())
+  sedeId      Int
+  sede        Sede     @relation(fields: [sedeId], references: [id])
+  nombre      String
+  descripcion String?
+  stock       Int      @default(0)
+  stockMinimo Int      @default(0)
+  unidad      String   @default("unidad")
+  activo      Boolean  @default(true)
+  creadoEn    DateTime @default(now())
+
+  usos        UsoProductoLimpieza[]
+
+  @@index([sedeId])
+}
+
+// ============================================================
+// ALQUILERES
+// ============================================================
+enum EstadoAlquiler {
+  ACTIVO
+  FINALIZADO
+  ANULADO
+}
+
+enum MetodoPago {
+  EFECTIVO
+  VISA
+  MASTERCARD
+  YAPE
+  PLIN
+  OTRO
+}
+
+model Alquiler {
+  id              Int             @id @default(autoincrement())
+  sedeId          Int
+  sede            Sede            @relation(fields: [sedeId], references: [id])
+  habitacionId    Int
+  habitacion      Habitacion      @relation(fields: [habitacionId], references: [id])
+  turnoCajaId     Int?
+  turnoCaja       TurnoCaja?      @relation(fields: [turnoCajaId], references: [id])
+
+  clienteNombre   String
+  clienteDni      String
+  clienteTelefono String?
+
+  fechaIngreso    DateTime
+  fechaSalida     DateTime
+  fechaSalidaReal DateTime?
+
+  precioHabitacion Decimal        @db.Decimal(10, 2)
+  totalProductos   Decimal        @db.Decimal(10, 2) @default(0)
+  total            Decimal        @db.Decimal(10, 2)
+  metodoPago       MetodoPago
+  notas            String?
+
+  estado          EstadoAlquiler  @default(ACTIVO)
+  motivoAnulacion String?
+  anuladoEn       DateTime?
+  anuladoPorId    Int?
+  anuladoPor      Usuario?        @relation("AlquilerAnuladoPor", fields: [anuladoPorId], references: [id])
+
+  creadoPorId     Int
+  creadoPor       Usuario         @relation("AlquilerCreadoPor", fields: [creadoPorId], references: [id])
+  creadoEn        DateTime        @default(now())
+
+  consumos        ConsumoProducto[]
+
+  @@index([sedeId, estado])
+  @@index([habitacionId])
+  @@index([turnoCajaId])
+}
+
+model ConsumoProducto {
+  id           Int       @id @default(autoincrement())
+  alquilerId   Int
+  alquiler     Alquiler  @relation(fields: [alquilerId], references: [id], onDelete: Cascade)
+  productoId   Int
+  producto     Producto  @relation(fields: [productoId], references: [id])
+  cantidad     Int
+  precioUnit   Decimal   @db.Decimal(10, 2)
+  subtotal     Decimal   @db.Decimal(10, 2)
+  creadoEn     DateTime  @default(now())
+
+  @@index([alquilerId])
+  @@index([productoId])
+}
+
+// ============================================================
+// STOCK (historial)
+// ============================================================
+enum TipoMovimiento {
+  ENTRADA
+  SALIDA_VENTA
+  SALIDA_LIMPIEZA
+  AJUSTE
+  ANULACION
+}
+
+model MovimientoStock {
+  id          Int              @id @default(autoincrement())
+  productoId  Int?
+  producto    Producto?        @relation(fields: [productoId], references: [id])
+  tipo        TipoMovimiento
+  cantidad    Int
+  referencia  String?
+  usuarioId   Int
+  usuario     Usuario          @relation(fields: [usuarioId], references: [id])
+  creadoEn    DateTime         @default(now())
+
+  @@index([productoId])
+}
+
+// ============================================================
+// LIMPIEZA
+// ============================================================
+enum EstadoTareaLimpieza {
+  PENDIENTE
+  EN_PROCESO
+  COMPLETADA
+  CANCELADA
+}
+
+model TareaLimpieza {
+  id             Int                 @id @default(autoincrement())
+  sedeId         Int
+  sede           Sede                @relation(fields: [sedeId], references: [id])
+  habitacionId   Int
+  habitacion     Habitacion          @relation(fields: [habitacionId], references: [id])
+  asignadaAId    Int?
+  asignadaA      Usuario?            @relation("TareaAsignadaA", fields: [asignadaAId], references: [id])
+
+  estado         EstadoTareaLimpieza @default(PENDIENTE)
+  iniciadaEn     DateTime?
+  completadaEn   DateTime?
+  notas          String?
+
+  creadaEn       DateTime            @default(now())
+
+  fotos          FotoLimpieza[]
+  productosUsados UsoProductoLimpieza[]
+
+  @@index([sedeId, estado])
+  @@index([asignadaAId])
+}
+
+model FotoLimpieza {
+  id         Int           @id @default(autoincrement())
+  tareaId    Int
+  tarea      TareaLimpieza @relation(fields: [tareaId], references: [id], onDelete: Cascade)
+  path       String
+  subidaEn   DateTime      @default(now())
+
+  @@index([tareaId])
+}
+
+model UsoProductoLimpieza {
+  id          Int              @id @default(autoincrement())
+  tareaId     Int
+  tarea       TareaLimpieza    @relation(fields: [tareaId], references: [id], onDelete: Cascade)
+  productoId  Int
+  producto    ProductoLimpieza @relation(fields: [productoId], references: [id])
+  cantidad    Int
+  creadoEn    DateTime         @default(now())
+
+  @@index([tareaId])
+}
+
+// ============================================================
+// CAJA POR TURNO
+// ============================================================
+enum EstadoTurno {
+  ABIERTO
+  CERRADO
+}
+
+model TurnoCaja {
+  id             Int         @id @default(autoincrement())
+  sedeId         Int
+  sede           Sede        @relation(fields: [sedeId], references: [id])
+  usuarioId      Int
+  usuario        Usuario     @relation(fields: [usuarioId], references: [id])
+
+  abiertoEn      DateTime    @default(now())
+  cerradoEn      DateTime?
+  estado         EstadoTurno @default(ABIERTO)
+
+  totalEfectivo  Decimal     @db.Decimal(10, 2) @default(0)
+  totalVisa      Decimal     @db.Decimal(10, 2) @default(0)
+  totalMaster    Decimal     @db.Decimal(10, 2) @default(0)
+  totalYape      Decimal     @db.Decimal(10, 2) @default(0)
+  totalPlin      Decimal     @db.Decimal(10, 2) @default(0)
+  totalOtro      Decimal     @db.Decimal(10, 2) @default(0)
+  totalGeneral   Decimal     @db.Decimal(10, 2) @default(0)
+  notas          String?
+
+  alquileres     Alquiler[]
+
+  @@index([sedeId, estado])
+  @@index([usuarioId])
+}

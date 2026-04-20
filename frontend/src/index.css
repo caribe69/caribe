@@ -1,0 +1,43 @@
+@import "tailwindcss";
+
+@theme {
+  --color-brand-50: #eef7ff;
+  --color-brand-100: #d9ecff;
+  --color-brand-500: #2563eb;
+  --color-brand-600: #1d4ed8;
+  --color-brand-700: #1e40af;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+  background-color: #f8fafc;
+  color: #0f172a;
+}
+
+/* Utilidades de estado de habitación */
+.estado-DISPONIBLE {
+  background-color: #dcfce7;
+  color: #166534;
+}
+.estado-OCUPADA {
+  background-color: #fee2e2;
+  color: #991b1b;
+}
+.estado-ALISTANDO {
+  background-color: #fef3c7;
+  color: #92400e;
+}
+.estado-MANTENIMIENTO {
+  background-color: #e0e7ff;
+  color: #3730a3;
+}
+.estado-FUERA_SERVICIO {
+  background-color: #e2e8f0;
+  color: #334155;
+}

@@ -1,0 +1,44 @@
+import { Navigate, Route, Routes } from 'react-router-dom';
+import { useAuthStore } from '@/store/auth';
+import Login from '@/pages/Login';
+import Layout from '@/components/Layout';
+import Dashboard from '@/pages/Dashboard';
+import Habitaciones from '@/pages/Habitaciones';
+import Productos from '@/pages/Productos';
+import Alquileres from '@/pages/Alquileres';
+import Limpieza from '@/pages/Limpieza';
+import Caja from '@/pages/Caja';
+import Sedes from '@/pages/Sedes';
+import Usuarios from '@/pages/Usuarios';
+
+function Protected({ children }: { children: React.ReactNode }) {
+  const token = useAuthStore((s) => s.token);
+  if (!token) return <Navigate to="/login" replace />;
+  return <>{children}</>;
+}
+
+export default function App() {
+  return (
+    <Routes>
+      <Route path="/login" element={<Login />} />
+      <Route
+        path="/"
+        element={
+          <Protected>
+            <Layout />
+          </Protected>
+        }
+      >
+        <Route index element={<Dashboard />} />
+        <Route path="habitaciones" element={<Habitaciones />} />
+        <Route path="productos" element={<Productos />} />
+        <Route path="alquileres" element={<Alquileres />} />
+        <Route path="limpieza" element={<Limpieza />} />
+        <Route path="caja" element={<Caja />} />
+        <Route path="sedes" element={<Sedes />} />
+        <Route path="usuarios" element={<Usuarios />} />
+      </Route>
+      <Route path="*" element={<Navigate to="/" replace />} />
+    </Routes>
+  );
+}

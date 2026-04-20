@@ -16,6 +16,7 @@ import {
   Building,
   Users,
   FileBarChart,
+  Settings,
 } from 'lucide-react';
 import { useAuthStore, UsuarioInfo } from '@/store/auth';
 import { api } from '@/lib/api';
@@ -99,6 +100,12 @@ const PAGES: Record<string, PageMeta> = {
     eyebrow: 'Personal del sistema',
     Icon: Users,
     gradient: 'from-indigo-500 to-violet-600',
+  },
+  '/configuracion': {
+    title: 'Configuración',
+    eyebrow: 'Ajustes del sistema',
+    Icon: Settings,
+    gradient: 'from-slate-500 to-slate-700',
   },
 };
 

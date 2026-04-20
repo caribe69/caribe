@@ -436,3 +436,22 @@ model AnulacionRequest {
   @@index([sedeId, estado])
   @@index([solicitanteId])
 }
+
+// ============================================================
+// CONFIG (singleton id=1) — datos empresa + tokens API externas
+// ============================================================
+model AppConfig {
+  id                Int      @id @default(1)
+  empresaNombre     String?
+  empresaRuc        String?
+  empresaDireccion  String?
+  empresaTelefono   String?
+  empresaEmail      String?
+  logoPath          String?
+  apiDniToken       String?
+  apiRucToken       String?
+  apiDniUrl         String   @default("https://dniruc.apisperu.com/api/v1/dni")
+  apiRucUrl         String   @default("https://dniruc.apisperu.com/api/v1/ruc")
+  actualizadoEn     DateTime @updatedAt
+  creadoEn          DateTime @default(now())
+}

@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   ClipboardList,
@@ -9,6 +9,9 @@ import {
   BedDouble,
   Grid3x3,
   List,
+  Search,
+  UserCheck,
+  Loader2,
 } from 'lucide-react';
 import { api } from '@/lib/api';
 import { useDialog } from '@/components/ConfirmProvider';
@@ -513,6 +516,38 @@ function NuevoAlquilerModal({
     notas: '',
   });
   const [error, setError] = useState<string | null>(null);
+  const [buscando, setBuscando] = useState(false);
+  const [lookup, setLookup] = useState<any | null>(null);
+
+  // Debounced lookup cuando el DNI tiene 8 dígitos
+  useEffect(() => {
+    const dni = form.clienteDni;
+    if (!/^\d{8}$/.test(dni)) {
+      setLookup(null);
+      return;
+    }
+    const t = setTimeout(async () => {
+      setBuscando(true);
+      try {
+        const { data } = await api.get('/alquileres/clientes/buscar', {
+          params: { dni },
+        });
+        setLookup(data);
+        if (data?.encontrado) {
+          setForm((f) => ({
+            ...f,
+            clienteNombre: data.nombre || f.clienteNombre,
+            clienteTelefono: data.telefono || f.clienteTelefono,
+          }));
+        }
+      } catch {
+        setLookup(null);
+      } finally {
+        setBuscando(false);
+      }
+    }, 500);
+    return () => clearTimeout(t);
+  }, [form.clienteDni]);
 
   const crear = useMutation({
     mutationFn: async () => {
@@ -553,6 +588,65 @@ function NuevoAlquilerModal({
         </div>
 
         <div className="space-y-3">
+          {/* DNI primero con búsqueda automática */}
+          <div>
+            <label className="text-[10px] font-semibold text-slate-500 uppercase tracking-widest">
+              DNI del cliente
+            </label>
+            <div className="relative mt-1">
+              <input
+                inputMode="numeric"
+                maxLength={8}
+                placeholder="8 dígitos"
+                className="w-full border border-slate-200 rounded-xl px-3.5 py-2.5 pr-10 text-sm font-mono focus:outline-none focus:border-violet-400 focus:ring-2 focus:ring-violet-100"
+                value={form.clienteDni}
+                onChange={(e) =>
+                  setForm({
+                    ...form,
+                    clienteDni: e.target.value.replace(/\D/g, '').slice(0, 8),
+                  })
+                }
+              />
+              <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                {buscando ? (
+                  <Loader2 size={16} className="text-violet-500 animate-spin" />
+                ) : (
+                  <Search size={15} className="text-slate-400" />
+                )}
+              </div>
+            </div>
+            {lookup?.frecuente && (
+              <div className="mt-2 flex items-center gap-2 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-lg px-3 py-2 text-xs">
+                <UserCheck size={14} />
+                <span>
+                  <b>Cliente frecuente</b> · {lookup.visitas} visita
+                  {lookup.visitas === 1 ? '' : 's'} · última:{' '}
+                  {new Date(lookup.ultimaVisita).toLocaleDateString('es-PE')}
+                </span>
+              </div>
+            )}
+            {lookup?.fuente === 'reniec' && (
+              <div className="mt-2 flex items-center gap-2 bg-violet-50 border border-violet-200 text-violet-800 rounded-lg px-3 py-2 text-xs">
+                <Search size={14} />
+                <span>
+                  Datos de RENIEC: <b>{lookup.nombre}</b>
+                </span>
+              </div>
+            )}
+            {lookup?.fuente === 'ninguna' &&
+              form.clienteDni.length === 8 &&
+              !buscando && (
+                <div className="mt-2 text-xs text-slate-500">
+                  Cliente nuevo. Completa los datos manualmente.
+                </div>
+              )}
+            {lookup?.fuente === 'api_error' && (
+              <div className="mt-2 text-xs text-amber-700">
+                No se pudo consultar RENIEC. Completa los datos manualmente.
+              </div>
+            )}
+          </div>
+
           <input
             placeholder="Nombre del cliente"
             className="w-full border rounded-lg px-3 py-2"
@@ -560,12 +654,6 @@ function NuevoAlquilerModal({
             onChange={(e) =>
               setForm({ ...form, clienteNombre: e.target.value })
             }
-          />
-          <input
-            placeholder="DNI"
-            className="w-full border rounded-lg px-3 py-2"
-            value={form.clienteDni}
-            onChange={(e) => setForm({ ...form, clienteDni: e.target.value })}
           />
           <input
             placeholder="Teléfono (opcional)"

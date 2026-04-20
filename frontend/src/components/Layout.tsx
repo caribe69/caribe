@@ -13,6 +13,7 @@ import {
   Hotel,
   Crown,
   FileBarChart,
+  Settings,
 } from 'lucide-react';
 import { useAuthStore, Rol } from '@/store/auth';
 import TopBar from './TopBar';
@@ -91,6 +92,12 @@ const items: Item[] = [
     to: '/usuarios',
     label: 'Usuarios',
     icon: Users,
+    roles: ['SUPERADMIN', 'ADMIN_SEDE'],
+  },
+  {
+    to: '/configuracion',
+    label: 'Configuración',
+    icon: Settings,
     roles: ['SUPERADMIN', 'ADMIN_SEDE'],
   },
 ];

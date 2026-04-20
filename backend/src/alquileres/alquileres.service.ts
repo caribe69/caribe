@@ -16,6 +16,7 @@ import {
 import { PrismaService } from '../prisma/prisma.service';
 import { JwtPayload } from '../auth/auth.service';
 import { enforceSede, resolveSedeId } from '../common/sede-scope';
+import { SettingsService } from '../settings/settings.service';
 import {
   AgregarConsumoDto,
   AnularAlquilerDto,
@@ -25,7 +26,70 @@ import {
 
 @Injectable()
 export class AlquileresService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private settings: SettingsService,
+  ) {}
+
+  /**
+   * Busca un cliente por DNI. Primero en historial local; si no existe
+   * consulta api externa configurada (apisperu/reniec).
+   */
+  async buscarCliente(user: JwtPayload, dni: string) {
+    if (!dni || !/^\d{8}$/.test(dni))
+      throw new BadRequestException('DNI inválido (8 dígitos)');
+    const sedeId = resolveSedeId(user);
+
+    const previos = await this.prisma.alquiler.findMany({
+      where: { sedeId, clienteDni: dni },
+      orderBy: { creadoEn: 'desc' },
+      select: {
+        clienteNombre: true,
+        clienteTelefono: true,
+        creadoEn: true,
+      },
+      take: 20,
+    });
+    if (previos.length > 0) {
+      const u = previos[0];
+      return {
+        fuente: 'local',
+        encontrado: true,
+        frecuente: true,
+        dni,
+        nombre: u.clienteNombre,
+        telefono: u.clienteTelefono,
+        visitas: previos.length,
+        ultimaVisita: u.creadoEn,
+      };
+    }
+
+    const cfg = await this.settings.getDniConfig();
+    if (!cfg.token) return { fuente: 'ninguna', encontrado: false, dni };
+
+    try {
+      const url = `${cfg.url}/${dni}?token=${encodeURIComponent(cfg.token)}`;
+      const resp = await fetch(url, { signal: AbortSignal.timeout(8000) });
+      if (!resp.ok) return { fuente: 'api_error', encontrado: false, dni };
+      const data: any = await resp.json();
+      const nombre = [data.nombres, data.apellidoPaterno, data.apellidoMaterno]
+        .filter(Boolean)
+        .join(' ')
+        .trim();
+      if (!nombre) return { fuente: 'api_vacio', encontrado: false, dni };
+      return {
+        fuente: 'reniec',
+        encontrado: true,
+        frecuente: false,
+        dni,
+        nombre,
+        telefono: null,
+        visitas: 0,
+      };
+    } catch {
+      return { fuente: 'api_error', encontrado: false, dni };
+    }
+  }
 
   findAll(
     user: JwtPayload,

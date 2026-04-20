@@ -44,6 +44,14 @@ export class AlquileresController {
     );
   }
 
+  @Get('clientes/buscar')
+  buscarCliente(
+    @CurrentUser() user: JwtPayload,
+    @Query('dni') dni: string,
+  ) {
+    return this.service.buscarCliente(user, dni);
+  }
+
   @Get('historial')
   historial(
     @CurrentUser() user: JwtPayload,

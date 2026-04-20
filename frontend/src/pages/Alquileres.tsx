@@ -49,28 +49,24 @@ export default function Alquileres() {
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
-        <div className="flex items-center gap-2">
-          <ClipboardList className="text-brand-500" />
-          <h1 className="text-2xl font-bold">Alquileres</h1>
-        </div>
-        <div className="flex gap-1 bg-white border rounded-lg p-1">
+      <div className="flex items-center justify-end mb-5">
+        <div className="flex gap-1 bg-white border border-slate-200 rounded-xl p-1 shadow-sm">
           <button
             onClick={() => setVista('mapa')}
-            className={`flex items-center gap-1 px-3 py-1.5 rounded text-sm transition ${
+            className={`flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-sm font-medium transition btn-press ${
               vista === 'mapa'
-                ? 'bg-brand-500 text-white'
-                : 'text-slate-600 hover:bg-slate-100'
+                ? 'bg-gradient-to-r from-violet-600 to-violet-500 text-white shadow-md shadow-violet-500/30'
+                : 'text-slate-600 hover:bg-slate-50'
             }`}
           >
             <Grid3x3 size={14} /> Mapa
           </button>
           <button
             onClick={() => setVista('lista')}
-            className={`flex items-center gap-1 px-3 py-1.5 rounded text-sm transition ${
+            className={`flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-sm font-medium transition btn-press ${
               vista === 'lista'
-                ? 'bg-brand-500 text-white'
-                : 'text-slate-600 hover:bg-slate-100'
+                ? 'bg-gradient-to-r from-violet-600 to-violet-500 text-white shadow-md shadow-violet-500/30'
+                : 'text-slate-600 hover:bg-slate-50'
             }`}
           >
             <List size={14} /> Lista

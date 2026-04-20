@@ -3,6 +3,8 @@ import { Users, Plus } from 'lucide-react';
 import { useState } from 'react';
 import { api } from '@/lib/api';
 import { useAuthStore } from '@/store/auth';
+import { usePagination } from '@/hooks/usePagination';
+import Pagination from '@/components/Pagination';
 
 const ROLES = ['ADMIN_SEDE', 'HOTELERO', 'LIMPIEZA', 'CAJERO', 'SUPERADMIN'];
 
@@ -23,6 +25,8 @@ export default function Usuarios() {
     queryKey: ['usuarios'],
     queryFn: async () => (await api.get<any[]>('/usuarios')).data,
   });
+
+  const pag = usePagination(data, 10);
 
   const sedes = useQuery({
     queryKey: ['sedes'],
@@ -61,18 +65,13 @@ export default function Usuarios() {
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-6 flex-wrap gap-3">
-        <div>
-          <p className="text-xs text-slate-400 uppercase tracking-widest">
-            Personal
-          </p>
-          <h2 className="font-hotel text-2xl font-bold text-slate-900">
-            Usuarios del sistema
-          </h2>
+      <div className="flex items-center justify-between mb-5 flex-wrap gap-3">
+        <div className="text-sm text-slate-500">
+          {data?.length ?? 0} usuarios registrados
         </div>
         <button
           onClick={() => setShow(true)}
-          className="inline-flex items-center gap-2 bg-gradient-to-r from-violet-600 to-violet-500 hover:from-violet-700 hover:to-violet-600 text-white px-4 py-2.5 rounded-xl text-sm font-medium shadow-md shadow-violet-500/30 transition"
+          className="inline-flex items-center gap-2 bg-gradient-to-r from-violet-600 to-violet-500 hover:from-violet-700 hover:to-violet-600 text-white px-4 py-2.5 rounded-xl text-sm font-medium shadow-md shadow-violet-500/30 transition btn-press"
         >
           <Plus size={16} /> Nuevo usuario
         </button>
@@ -104,7 +103,7 @@ export default function Usuarios() {
             </tr>
           </thead>
           <tbody>
-            {data?.map((u: any) => (
+            {pag.paginated.map((u: any) => (
               <tr
                 key={u.id}
                 className="border-b border-slate-50 last:border-0 hover:bg-violet-50/30 transition"
@@ -168,6 +167,17 @@ export default function Usuarios() {
             )}
           </tbody>
         </table>
+
+        <Pagination
+          page={pag.page}
+          totalPages={pag.totalPages}
+          totalItems={pag.totalItems}
+          from={pag.from}
+          to={pag.to}
+          size={pag.size}
+          setPage={pag.setPage}
+          setSize={pag.setSize}
+        />
       </div>
 
       {show && (

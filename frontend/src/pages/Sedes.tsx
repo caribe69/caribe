@@ -2,6 +2,8 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Building, Plus } from 'lucide-react';
 import { useState } from 'react';
 import { api } from '@/lib/api';
+import { usePagination } from '@/hooks/usePagination';
+import Pagination from '@/components/Pagination';
 
 export default function Sedes() {
   const qc = useQueryClient();
@@ -12,6 +14,8 @@ export default function Sedes() {
     queryKey: ['sedes'],
     queryFn: async () => (await api.get<any[]>('/sedes')).data,
   });
+
+  const pag = usePagination(data, 10);
 
   const crear = useMutation({
     mutationFn: async () => (await api.post('/sedes', form)).data,
@@ -24,18 +28,13 @@ export default function Sedes() {
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-6 flex-wrap gap-3">
-        <div>
-          <p className="text-xs text-slate-400 uppercase tracking-widest">
-            Red hotelera
-          </p>
-          <h2 className="font-hotel text-2xl font-bold text-slate-900">
-            Sedes de Caribe Hotel
-          </h2>
+      <div className="flex items-center justify-between mb-5 flex-wrap gap-3">
+        <div className="text-sm text-slate-500">
+          {data?.length ?? 0} sedes en la red
         </div>
         <button
           onClick={() => setShow(true)}
-          className="inline-flex items-center gap-2 bg-gradient-to-r from-violet-600 to-violet-500 hover:from-violet-700 hover:to-violet-600 text-white px-4 py-2.5 rounded-xl text-sm font-medium shadow-md shadow-violet-500/30 transition"
+          className="inline-flex items-center gap-2 bg-gradient-to-r from-violet-600 to-violet-500 hover:from-violet-700 hover:to-violet-600 text-white px-4 py-2.5 rounded-xl text-sm font-medium shadow-md shadow-violet-500/30 transition btn-press"
         >
           <Plus size={16} /> Nueva sede
         </button>
@@ -67,7 +66,7 @@ export default function Sedes() {
             </tr>
           </thead>
           <tbody>
-            {data?.map((s: any) => (
+            {pag.paginated.map((s: any) => (
               <tr
                 key={s.id}
                 className="border-b border-slate-50 last:border-0 hover:bg-violet-50/30 transition"
@@ -121,6 +120,17 @@ export default function Sedes() {
             )}
           </tbody>
         </table>
+
+        <Pagination
+          page={pag.page}
+          totalPages={pag.totalPages}
+          totalItems={pag.totalItems}
+          from={pag.from}
+          to={pag.to}
+          size={pag.size}
+          setPage={pag.setPage}
+          setSize={pag.setSize}
+        />
       </div>
 
       {show && (

@@ -2,6 +2,8 @@ import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Sparkles, Plus, X, PackagePlus } from 'lucide-react';
 import { api } from '@/lib/api';
+import { usePagination } from '@/hooks/usePagination';
+import Pagination from '@/components/Pagination';
 
 interface ProductoLimpieza {
   id: number;
@@ -22,20 +24,17 @@ export default function ProductosLimpieza() {
       (await api.get<ProductoLimpieza[]>('/productos-limpieza')).data,
   });
 
+  const pag = usePagination(data, 10);
+
   return (
     <div>
-      <div className="flex items-center justify-between mb-6 flex-wrap gap-3">
-        <div>
-          <p className="text-xs text-slate-400 uppercase tracking-widest">
-            Inventario
-          </p>
-          <h2 className="font-hotel text-2xl font-bold text-slate-900">
-            Productos de limpieza
-          </h2>
+      <div className="flex items-center justify-between mb-5 flex-wrap gap-3">
+        <div className="text-sm text-slate-500">
+          {data?.length ?? 0} productos de limpieza
         </div>
         <button
           onClick={() => setShowModal(true)}
-          className="inline-flex items-center gap-2 bg-gradient-to-r from-violet-600 to-violet-500 hover:from-violet-700 hover:to-violet-600 text-white px-4 py-2.5 rounded-xl text-sm font-medium shadow-md shadow-violet-500/30 transition"
+          className="inline-flex items-center gap-2 bg-gradient-to-r from-violet-600 to-violet-500 hover:from-violet-700 hover:to-violet-600 text-white px-4 py-2.5 rounded-xl text-sm font-medium shadow-md shadow-violet-500/30 transition btn-press"
         >
           <Plus size={16} /> Nuevo producto
         </button>
@@ -67,7 +66,7 @@ export default function ProductosLimpieza() {
             </tr>
           </thead>
           <tbody>
-            {data?.map((p) => {
+            {pag.paginated.map((p) => {
               const low = p.stock <= p.stockMinimo;
               const out = p.stock === 0;
               return (
@@ -130,6 +129,17 @@ export default function ProductosLimpieza() {
             )}
           </tbody>
         </table>
+
+        <Pagination
+          page={pag.page}
+          totalPages={pag.totalPages}
+          totalItems={pag.totalItems}
+          from={pag.from}
+          to={pag.to}
+          size={pag.size}
+          setPage={pag.setPage}
+          setSize={pag.setSize}
+        />
       </div>
 
       {showModal && <Form onClose={() => setShowModal(false)} />}

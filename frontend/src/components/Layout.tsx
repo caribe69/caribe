@@ -1,4 +1,6 @@
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
+import { api } from '@/lib/api';
 import {
   BedDouble,
   Package,
@@ -14,6 +16,7 @@ import {
   Crown,
   FileBarChart,
   Settings,
+  MessageSquare,
 } from 'lucide-react';
 import { useAuthStore, Rol } from '@/store/auth';
 import TopBar from './TopBar';
@@ -95,6 +98,12 @@ const items: Item[] = [
     roles: ['SUPERADMIN', 'ADMIN_SEDE'],
   },
   {
+    to: '/chat',
+    label: 'Conversaciones',
+    icon: MessageSquare,
+    roles: ['SUPERADMIN', 'ADMIN_SEDE', 'HOTELERO', 'CAJERO', 'LIMPIEZA'],
+  },
+  {
     to: '/configuracion',
     label: 'Configuración',
     icon: Settings,
@@ -117,6 +126,15 @@ export default function Layout() {
   const visibles = items.filter(
     (i) => !i.roles || (usuario && i.roles.includes(usuario.rol)),
   );
+
+  // Badge de conversaciones no leídas (se refresca vía socket invalidation)
+  const inboxQuery = useQuery<{ noLeidos: number }[]>({
+    queryKey: ['chat', 'inbox'],
+    queryFn: async () => (await api.get('/chat/inbox')).data,
+    enabled: !!usuario,
+  });
+  const chatUnread =
+    inboxQuery.data?.reduce((s, c) => s + (c.noLeidos || 0), 0) ?? 0;
 
   return (
     <div className="flex h-screen overflow-hidden p-4 gap-4 bg-gradient-to-br from-slate-50 via-violet-50/30 to-emerald-50/20">
@@ -141,6 +159,7 @@ export default function Layout() {
         <nav className="flex-1 overflow-y-auto scroll-premium px-3 py-2 space-y-1 min-h-0">
           {visibles.map((it) => {
             const Icon = it.icon;
+            const showChatBadge = it.to === '/chat' && chatUnread > 0;
             return (
               <NavLink
                 key={it.to}
@@ -155,7 +174,12 @@ export default function Layout() {
                 }
               >
                 <Icon size={18} />
-                {it.label}
+                <span className="flex-1">{it.label}</span>
+                {showChatBadge && (
+                  <span className="bg-rose-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-[20px] text-center">
+                    {chatUnread > 9 ? '9+' : chatUnread}
+                  </span>
+                )}
               </NavLink>
             );
           })}

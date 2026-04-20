@@ -17,6 +17,7 @@ import {
   Users,
   FileBarChart,
   Settings,
+  MessageSquare,
 } from 'lucide-react';
 import { useAuthStore, UsuarioInfo } from '@/store/auth';
 import { api } from '@/lib/api';
@@ -100,6 +101,12 @@ const PAGES: Record<string, PageMeta> = {
     eyebrow: 'Personal del sistema',
     Icon: Users,
     gradient: 'from-indigo-500 to-violet-600',
+  },
+  '/chat': {
+    title: 'Conversaciones',
+    eyebrow: 'Mensajería interna',
+    Icon: MessageSquare,
+    gradient: 'from-fuchsia-500 to-violet-600',
   },
   '/configuracion': {
     title: 'Configuración',

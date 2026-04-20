@@ -3,45 +3,65 @@ import * as bcrypt from 'bcryptjs';
 
 const prisma = new PrismaClient();
 
-async function main() {
-  console.log('🌱 Iniciando seed...');
+interface SedeData {
+  nombre: string;
+  direccion: string;
+  telefono: string;
+  slug: string; // prefijo para usuarios (admin_central, hotelero_central, etc)
+}
 
-  const passwordHash = await bcrypt.hash('admin123', 10);
+const SEDES: SedeData[] = [
+  {
+    nombre: 'Hotel Caribe Central',
+    direccion: 'Av. Arequipa 1234, Lima Centro',
+    telefono: '01-555-0001',
+    slug: 'central',
+  },
+  {
+    nombre: 'Hotel Caribe Norte',
+    direccion: 'Av. Túpac Amaru 456, San Martín de Porres',
+    telefono: '01-555-0002',
+    slug: 'norte',
+  },
+  {
+    nombre: 'Hotel Caribe Sur',
+    direccion: 'Av. Huaylas 789, Chorrillos',
+    telefono: '01-555-0003',
+    slug: 'sur',
+  },
+  {
+    nombre: 'Hotel Caribe Este',
+    direccion: 'Av. La Molina 1010, La Molina',
+    telefono: '01-555-0004',
+    slug: 'este',
+  },
+];
 
-  const superadmin = await prisma.usuario.upsert({
-    where: { username: 'superadmin' },
-    update: {},
-    create: {
-      nombre: 'Super Administrador',
-      username: 'superadmin',
-      email: 'super@hotel.local',
-      passwordHash,
-      rol: Rol.SUPERADMIN,
-    },
-  });
-  console.log('✔ SUPERADMIN creado: superadmin / admin123');
+async function crearSede(s: SedeData, passwordHash: string) {
+  console.log(`\n🏨 ${s.nombre}`);
 
-  const sede = await prisma.sede.upsert({
-    where: { id: 1 },
-    update: {},
-    create: {
-      nombre: 'Sede Principal',
-      direccion: 'Av. Principal 123, Lima',
-      telefono: '999-999-999',
-    },
-  });
+  let sede = await prisma.sede.findFirst({ where: { nombre: s.nombre } });
+  if (!sede) {
+    sede = await prisma.sede.create({
+      data: {
+        nombre: s.nombre,
+        direccion: s.direccion,
+        telefono: s.telefono,
+      },
+    });
+  }
 
-  // Usuarios de prueba
-  const usuarios = [
-    { username: 'admin', rol: Rol.ADMIN_SEDE, nombre: 'Admin Sede' },
-    { username: 'hotelero', rol: Rol.HOTELERO, nombre: 'Juan Hotelero' },
-    { username: 'limpieza', rol: Rol.LIMPIEZA, nombre: 'María Limpieza' },
-    { username: 'cajero', rol: Rol.CAJERO, nombre: 'Carlos Cajero' },
+  // --- Usuarios (personal) ---
+  const roles: { username: string; nombre: string; rol: Rol }[] = [
+    { username: `admin_${s.slug}`, nombre: `Admin ${s.nombre}`, rol: Rol.ADMIN_SEDE },
+    { username: `hotelero_${s.slug}`, nombre: `Recepcionista ${s.slug}`, rol: Rol.HOTELERO },
+    { username: `limpieza_${s.slug}`, nombre: `Personal Limpieza ${s.slug}`, rol: Rol.LIMPIEZA },
+    { username: `cajero_${s.slug}`, nombre: `Cajero ${s.slug}`, rol: Rol.CAJERO },
   ];
-  for (const u of usuarios) {
+  for (const u of roles) {
     await prisma.usuario.upsert({
       where: { username: u.username },
-      update: {},
+      update: { sedeId: sede.id, activo: true },
       create: {
         nombre: u.nombre,
         username: u.username,
@@ -51,8 +71,9 @@ async function main() {
       },
     });
   }
+  console.log(`  ✔ 4 usuarios creados (${roles.map((r) => r.username).join(', ')})`);
 
-  // Pisos
+  // --- Pisos ---
   const piso1 = await prisma.piso.upsert({
     where: { sedeId_numero: { sedeId: sede.id, numero: 1 } },
     update: {},
@@ -63,14 +84,17 @@ async function main() {
     update: {},
     create: { sedeId: sede.id, numero: 2, nombre: 'Segundo Piso' },
   });
+  console.log(`  ✔ 2 pisos`);
 
-  // Habitaciones
+  // --- Habitaciones ---
   const habitaciones = [
-    { numero: '101', piso: piso1.id, precioHora: 25, precioNoche: 120 },
-    { numero: '102', piso: piso1.id, precioHora: 25, precioNoche: 120 },
-    { numero: '103', piso: piso1.id, precioHora: 30, precioNoche: 150 },
-    { numero: '201', piso: piso2.id, precioHora: 30, precioNoche: 150 },
-    { numero: '202', piso: piso2.id, precioHora: 35, precioNoche: 180 },
+    { numero: '101', piso: piso1.id, hora: 25, noche: 120, desc: 'Simple económica' },
+    { numero: '102', piso: piso1.id, hora: 25, noche: 120, desc: 'Simple económica' },
+    { numero: '103', piso: piso1.id, hora: 30, noche: 150, desc: 'Doble estándar' },
+    { numero: '104', piso: piso1.id, hora: 30, noche: 150, desc: 'Doble estándar' },
+    { numero: '201', piso: piso2.id, hora: 35, noche: 180, desc: 'Matrimonial' },
+    { numero: '202', piso: piso2.id, hora: 40, noche: 200, desc: 'Matrimonial deluxe' },
+    { numero: '203', piso: piso2.id, hora: 50, noche: 250, desc: 'Suite ejecutiva' },
   ];
   for (const h of habitaciones) {
     await prisma.habitacion.upsert({
@@ -80,21 +104,26 @@ async function main() {
         sedeId: sede.id,
         pisoId: h.piso,
         numero: h.numero,
-        descripcion: 'Habitación estándar',
-        caracteristicas: 'Cama doble, TV, WiFi, Baño privado',
-        precioHora: h.precioHora,
-        precioNoche: h.precioNoche,
+        descripcion: h.desc,
+        caracteristicas: 'Cama, TV, WiFi, Baño privado, Aire acondicionado',
+        precioHora: h.hora,
+        precioNoche: h.noche,
         estado: EstadoHabitacion.DISPONIBLE,
       },
     });
   }
+  console.log(`  ✔ ${habitaciones.length} habitaciones`);
 
-  // Productos (consumibles)
+  // --- Productos consumibles (almacén por sede) ---
   const productos = [
     { nombre: 'Coca Cola 500ml', precio: 5, stock: 50 },
+    { nombre: 'Inca Kola 500ml', precio: 5, stock: 50 },
     { nombre: 'Agua Mineral 500ml', precio: 3, stock: 80 },
     { nombre: 'Cerveza Pilsen', precio: 8, stock: 40 },
-    { nombre: 'Snack Papas', precio: 4, stock: 60 },
+    { nombre: 'Cerveza Cristal', precio: 8, stock: 40 },
+    { nombre: 'Snack Papas Lays', precio: 4, stock: 60 },
+    { nombre: 'Chocolate Sublime', precio: 3, stock: 70 },
+    { nombre: 'Condones (paquete)', precio: 10, stock: 30 },
   ];
   for (const p of productos) {
     const exists = await prisma.producto.findFirst({
@@ -112,13 +141,17 @@ async function main() {
       });
     }
   }
+  console.log(`  ✔ ${productos.length} productos consumibles`);
 
-  // Productos de limpieza
+  // --- Productos de limpieza (almacén por sede) ---
   const prodsLimpieza = [
-    { nombre: 'Detergente', stock: 20, unidad: 'litro' },
-    { nombre: 'Desinfectante', stock: 15, unidad: 'litro' },
-    { nombre: 'Papel Higiénico', stock: 100, unidad: 'rollo' },
+    { nombre: 'Detergente líquido', stock: 20, unidad: 'litro' },
+    { nombre: 'Desinfectante multiuso', stock: 15, unidad: 'litro' },
+    { nombre: 'Lejía', stock: 10, unidad: 'litro' },
+    { nombre: 'Papel higiénico', stock: 100, unidad: 'rollo' },
     { nombre: 'Toallas limpias', stock: 30, unidad: 'unidad' },
+    { nombre: 'Sábanas limpias', stock: 40, unidad: 'juego' },
+    { nombre: 'Ambientador', stock: 12, unidad: 'frasco' },
   ];
   for (const p of prodsLimpieza) {
     const exists = await prisma.productoLimpieza.findFirst({
@@ -136,15 +169,45 @@ async function main() {
       });
     }
   }
+  console.log(`  ✔ ${prodsLimpieza.length} productos de limpieza`);
+}
 
-  console.log('✅ Seed completado.');
-  console.log('');
-  console.log('Usuarios creados (contraseña: admin123):');
-  console.log('  - superadmin (todas las sedes)');
-  console.log('  - admin      (admin de sede principal)');
-  console.log('  - hotelero   (encargado hotel/productos)');
-  console.log('  - limpieza   (personal de limpieza)');
-  console.log('  - cajero     (cajero)');
+async function main() {
+  console.log('🌱 Iniciando seed de 4 sedes...\n');
+
+  const passwordHash = await bcrypt.hash('admin123', 10);
+
+  // SUPERADMIN global
+  await prisma.usuario.upsert({
+    where: { username: 'superadmin' },
+    update: {},
+    create: {
+      nombre: 'Super Administrador',
+      username: 'superadmin',
+      email: 'super@hotel.local',
+      passwordHash,
+      rol: Rol.SUPERADMIN,
+    },
+  });
+  console.log('🔑 SUPERADMIN: superadmin / admin123');
+
+  for (const s of SEDES) {
+    await crearSede(s, passwordHash);
+  }
+
+  console.log('\n✅ Seed completado.\n');
+  console.log('═══════════════════════════════════════════════════════════');
+  console.log('  USUARIOS (contraseña: admin123)');
+  console.log('═══════════════════════════════════════════════════════════');
+  console.log('  superadmin            → SUPERADMIN (todas las sedes)');
+  for (const s of SEDES) {
+    console.log(`\n  ${s.nombre}:`);
+    console.log(`    admin_${s.slug.padEnd(12)} → ADMIN_SEDE`);
+    console.log(`    hotelero_${s.slug.padEnd(9)} → HOTELERO (recepción)`);
+    console.log(`    limpieza_${s.slug.padEnd(9)} → LIMPIEZA`);
+    console.log(`    cajero_${s.slug.padEnd(11)} → CAJERO`);
+  }
+  console.log('═══════════════════════════════════════════════════════════\n');
 }
 
 main()

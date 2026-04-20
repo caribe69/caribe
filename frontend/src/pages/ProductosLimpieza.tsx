@@ -1,32 +1,33 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Package, Plus, X, PackagePlus } from 'lucide-react';
+import { Sparkles, Plus, X, PackagePlus } from 'lucide-react';
 import { api } from '@/lib/api';
 
-interface Producto {
+interface ProductoLimpieza {
   id: number;
   nombre: string;
-  precio: string;
   stock: number;
   stockMinimo: number;
+  unidad: string;
 }
 
-export default function Productos() {
+export default function ProductosLimpieza() {
   const qc = useQueryClient();
   const [showModal, setShowModal] = useState(false);
-  const [showAjuste, setShowAjuste] = useState<Producto | null>(null);
+  const [ajuste, setAjuste] = useState<ProductoLimpieza | null>(null);
 
   const { data, isLoading } = useQuery({
-    queryKey: ['productos'],
-    queryFn: async () => (await api.get<Producto[]>('/productos')).data,
+    queryKey: ['productos-limpieza'],
+    queryFn: async () =>
+      (await api.get<ProductoLimpieza[]>('/productos-limpieza')).data,
   });
 
   return (
     <div>
       <div className="flex items-center justify-between mb-6 flex-wrap gap-3">
         <div className="flex items-center gap-2">
-          <Package className="text-brand-500" />
-          <h1 className="text-2xl font-bold">Productos</h1>
+          <Sparkles className="text-brand-500" />
+          <h1 className="text-2xl font-bold">Productos de limpieza</h1>
         </div>
         <button
           onClick={() => setShowModal(true)}
@@ -43,7 +44,7 @@ export default function Productos() {
           <thead className="bg-slate-50 text-left">
             <tr>
               <th className="px-4 py-3 font-medium">Nombre</th>
-              <th className="px-4 py-3 font-medium">Precio</th>
+              <th className="px-4 py-3 font-medium">Unidad</th>
               <th className="px-4 py-3 font-medium">Stock</th>
               <th className="px-4 py-3 font-medium">Mínimo</th>
               <th className="px-4 py-3 font-medium w-32">Acciones</th>
@@ -53,7 +54,7 @@ export default function Productos() {
             {data?.map((p) => (
               <tr key={p.id} className="border-t">
                 <td className="px-4 py-3">{p.nombre}</td>
-                <td className="px-4 py-3">S/ {p.precio}</td>
+                <td className="px-4 py-3 text-slate-500">{p.unidad}</td>
                 <td
                   className={`px-4 py-3 font-medium ${
                     p.stock <= p.stockMinimo ? 'text-red-600' : ''
@@ -64,7 +65,7 @@ export default function Productos() {
                 <td className="px-4 py-3 text-slate-500">{p.stockMinimo}</td>
                 <td className="px-4 py-3">
                   <button
-                    onClick={() => setShowAjuste(p)}
+                    onClick={() => setAjuste(p)}
                     className="text-xs flex items-center gap-1 bg-slate-100 hover:bg-slate-200 px-2 py-1 rounded"
                   >
                     <PackagePlus size={12} /> Stock
@@ -86,13 +87,13 @@ export default function Productos() {
         </table>
       </div>
 
-      {showModal && <ProductoModal onClose={() => setShowModal(false)} />}
-      {showAjuste && (
-        <AjusteStockModal
-          producto={showAjuste}
+      {showModal && <Form onClose={() => setShowModal(false)} />}
+      {ajuste && (
+        <AjusteModal
+          producto={ajuste}
           onClose={() => {
-            setShowAjuste(null);
-            qc.invalidateQueries({ queryKey: ['productos'] });
+            setAjuste(null);
+            qc.invalidateQueries({ queryKey: ['productos-limpieza'] });
           }}
         />
       )}
@@ -100,12 +101,12 @@ export default function Productos() {
   );
 }
 
-function ProductoModal({ onClose }: { onClose: () => void }) {
+function Form({ onClose }: { onClose: () => void }) {
   const qc = useQueryClient();
   const [form, setForm] = useState({
     nombre: '',
     descripcion: '',
-    precio: '',
+    unidad: 'unidad',
     stock: '0',
     stockMinimo: '5',
   });
@@ -114,23 +115,23 @@ function ProductoModal({ onClose }: { onClose: () => void }) {
   const crear = useMutation({
     mutationFn: async () =>
       (
-        await api.post('/productos', {
+        await api.post('/productos-limpieza', {
           nombre: form.nombre,
           descripcion: form.descripcion || undefined,
-          precio: Number(form.precio),
+          unidad: form.unidad,
           stock: Number(form.stock),
           stockMinimo: Number(form.stockMinimo),
         })
       ).data,
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['productos'] });
+      qc.invalidateQueries({ queryKey: ['productos-limpieza'] });
       onClose();
     },
     onError: (err: any) => setError(err.response?.data?.message || 'Error'),
   });
 
   return (
-    <Modal title="Nuevo producto" onClose={onClose}>
+    <Modal title="Nuevo producto de limpieza" onClose={onClose}>
       <input
         placeholder="Nombre"
         className="w-full border rounded-lg px-3 py-2"
@@ -144,12 +145,10 @@ function ProductoModal({ onClose }: { onClose: () => void }) {
         onChange={(e) => setForm({ ...form, descripcion: e.target.value })}
       />
       <input
-        type="number"
-        step="0.01"
-        placeholder="Precio"
+        placeholder="Unidad (ej. litro, rollo, unidad)"
         className="w-full border rounded-lg px-3 py-2"
-        value={form.precio}
-        onChange={(e) => setForm({ ...form, precio: e.target.value })}
+        value={form.unidad}
+        onChange={(e) => setForm({ ...form, unidad: e.target.value })}
       />
       <div className="grid grid-cols-2 gap-2">
         <input
@@ -181,7 +180,7 @@ function ProductoModal({ onClose }: { onClose: () => void }) {
         </button>
         <button
           onClick={() => crear.mutate()}
-          disabled={crear.isPending || !form.nombre || !form.precio}
+          disabled={crear.isPending || !form.nombre}
           className="flex-1 bg-brand-500 hover:bg-brand-600 text-white py-2 rounded-lg disabled:opacity-50"
         >
           {crear.isPending ? 'Creando...' : 'Crear'}
@@ -191,52 +190,38 @@ function ProductoModal({ onClose }: { onClose: () => void }) {
   );
 }
 
-function AjusteStockModal({
+function AjusteModal({
   producto,
   onClose,
 }: {
-  producto: Producto;
+  producto: ProductoLimpieza;
   onClose: () => void;
 }) {
   const [cantidad, setCantidad] = useState('');
-  const [motivo, setMotivo] = useState('');
-  const [error, setError] = useState<string | null>(null);
 
   const ajuste = useMutation({
     mutationFn: async () =>
       (
-        await api.post(`/productos/${producto.id}/ajuste-stock`, {
+        await api.post(`/productos-limpieza/${producto.id}/ajuste-stock`, {
           cantidad: Number(cantidad),
-          motivo: motivo || undefined,
         })
       ).data,
     onSuccess: () => onClose(),
-    onError: (err: any) => setError(err.response?.data?.message || 'Error'),
   });
 
   return (
     <Modal title={`Ajustar stock: ${producto.nombre}`} onClose={onClose}>
       <div className="text-sm text-slate-600">
-        Stock actual: <span className="font-bold">{producto.stock}</span>
+        Stock actual: <span className="font-bold">{producto.stock}</span>{' '}
+        {producto.unidad}
       </div>
       <input
         type="number"
-        placeholder="Cantidad (positiva para añadir, negativa para quitar)"
+        placeholder="Cantidad (positiva/negativa)"
         className="w-full border rounded-lg px-3 py-2"
         value={cantidad}
         onChange={(e) => setCantidad(e.target.value)}
       />
-      <input
-        placeholder="Motivo"
-        className="w-full border rounded-lg px-3 py-2"
-        value={motivo}
-        onChange={(e) => setMotivo(e.target.value)}
-      />
-      {error && (
-        <div className="text-sm text-red-600 bg-red-50 p-2 rounded">
-          {error}
-        </div>
-      )}
       <div className="flex gap-2 pt-2">
         <button
           onClick={onClose}
@@ -249,7 +234,7 @@ function AjusteStockModal({
           disabled={ajuste.isPending || !cantidad}
           className="flex-1 bg-brand-500 hover:bg-brand-600 text-white py-2 rounded-lg disabled:opacity-50"
         >
-          {ajuste.isPending ? 'Guardando...' : 'Guardar'}
+          Guardar
         </button>
       </div>
     </Modal>

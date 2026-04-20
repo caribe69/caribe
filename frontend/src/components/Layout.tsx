@@ -11,6 +11,7 @@ import {
   LogOut,
 } from 'lucide-react';
 import { useAuthStore, Rol } from '@/store/auth';
+import SedeSelector from './SedeSelector';
 
 interface Item {
   to: string;
@@ -29,6 +30,12 @@ const items: Item[] = [
     label: 'Limpieza',
     icon: Sparkles,
     roles: ['SUPERADMIN', 'ADMIN_SEDE', 'LIMPIEZA', 'HOTELERO'],
+  },
+  {
+    to: '/productos-limpieza',
+    label: 'Prod. limpieza',
+    icon: Package,
+    roles: ['SUPERADMIN', 'ADMIN_SEDE', 'LIMPIEZA'],
   },
   { to: '/caja', label: 'Caja', icon: Wallet },
   {
@@ -65,6 +72,7 @@ export default function Layout() {
           <Building2 size={22} className="text-brand-500" />
           <span className="font-semibold">Hotel System</span>
         </div>
+        <SedeSelector />
         <nav className="flex-1 overflow-y-auto p-3 space-y-1">
           {visibles.map((it) => {
             const Icon = it.icon;

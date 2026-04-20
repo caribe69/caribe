@@ -44,13 +44,13 @@ export class ProductosController {
     return this.service.findOne(id, user);
   }
 
-  @Roles(Rol.SUPERADMIN, Rol.ADMIN_SEDE, Rol.HOTELERO)
+  @Roles(Rol.SUPERADMIN, Rol.ADMIN_SEDE)
   @Post()
   create(@Body() dto: CreateProductoDto, @CurrentUser() user: JwtPayload) {
     return this.service.create(dto, user);
   }
 
-  @Roles(Rol.SUPERADMIN, Rol.ADMIN_SEDE, Rol.HOTELERO)
+  @Roles(Rol.SUPERADMIN, Rol.ADMIN_SEDE)
   @Patch(':id')
   update(
     @Param('id', ParseIntPipe) id: number,
@@ -60,7 +60,7 @@ export class ProductosController {
     return this.service.update(id, dto, user);
   }
 
-  @Roles(Rol.SUPERADMIN, Rol.ADMIN_SEDE, Rol.HOTELERO)
+  @Roles(Rol.SUPERADMIN, Rol.ADMIN_SEDE)
   @Post(':id/ajuste-stock')
   ajuste(
     @Param('id', ParseIntPipe) id: number,

@@ -27,9 +27,24 @@ interface Item {
 }
 
 const items: Item[] = [
-  { to: '/', label: 'Dashboard', icon: LayoutDashboard },
-  { to: '/habitaciones', label: 'Habitaciones', icon: BedDouble },
-  { to: '/alquileres', label: 'Alquileres', icon: ClipboardList },
+  {
+    to: '/',
+    label: 'Dashboard',
+    icon: LayoutDashboard,
+    roles: ['SUPERADMIN', 'ADMIN_SEDE', 'CAJERO', 'LIMPIEZA'],
+  },
+  {
+    to: '/habitaciones',
+    label: 'Habitaciones',
+    icon: BedDouble,
+    roles: ['SUPERADMIN', 'ADMIN_SEDE'],
+  },
+  {
+    to: '/alquileres',
+    label: 'Alquileres',
+    icon: ClipboardList,
+    roles: ['SUPERADMIN', 'ADMIN_SEDE', 'HOTELERO', 'CAJERO'],
+  },
   {
     to: '/historial',
     label: 'Historial',
@@ -40,14 +55,19 @@ const items: Item[] = [
     to: '/ventas',
     label: 'Venta directa',
     icon: ShoppingCart,
+    roles: ['SUPERADMIN', 'ADMIN_SEDE', 'CAJERO'],
+  },
+  {
+    to: '/productos',
+    label: 'Productos',
+    icon: Package,
     roles: ['SUPERADMIN', 'ADMIN_SEDE', 'HOTELERO', 'CAJERO'],
   },
-  { to: '/productos', label: 'Productos', icon: Package },
   {
     to: '/limpieza',
     label: 'Limpieza',
     icon: Sparkles,
-    roles: ['SUPERADMIN', 'ADMIN_SEDE', 'LIMPIEZA', 'HOTELERO'],
+    roles: ['SUPERADMIN', 'ADMIN_SEDE', 'LIMPIEZA'],
   },
   {
     to: '/productos-limpieza',
@@ -55,7 +75,12 @@ const items: Item[] = [
     icon: Package,
     roles: ['SUPERADMIN', 'ADMIN_SEDE', 'LIMPIEZA'],
   },
-  { to: '/caja', label: 'Caja', icon: Wallet },
+  {
+    to: '/caja',
+    label: 'Caja',
+    icon: Wallet,
+    roles: ['SUPERADMIN', 'ADMIN_SEDE', 'HOTELERO', 'CAJERO'],
+  },
   {
     to: '/sedes',
     label: 'Sedes',

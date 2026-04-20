@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Package, Plus, X, PackagePlus } from 'lucide-react';
 import { api } from '@/lib/api';
+import { useAuthStore } from '@/store/auth';
 import { usePagination } from '@/hooks/usePagination';
 import Pagination from '@/components/Pagination';
 
@@ -15,6 +16,9 @@ interface Producto {
 
 export default function Productos() {
   const qc = useQueryClient();
+  const usuario = useAuthStore((s) => s.usuario);
+  const puedeEditar =
+    usuario?.rol === 'SUPERADMIN' || usuario?.rol === 'ADMIN_SEDE';
   const [showModal, setShowModal] = useState(false);
   const [showAjuste, setShowAjuste] = useState<Producto | null>(null);
 
@@ -31,12 +35,14 @@ export default function Productos() {
         <div className="text-sm text-slate-500">
           {data?.length ?? 0} productos en inventario
         </div>
-        <button
-          onClick={() => setShowModal(true)}
-          className="inline-flex items-center gap-2 bg-gradient-to-r from-violet-600 to-violet-500 hover:from-violet-700 hover:to-violet-600 text-white px-4 py-2.5 rounded-xl text-sm font-medium shadow-md shadow-violet-500/30 transition btn-press"
-        >
-          <Plus size={16} /> Nuevo producto
-        </button>
+        {puedeEditar && (
+          <button
+            onClick={() => setShowModal(true)}
+            className="inline-flex items-center gap-2 bg-gradient-to-r from-violet-600 to-violet-500 hover:from-violet-700 hover:to-violet-600 text-white px-4 py-2.5 rounded-xl text-sm font-medium shadow-md shadow-violet-500/30 transition btn-press"
+          >
+            <Plus size={16} /> Nuevo producto
+          </button>
+        )}
       </div>
 
       {isLoading && (
@@ -59,9 +65,11 @@ export default function Productos() {
               <th className="text-left px-6 py-4 text-[11px] font-semibold text-slate-400 uppercase tracking-widest">
                 Mínimo
               </th>
-              <th className="text-right px-6 py-4 text-[11px] font-semibold text-slate-400 uppercase tracking-widest w-32">
-                Acciones
-              </th>
+              {puedeEditar && (
+                <th className="text-right px-6 py-4 text-[11px] font-semibold text-slate-400 uppercase tracking-widest w-32">
+                  Acciones
+                </th>
+              )}
             </tr>
           </thead>
           <tbody>
@@ -109,28 +117,32 @@ export default function Productos() {
                     </span>
                   </td>
                   <td className="px-6 py-4 text-slate-500">{p.stockMinimo}</td>
-                  <td className="px-6 py-4 text-right">
-                    <button
-                      onClick={() => setShowAjuste(p)}
-                      className="inline-flex items-center gap-1.5 text-xs bg-slate-100 hover:bg-violet-100 hover:text-violet-700 text-slate-700 px-3 py-1.5 rounded-lg transition"
-                    >
-                      <PackagePlus size={13} /> Stock
-                    </button>
-                  </td>
+                  {puedeEditar && (
+                    <td className="px-6 py-4 text-right">
+                      <button
+                        onClick={() => setShowAjuste(p)}
+                        className="inline-flex items-center gap-1.5 text-xs bg-slate-100 hover:bg-violet-100 hover:text-violet-700 text-slate-700 px-3 py-1.5 rounded-lg transition"
+                      >
+                        <PackagePlus size={13} /> Stock
+                      </button>
+                    </td>
+                  )}
                 </tr>
               );
             })}
             {data?.length === 0 && !isLoading && (
               <tr>
                 <td
-                  colSpan={5}
+                  colSpan={puedeEditar ? 5 : 4}
                   className="px-6 py-16 text-center text-slate-400"
                 >
                   <Package
                     size={40}
                     className="mx-auto text-slate-300 mb-2"
                   />
-                  Sin productos. Crea el primero con el botón superior.
+                  {puedeEditar
+                    ? 'Sin productos. Crea el primero con el botón superior.'
+                    : 'Sin productos registrados en esta sede.'}
                 </td>
               </tr>
             )}

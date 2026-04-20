@@ -54,6 +54,10 @@ export class AlquileresService {
   ) {
     const sedeId = resolveSedeId(user, sedeIdQuery);
     const where: any = { sedeId };
+    // HOTELERO / CAJERO solo ven sus propios alquileres
+    if (user.rol !== 'SUPERADMIN' && user.rol !== 'ADMIN_SEDE') {
+      where.creadoPorId = user.sub;
+    }
     if (desde || hasta) {
       where.creadoEn = {};
       if (desde) where.creadoEn.gte = new Date(desde);

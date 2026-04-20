@@ -195,12 +195,48 @@ export class AlquileresService {
         where: { id: alquiler.habitacionId },
         data: { estado: EstadoHabitacion.ALISTANDO },
       });
+
+      // Auto-asignación: elige el usuario de LIMPIEZA activo con menos tareas pendientes
+      const limpiadoras = await tx.usuario.findMany({
+        where: {
+          sedeId: alquiler.sedeId,
+          rol: 'LIMPIEZA',
+          activo: true,
+        },
+        select: {
+          id: true,
+          _count: {
+            select: {
+              tareasAsignadas: {
+                where: {
+                  estado: {
+                    in: [
+                      EstadoTareaLimpieza.PENDIENTE,
+                      EstadoTareaLimpieza.EN_PROCESO,
+                    ],
+                  },
+                },
+              },
+            },
+          },
+        },
+      });
+
+      let asignadaAId: number | null = null;
+      if (limpiadoras.length > 0) {
+        limpiadoras.sort(
+          (a, b) => a._count.tareasAsignadas - b._count.tareasAsignadas,
+        );
+        asignadaAId = limpiadoras[0].id;
+      }
+
       await tx.tareaLimpieza.create({
         data: {
           sedeId: alquiler.sedeId,
           habitacionId: alquiler.habitacionId,
           estado: EstadoTareaLimpieza.PENDIENTE,
           notas: `Post-alquiler #${alquiler.id}`,
+          asignadaAId,
         },
       });
 

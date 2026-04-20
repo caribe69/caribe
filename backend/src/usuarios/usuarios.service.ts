@@ -24,8 +24,9 @@ export class UsuariosService {
     return { sedeId: currentUser.sedeId };
   }
 
-  async findAll(currentUser: JwtPayload) {
-    const where = this.scopeSede(currentUser);
+  async findAll(currentUser: JwtPayload, rol?: Rol) {
+    const where: any = this.scopeSede(currentUser);
+    if (rol) where.rol = rol;
     return this.prisma.usuario.findMany({
       where,
       select: {

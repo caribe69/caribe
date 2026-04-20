@@ -6,6 +6,7 @@ import {
   ParseIntPipe,
   Patch,
   Post,
+  Query,
   UseGuards,
 } from '@nestjs/common';
 import { Rol } from '@prisma/client';
@@ -18,21 +19,23 @@ import { UsuariosService } from './usuarios.service';
 import { CreateUsuarioDto, UpdateUsuarioDto } from './usuario.dto';
 
 @UseGuards(JwtAuthGuard, RolesGuard)
-@Roles(Rol.SUPERADMIN, Rol.ADMIN_SEDE)
 @Controller('usuarios')
 export class UsuariosController {
   constructor(private readonly usuarios: UsuariosService) {}
 
+  // Cualquier rol autenticado puede listar con ?rol=LIMPIEZA (para asignación de tareas)
   @Get()
-  findAll(@CurrentUser() user: JwtPayload) {
-    return this.usuarios.findAll(user);
+  findAll(@CurrentUser() user: JwtPayload, @Query('rol') rol?: Rol) {
+    return this.usuarios.findAll(user, rol);
   }
 
+  @Roles(Rol.SUPERADMIN, Rol.ADMIN_SEDE)
   @Post()
   create(@Body() dto: CreateUsuarioDto, @CurrentUser() user: JwtPayload) {
     return this.usuarios.create(dto, user);
   }
 
+  @Roles(Rol.SUPERADMIN, Rol.ADMIN_SEDE)
   @Patch(':id')
   update(
     @Param('id', ParseIntPipe) id: number,

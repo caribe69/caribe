@@ -193,7 +193,7 @@ function MapaHabitaciones() {
         <div className="text-slate-500 text-center py-12">Cargando...</div>
       )}
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 stagger-children">
         {data?.map((h) => {
           const s = ESTADO_STYLES[h.estado] || ESTADO_STYLES.FUERA_SERVICIO;
           const clickable = h.estado === 'DISPONIBLE' || h.estado === 'OCUPADA';
@@ -330,8 +330,8 @@ function AlquilerActivoModal({
   });
 
   return (
-    <div className="fixed inset-0 bg-black/40 flex items-center justify-center p-4 z-50">
-      <div className="bg-white rounded-xl w-full max-w-md p-6 max-h-[90vh] overflow-y-auto">
+    <div className="fixed inset-0 bg-violet-950/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-fade-in">
+      <div className="bg-white rounded-2xl w-full max-w-md p-6 max-h-[90vh] overflow-y-auto animate-scale-in shadow-2xl">
         <div className="flex justify-between items-start mb-4">
           <div>
             <h2 className="text-xl font-bold">Hab. {habitacion.numero}</h2>
@@ -480,8 +480,8 @@ function NuevoAlquilerModal({
   });
 
   return (
-    <div className="fixed inset-0 bg-black/40 flex items-center justify-center p-4 z-50">
-      <div className="bg-white rounded-xl w-full max-w-md p-6 max-h-[90vh] overflow-y-auto">
+    <div className="fixed inset-0 bg-violet-950/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-fade-in">
+      <div className="bg-white rounded-2xl w-full max-w-md p-6 max-h-[90vh] overflow-y-auto animate-scale-in shadow-2xl">
         <div className="flex justify-between items-start mb-4">
           <div>
             <h2 className="text-lg font-bold">Nuevo alquiler</h2>
@@ -654,8 +654,8 @@ function AgregarProductoModal({
   });
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-[60]">
-      <div className="bg-white rounded-xl w-full max-w-md p-6">
+    <div className="fixed inset-0 bg-violet-950/70 backdrop-blur-sm flex items-center justify-center p-4 z-[60] animate-fade-in">
+      <div className="bg-white rounded-2xl w-full max-w-md p-6 animate-scale-in shadow-2xl">
         <div className="flex justify-between items-center mb-4">
           <h2 className="text-lg font-bold">Agregar producto</h2>
           <button onClick={onClose}>

@@ -152,10 +152,10 @@ export default function Dashboard() {
   }, [alqsQ.data]);
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-5 animate-fade-in">
       {/* TODAY'S SALES */}
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
-        <div className="xl:col-span-2 bg-white rounded-3xl p-5 shadow-sm">
+        <div className="xl:col-span-2 bg-white rounded-3xl p-5 shadow-sm card-lift">
           <div className="flex items-start justify-between mb-4">
             <div>
               <h2 className="font-bold text-lg text-slate-900">Ventas de hoy</h2>
@@ -166,7 +166,7 @@ export default function Dashboard() {
             </button>
           </div>
 
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 stagger-children">
             <KpiPastel
               bg="bg-pink-100"
               iconBg="bg-pink-500"
@@ -211,7 +211,7 @@ export default function Dashboard() {
         </div>
 
         {/* VISITOR INSIGHTS */}
-        <div className="bg-white rounded-3xl p-5 shadow-sm">
+        <div className="bg-white rounded-3xl p-5 shadow-sm card-lift">
           <h2 className="font-bold text-lg text-slate-900">Flujo de huéspedes</h2>
           <p className="text-xs text-slate-400 mt-0.5 mb-3">Últimos 12 meses</p>
           <div className="h-60">
@@ -236,7 +236,7 @@ export default function Dashboard() {
 
       {/* REVENUE / SATISFACTION / TARGET */}
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-        <div className="bg-white rounded-3xl p-5 shadow-sm">
+        <div className="bg-white rounded-3xl p-5 shadow-sm card-lift">
           <h2 className="font-bold text-lg text-slate-900">Ingresos semanales</h2>
           <p className="text-xs text-slate-400 mt-0.5 mb-3">Por día · efectivo vs online</p>
           <div className="h-56">
@@ -257,7 +257,7 @@ export default function Dashboard() {
           </div>
         </div>
 
-        <div className="bg-white rounded-3xl p-5 shadow-sm">
+        <div className="bg-white rounded-3xl p-5 shadow-sm card-lift">
           <h2 className="font-bold text-lg text-slate-900">Satisfacción</h2>
           <p className="text-xs text-slate-400 mt-0.5 mb-3">Comparativa mensual</p>
           <div className="h-56">
@@ -295,7 +295,7 @@ export default function Dashboard() {
           </div>
         </div>
 
-        <div className="bg-white rounded-3xl p-5 shadow-sm">
+        <div className="bg-white rounded-3xl p-5 shadow-sm card-lift">
           <h2 className="font-bold text-lg text-slate-900">Meta vs real</h2>
           <p className="text-xs text-slate-400 mt-0.5 mb-3">Ocupación mensual (%)</p>
           <div className="h-56">
@@ -330,7 +330,7 @@ export default function Dashboard() {
 
       {/* TOP PRODUCTS / OCUPACIÓN / SEDES */}
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-        <div className="xl:col-span-2 bg-white rounded-3xl p-5 shadow-sm">
+        <div className="xl:col-span-2 bg-white rounded-3xl p-5 shadow-sm card-lift">
           <h2 className="font-bold text-lg text-slate-900">Top productos</h2>
           <p className="text-xs text-slate-400 mt-0.5 mb-4">Más vendidos</p>
           <table className="w-full text-sm">
@@ -379,7 +379,7 @@ export default function Dashboard() {
           </table>
         </div>
 
-        <div className="bg-white rounded-3xl p-5 shadow-sm">
+        <div className="bg-white rounded-3xl p-5 shadow-sm card-lift">
           <h2 className="font-bold text-lg text-slate-900">Estado habitaciones</h2>
           <p className="text-xs text-slate-400 mt-0.5 mb-4">Mapa en vivo</p>
           <div className="grid grid-cols-4 gap-1.5">

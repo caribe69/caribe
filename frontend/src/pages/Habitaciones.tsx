@@ -238,7 +238,7 @@ export default function Habitaciones() {
       )}
 
       {/* Grid de tarjetas */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 stagger-children">
         {filtradas.map((h) => {
           const theme = ESTADO_CARD[h.estado] || ESTADO_CARD.FUERA_SERVICIO;
           return (
@@ -606,8 +606,8 @@ function Modal({
   onClose: () => void;
 }) {
   return (
-    <div className="fixed inset-0 bg-caribe-950/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-      <div className="bg-white rounded-2xl w-full max-w-md p-6 shadow-2xl border border-white">
+    <div className="fixed inset-0 bg-violet-950/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-fade-in">
+      <div className="bg-white rounded-2xl w-full max-w-md p-6 shadow-2xl border border-white animate-scale-in">
         <div className="flex justify-between items-center mb-5">
           <h2 className="font-hotel text-xl font-semibold text-caribe-900">
             {title}

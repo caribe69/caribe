@@ -2,6 +2,7 @@ import { Global, Module } from '@nestjs/common';
 import { JwtModule } from '@nestjs/jwt';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { EventsGateway } from './events.gateway';
+import { EventsController } from './events.controller';
 
 @Global()
 @Module({
@@ -14,6 +15,7 @@ import { EventsGateway } from './events.gateway';
       }),
     }),
   ],
+  controllers: [EventsController],
   providers: [EventsGateway],
   exports: [EventsGateway],
 })

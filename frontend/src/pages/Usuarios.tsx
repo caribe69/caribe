@@ -48,54 +48,124 @@ export default function Usuarios() {
     (r) => yo?.rol === 'SUPERADMIN' || r !== 'SUPERADMIN',
   );
 
+  const rolBadge = (rol: string) => {
+    const map: Record<string, string> = {
+      SUPERADMIN: 'bg-violet-100 text-violet-700',
+      ADMIN_SEDE: 'bg-blue-100 text-blue-700',
+      HOTELERO: 'bg-emerald-100 text-emerald-700',
+      LIMPIEZA: 'bg-amber-100 text-amber-800',
+      CAJERO: 'bg-rose-100 text-rose-700',
+    };
+    return map[rol] || 'bg-slate-100 text-slate-700';
+  };
+
   return (
     <div>
-      <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center gap-2">
-          <Users className="text-brand-500" />
-          <h1 className="text-2xl font-bold">Usuarios</h1>
+      <div className="flex items-center justify-between mb-6 flex-wrap gap-3">
+        <div>
+          <p className="text-xs text-slate-400 uppercase tracking-widest">
+            Personal
+          </p>
+          <h2 className="font-hotel text-2xl font-bold text-slate-900">
+            Usuarios del sistema
+          </h2>
         </div>
         <button
           onClick={() => setShow(true)}
-          className="flex items-center gap-2 bg-brand-500 hover:bg-brand-600 text-white px-4 py-2 rounded-lg text-sm"
+          className="inline-flex items-center gap-2 bg-gradient-to-r from-violet-600 to-violet-500 hover:from-violet-700 hover:to-violet-600 text-white px-4 py-2.5 rounded-xl text-sm font-medium shadow-md shadow-violet-500/30 transition"
         >
           <Plus size={16} /> Nuevo usuario
         </button>
       </div>
 
-      {isLoading && <div>Cargando...</div>}
+      {isLoading && (
+        <div className="text-slate-400 text-center py-12">Cargando...</div>
+      )}
 
-      <div className="bg-white rounded-xl border shadow-sm overflow-hidden">
+      <div className="bg-white rounded-3xl shadow-sm overflow-hidden">
         <table className="w-full text-sm">
-          <thead className="bg-slate-50 text-left">
-            <tr>
-              <th className="px-4 py-3 font-medium">#</th>
-              <th className="px-4 py-3 font-medium">Nombre</th>
-              <th className="px-4 py-3 font-medium">Usuario</th>
-              <th className="px-4 py-3 font-medium">Rol</th>
-              <th className="px-4 py-3 font-medium">Sede</th>
-              <th className="px-4 py-3 font-medium">Estado</th>
+          <thead>
+            <tr className="border-b border-slate-100">
+              <th className="text-left px-6 py-4 text-[11px] font-semibold text-slate-400 uppercase tracking-widest w-14">
+                #
+              </th>
+              <th className="text-left px-6 py-4 text-[11px] font-semibold text-slate-400 uppercase tracking-widest">
+                Usuario
+              </th>
+              <th className="text-left px-6 py-4 text-[11px] font-semibold text-slate-400 uppercase tracking-widest">
+                Rol
+              </th>
+              <th className="text-left px-6 py-4 text-[11px] font-semibold text-slate-400 uppercase tracking-widest">
+                Sede
+              </th>
+              <th className="text-left px-6 py-4 text-[11px] font-semibold text-slate-400 uppercase tracking-widest">
+                Estado
+              </th>
             </tr>
           </thead>
           <tbody>
             {data?.map((u: any) => (
-              <tr key={u.id} className="border-t">
-                <td className="px-4 py-3">{u.id}</td>
-                <td className="px-4 py-3">{u.nombre}</td>
-                <td className="px-4 py-3 font-mono text-xs">{u.username}</td>
-                <td className="px-4 py-3">
-                  <span className="text-xs bg-slate-100 px-2 py-1 rounded">
-                    {u.rol}
+              <tr
+                key={u.id}
+                className="border-b border-slate-50 last:border-0 hover:bg-violet-50/30 transition"
+              >
+                <td className="px-6 py-4 text-slate-400 font-mono">
+                  {String(u.id).padStart(2, '0')}
+                </td>
+                <td className="px-6 py-4">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-violet-500 to-violet-700 text-white font-bold flex items-center justify-center shrink-0">
+                      {u.nombre?.[0]?.toUpperCase() || '?'}
+                    </div>
+                    <div>
+                      <div className="font-semibold text-slate-800">
+                        {u.nombre}
+                      </div>
+                      <div className="font-mono text-xs text-slate-400">
+                        @{u.username}
+                      </div>
+                    </div>
+                  </div>
+                </td>
+                <td className="px-6 py-4">
+                  <span
+                    className={`text-[10px] px-2.5 py-1 rounded-full font-bold uppercase tracking-wider ${rolBadge(u.rol)}`}
+                  >
+                    {u.rol.replace('_', ' ')}
                   </span>
                 </td>
-                <td className="px-4 py-3 text-slate-500">
-                  {u.sede?.nombre || '-'}
+                <td className="px-6 py-4 text-slate-600">
+                  {u.sede?.nombre || (
+                    <span className="text-slate-400">— Global —</span>
+                  )}
                 </td>
-                <td className="px-4 py-3">
-                  {u.activo ? '✔' : '✖'}
+                <td className="px-6 py-4">
+                  <span
+                    className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold ${
+                      u.activo
+                        ? 'bg-emerald-100 text-emerald-700'
+                        : 'bg-slate-200 text-slate-600'
+                    }`}
+                  >
+                    <span
+                      className={`w-1.5 h-1.5 rounded-full ${u.activo ? 'bg-emerald-500' : 'bg-slate-400'}`}
+                    />
+                    {u.activo ? 'Activo' : 'Inactivo'}
+                  </span>
                 </td>
               </tr>
             ))}
+            {data?.length === 0 && !isLoading && (
+              <tr>
+                <td
+                  colSpan={5}
+                  className="px-6 py-16 text-center text-slate-400"
+                >
+                  <Users size={40} className="mx-auto text-slate-300 mb-2" />
+                  Sin usuarios
+                </td>
+              </tr>
+            )}
           </tbody>
         </table>
       </div>

@@ -87,30 +87,72 @@ export default function Alquileres() {
  * VISTA DE MAPA: cuadrícula de habitaciones con color por estado
  * ============================================================ */
 
-const ESTADO_STYLES: Record<string, { bg: string; hover: string; label: string }> = {
+interface EstadoStyle {
+  gradient: string;
+  border: string;
+  iconBg: string;
+  badgeBg: string;
+  badgeText: string;
+  dot: string;
+  numberText: string;
+  pricePill: string;
+  label: string;
+}
+
+const ESTADO_STYLES: Record<string, EstadoStyle> = {
   DISPONIBLE: {
-    bg: 'bg-emerald-500',
-    hover: 'hover:bg-emerald-600',
+    gradient: 'from-emerald-50 via-white to-emerald-100',
+    border: 'border-emerald-200',
+    iconBg: 'bg-emerald-500',
+    badgeBg: 'bg-emerald-100',
+    badgeText: 'text-emerald-700',
+    dot: 'bg-emerald-500',
+    numberText: 'text-emerald-700',
+    pricePill: 'bg-emerald-500 text-white',
     label: 'Disponible',
   },
   OCUPADA: {
-    bg: 'bg-red-500',
-    hover: 'hover:bg-red-600',
+    gradient: 'from-rose-50 via-white to-rose-100',
+    border: 'border-rose-200',
+    iconBg: 'bg-rose-500',
+    badgeBg: 'bg-rose-100',
+    badgeText: 'text-rose-700',
+    dot: 'bg-rose-500',
+    numberText: 'text-rose-700',
+    pricePill: 'bg-rose-500 text-white',
     label: 'Ocupada',
   },
   ALISTANDO: {
-    bg: 'bg-amber-500',
-    hover: 'hover:bg-amber-600',
+    gradient: 'from-amber-50 via-white to-amber-100',
+    border: 'border-amber-200',
+    iconBg: 'bg-amber-500',
+    badgeBg: 'bg-amber-100',
+    badgeText: 'text-amber-800',
+    dot: 'bg-amber-500',
+    numberText: 'text-amber-700',
+    pricePill: 'bg-amber-500 text-white',
     label: 'Alistando',
   },
   MANTENIMIENTO: {
-    bg: 'bg-blue-500',
-    hover: 'hover:bg-blue-600',
+    gradient: 'from-blue-50 via-white to-blue-100',
+    border: 'border-blue-200',
+    iconBg: 'bg-blue-500',
+    badgeBg: 'bg-blue-100',
+    badgeText: 'text-blue-700',
+    dot: 'bg-blue-500',
+    numberText: 'text-blue-700',
+    pricePill: 'bg-blue-500 text-white',
     label: 'Mantenimiento',
   },
   FUERA_SERVICIO: {
-    bg: 'bg-slate-500',
-    hover: 'hover:bg-slate-600',
+    gradient: 'from-slate-50 via-white to-slate-100',
+    border: 'border-slate-200',
+    iconBg: 'bg-slate-500',
+    badgeBg: 'bg-slate-200',
+    badgeText: 'text-slate-700',
+    dot: 'bg-slate-500',
+    numberText: 'text-slate-700',
+    pricePill: 'bg-slate-500 text-white',
     label: 'Fuera servicio',
   },
 };
@@ -134,23 +176,26 @@ function MapaHabitaciones() {
   return (
     <div>
       {/* Leyenda */}
-      <div className="flex flex-wrap gap-3 mb-4 text-sm">
+      <div className="flex flex-wrap gap-2 mb-5">
         {Object.entries(ESTADO_STYLES).map(([key, s]) => (
-          <div key={key} className="flex items-center gap-1.5">
-            <span className={`w-3 h-3 rounded ${s.bg}`} />
-            <span className="text-slate-600">
-              {s.label}{' '}
-              <span className="text-slate-400">({porEstado[key] || 0})</span>
-            </span>
+          <div
+            key={key}
+            className="inline-flex items-center gap-2 bg-white border border-slate-200 rounded-full px-3 py-1.5 text-xs shadow-sm"
+          >
+            <span className={`w-2 h-2 rounded-full ${s.dot}`} />
+            <span className="text-slate-700 font-medium">{s.label}</span>
+            <span className="text-slate-400">{porEstado[key] || 0}</span>
           </div>
         ))}
       </div>
 
-      {isLoading && <div className="text-slate-500">Cargando...</div>}
+      {isLoading && (
+        <div className="text-slate-500 text-center py-12">Cargando...</div>
+      )}
 
-      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
         {data?.map((h) => {
-          const style = ESTADO_STYLES[h.estado] || ESTADO_STYLES.FUERA_SERVICIO;
+          const s = ESTADO_STYLES[h.estado] || ESTADO_STYLES.FUERA_SERVICIO;
           const clickable = h.estado === 'DISPONIBLE' || h.estado === 'OCUPADA';
           return (
             <button
@@ -160,23 +205,66 @@ function MapaHabitaciones() {
                 if (h.estado === 'DISPONIBLE') setReservar(h);
                 else if (h.estado === 'OCUPADA') setVerAlquiler(h);
               }}
-              className={`${style.bg} ${clickable ? style.hover + ' cursor-pointer' : 'cursor-not-allowed opacity-90'} text-white rounded-lg p-3 text-left transition transform ${clickable ? 'hover:scale-[1.02]' : ''} shadow-sm`}
+              className={`group relative text-left bg-gradient-to-br ${s.gradient} border ${s.border} rounded-2xl p-5 shadow-sm transition-all duration-300 ${
+                clickable
+                  ? 'hover:shadow-xl hover:-translate-y-1 cursor-pointer'
+                  : 'cursor-not-allowed opacity-80'
+              }`}
             >
-              <div className="flex justify-between items-start">
-                <div>
-                  <div className="text-2xl font-bold leading-tight">
-                    Nro:{h.numero}
-                  </div>
-                  <div className="text-xs opacity-90 mt-0.5 line-clamp-1">
-                    {h.descripcion || 'Habitación'}
-                  </div>
+              {/* Top row: badge + icon */}
+              <div className="flex items-start justify-between mb-3">
+                <div
+                  className={`inline-flex items-center gap-1.5 ${s.badgeBg} ${s.badgeText} text-[10px] uppercase tracking-widest font-bold px-2.5 py-1 rounded-full`}
+                >
+                  <span className={`w-1.5 h-1.5 rounded-full ${s.iconBg}`} />
+                  {s.label}
                 </div>
-                <BedDouble size={22} className="opacity-80" />
+                <div
+                  className={`w-11 h-11 rounded-xl ${s.iconBg} flex items-center justify-center shadow-md ${clickable ? 'group-hover:scale-110' : ''} transition-transform`}
+                >
+                  <BedDouble size={22} className="text-white" />
+                </div>
               </div>
-              <div className="mt-3 flex justify-between items-end text-xs">
-                <span className="opacity-75">Piso {h.piso.numero}</span>
-                <span className="font-semibold">S/ {h.precioHora}/h</span>
+
+              {/* Número grande */}
+              <div className="flex items-baseline gap-1">
+                <span className="text-xs font-semibold text-slate-400 uppercase tracking-widest">
+                  Nro
+                </span>
+                <span
+                  className={`font-hotel text-4xl font-bold leading-none ${s.numberText}`}
+                >
+                  {h.numero}
+                </span>
               </div>
+
+              {/* Descripción */}
+              <div className="mt-2 text-sm text-slate-700 font-medium line-clamp-1">
+                {h.descripcion || 'Habitación estándar'}
+              </div>
+              {h.caracteristicas && (
+                <div className="mt-0.5 text-xs text-slate-500 line-clamp-1">
+                  {h.caracteristicas}
+                </div>
+              )}
+
+              {/* Footer: piso + precio */}
+              <div className="mt-4 pt-3 border-t border-slate-200/60 flex items-center justify-between">
+                <div className="flex items-center gap-1.5 text-xs text-slate-500">
+                  <span className="w-1 h-1 rounded-full bg-slate-400" />
+                  Piso {h.piso.numero}
+                </div>
+                <div
+                  className={`text-xs font-bold px-2.5 py-1 rounded-full ${s.pricePill} shadow-sm`}
+                >
+                  S/ {Number(h.precioHora).toFixed(0)}/h
+                </div>
+              </div>
+
+              {/* Hover indicator */}
+              {clickable && (
+                <div className="absolute inset-x-0 bottom-0 h-1 bg-gradient-to-r from-transparent via-white to-transparent opacity-0 group-hover:opacity-60 transition-opacity" />
+              )}
             </button>
           );
         })}

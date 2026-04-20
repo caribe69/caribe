@@ -24,52 +24,101 @@ export default function Sedes() {
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center gap-2">
-          <Building className="text-brand-500" />
-          <h1 className="text-2xl font-bold">Sedes</h1>
+      <div className="flex items-center justify-between mb-6 flex-wrap gap-3">
+        <div>
+          <p className="text-xs text-slate-400 uppercase tracking-widest">
+            Red hotelera
+          </p>
+          <h2 className="font-hotel text-2xl font-bold text-slate-900">
+            Sedes de Caribe Hotel
+          </h2>
         </div>
         <button
           onClick={() => setShow(true)}
-          className="flex items-center gap-2 bg-brand-500 hover:bg-brand-600 text-white px-4 py-2 rounded-lg text-sm"
+          className="inline-flex items-center gap-2 bg-gradient-to-r from-violet-600 to-violet-500 hover:from-violet-700 hover:to-violet-600 text-white px-4 py-2.5 rounded-xl text-sm font-medium shadow-md shadow-violet-500/30 transition"
         >
           <Plus size={16} /> Nueva sede
         </button>
       </div>
 
-      {isLoading && <div>Cargando...</div>}
+      {isLoading && (
+        <div className="text-slate-400 text-center py-12">Cargando...</div>
+      )}
 
-      <div className="bg-white rounded-xl border shadow-sm overflow-hidden">
+      <div className="bg-white rounded-3xl shadow-sm overflow-hidden">
         <table className="w-full text-sm">
-          <thead className="bg-slate-50 text-left">
-            <tr>
-              <th className="px-4 py-3 font-medium">#</th>
-              <th className="px-4 py-3 font-medium">Nombre</th>
-              <th className="px-4 py-3 font-medium">Dirección</th>
-              <th className="px-4 py-3 font-medium">Teléfono</th>
-              <th className="px-4 py-3 font-medium">Estado</th>
+          <thead>
+            <tr className="border-b border-slate-100">
+              <th className="text-left px-6 py-4 text-[11px] font-semibold text-slate-400 uppercase tracking-widest w-14">
+                #
+              </th>
+              <th className="text-left px-6 py-4 text-[11px] font-semibold text-slate-400 uppercase tracking-widest">
+                Sede
+              </th>
+              <th className="text-left px-6 py-4 text-[11px] font-semibold text-slate-400 uppercase tracking-widest">
+                Dirección
+              </th>
+              <th className="text-left px-6 py-4 text-[11px] font-semibold text-slate-400 uppercase tracking-widest">
+                Teléfono
+              </th>
+              <th className="text-left px-6 py-4 text-[11px] font-semibold text-slate-400 uppercase tracking-widest">
+                Estado
+              </th>
             </tr>
           </thead>
           <tbody>
             {data?.map((s: any) => (
-              <tr key={s.id} className="border-t">
-                <td className="px-4 py-3">{s.id}</td>
-                <td className="px-4 py-3 font-medium">{s.nombre}</td>
-                <td className="px-4 py-3">{s.direccion}</td>
-                <td className="px-4 py-3">{s.telefono}</td>
-                <td className="px-4 py-3">
+              <tr
+                key={s.id}
+                className="border-b border-slate-50 last:border-0 hover:bg-violet-50/30 transition"
+              >
+                <td className="px-6 py-4 text-slate-400 font-mono">
+                  {String(s.id).padStart(2, '0')}
+                </td>
+                <td className="px-6 py-4">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-500 to-violet-700 flex items-center justify-center shrink-0">
+                      <Building size={18} className="text-white" />
+                    </div>
+                    <div className="font-semibold text-slate-800">
+                      {s.nombre}
+                    </div>
+                  </div>
+                </td>
+                <td className="px-6 py-4 text-slate-600">{s.direccion || '—'}</td>
+                <td className="px-6 py-4 text-slate-600 font-mono text-xs">
+                  {s.telefono || '—'}
+                </td>
+                <td className="px-6 py-4">
                   <span
-                    className={`text-xs px-2 py-1 rounded-full ${
+                    className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold ${
                       s.activa
                         ? 'bg-emerald-100 text-emerald-700'
                         : 'bg-slate-200 text-slate-600'
                     }`}
                   >
+                    <span
+                      className={`w-1.5 h-1.5 rounded-full ${s.activa ? 'bg-emerald-500' : 'bg-slate-400'}`}
+                    />
                     {s.activa ? 'Activa' : 'Inactiva'}
                   </span>
                 </td>
               </tr>
             ))}
+            {data?.length === 0 && !isLoading && (
+              <tr>
+                <td
+                  colSpan={5}
+                  className="px-6 py-16 text-center text-slate-400"
+                >
+                  <Building
+                    size={40}
+                    className="mx-auto text-slate-300 mb-2"
+                  />
+                  Sin sedes registradas
+                </td>
+              </tr>
+            )}
           </tbody>
         </table>
       </div>

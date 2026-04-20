@@ -24,60 +24,113 @@ export default function Productos() {
   return (
     <div>
       <div className="flex items-center justify-between mb-6 flex-wrap gap-3">
-        <div className="flex items-center gap-2">
-          <Package className="text-brand-500" />
-          <h1 className="text-2xl font-bold">Productos</h1>
+        <div>
+          <p className="text-xs text-slate-400 uppercase tracking-widest">
+            Inventario
+          </p>
+          <h2 className="font-hotel text-2xl font-bold text-slate-900">
+            Productos para venta
+          </h2>
         </div>
         <button
           onClick={() => setShowModal(true)}
-          className="flex items-center gap-2 bg-brand-500 hover:bg-brand-600 text-white px-4 py-2 rounded-lg text-sm"
+          className="inline-flex items-center gap-2 bg-gradient-to-r from-violet-600 to-violet-500 hover:from-violet-700 hover:to-violet-600 text-white px-4 py-2.5 rounded-xl text-sm font-medium shadow-md shadow-violet-500/30 transition"
         >
           <Plus size={16} /> Nuevo producto
         </button>
       </div>
 
-      {isLoading && <div>Cargando...</div>}
+      {isLoading && (
+        <div className="text-slate-400 text-center py-12">Cargando...</div>
+      )}
 
-      <div className="bg-white rounded-xl border shadow-sm overflow-hidden">
+      <div className="bg-white rounded-3xl shadow-sm overflow-hidden">
         <table className="w-full text-sm">
-          <thead className="bg-slate-50 text-left">
-            <tr>
-              <th className="px-4 py-3 font-medium">Nombre</th>
-              <th className="px-4 py-3 font-medium">Precio</th>
-              <th className="px-4 py-3 font-medium">Stock</th>
-              <th className="px-4 py-3 font-medium">Mínimo</th>
-              <th className="px-4 py-3 font-medium w-32">Acciones</th>
+          <thead>
+            <tr className="border-b border-slate-100">
+              <th className="text-left px-6 py-4 text-[11px] font-semibold text-slate-400 uppercase tracking-widest">
+                Producto
+              </th>
+              <th className="text-left px-6 py-4 text-[11px] font-semibold text-slate-400 uppercase tracking-widest">
+                Precio
+              </th>
+              <th className="text-left px-6 py-4 text-[11px] font-semibold text-slate-400 uppercase tracking-widest">
+                Stock
+              </th>
+              <th className="text-left px-6 py-4 text-[11px] font-semibold text-slate-400 uppercase tracking-widest">
+                Mínimo
+              </th>
+              <th className="text-right px-6 py-4 text-[11px] font-semibold text-slate-400 uppercase tracking-widest w-32">
+                Acciones
+              </th>
             </tr>
           </thead>
           <tbody>
-            {data?.map((p) => (
-              <tr key={p.id} className="border-t">
-                <td className="px-4 py-3">{p.nombre}</td>
-                <td className="px-4 py-3">S/ {p.precio}</td>
-                <td
-                  className={`px-4 py-3 font-medium ${
-                    p.stock <= p.stockMinimo ? 'text-red-600' : ''
-                  }`}
+            {data?.map((p) => {
+              const low = p.stock <= p.stockMinimo;
+              const out = p.stock === 0;
+              return (
+                <tr
+                  key={p.id}
+                  className="border-b border-slate-50 last:border-0 hover:bg-violet-50/30 transition"
                 >
-                  {p.stock}
-                </td>
-                <td className="px-4 py-3 text-slate-500">{p.stockMinimo}</td>
-                <td className="px-4 py-3">
-                  <button
-                    onClick={() => setShowAjuste(p)}
-                    className="text-xs flex items-center gap-1 bg-slate-100 hover:bg-slate-200 px-2 py-1 rounded"
-                  >
-                    <PackagePlus size={12} /> Stock
-                  </button>
-                </td>
-              </tr>
-            ))}
+                  <td className="px-6 py-4">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-xl bg-violet-100 flex items-center justify-center shrink-0">
+                        <Package size={18} className="text-violet-600" />
+                      </div>
+                      <div className="font-semibold text-slate-800">
+                        {p.nombre}
+                      </div>
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 font-semibold text-slate-700">
+                    S/ {Number(p.precio).toFixed(2)}
+                  </td>
+                  <td className="px-6 py-4">
+                    <span
+                      className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold ${
+                        out
+                          ? 'bg-rose-100 text-rose-700'
+                          : low
+                            ? 'bg-amber-100 text-amber-800'
+                            : 'bg-emerald-100 text-emerald-700'
+                      }`}
+                    >
+                      <span
+                        className={`w-1.5 h-1.5 rounded-full ${
+                          out
+                            ? 'bg-rose-500'
+                            : low
+                              ? 'bg-amber-500'
+                              : 'bg-emerald-500'
+                        }`}
+                      />
+                      {p.stock}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4 text-slate-500">{p.stockMinimo}</td>
+                  <td className="px-6 py-4 text-right">
+                    <button
+                      onClick={() => setShowAjuste(p)}
+                      className="inline-flex items-center gap-1.5 text-xs bg-slate-100 hover:bg-violet-100 hover:text-violet-700 text-slate-700 px-3 py-1.5 rounded-lg transition"
+                    >
+                      <PackagePlus size={13} /> Stock
+                    </button>
+                  </td>
+                </tr>
+              );
+            })}
             {data?.length === 0 && !isLoading && (
               <tr>
                 <td
                   colSpan={5}
-                  className="px-4 py-8 text-center text-slate-500"
+                  className="px-6 py-16 text-center text-slate-400"
                 >
+                  <Package
+                    size={40}
+                    className="mx-auto text-slate-300 mb-2"
+                  />
                   Sin productos. Crea el primero con el botón superior.
                 </td>
               </tr>

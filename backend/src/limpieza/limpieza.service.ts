@@ -123,14 +123,14 @@ export class LimpiezaService {
     };
     if (!t.asignadaAId) dataToUpdate.asignadaAId = user.sub;
 
-    const actualizada = await this.prisma.tareaLimpieza.update({
+    await this.prisma.tareaLimpieza.update({
       where: { id: t.id },
       data: dataToUpdate,
-      include: {
-        habitacion: true,
-        asignadaA: { select: { id: true, nombre: true, username: true } },
-      },
     });
+
+    // Devuelve la tarea completa (con piso, fotos, productos) para que
+    // el cliente móvil/web pueda deserializar sin errores de schema.
+    const actualizada = await this.findOne(id, user);
 
     this.events.emitToSede(t.sedeId, 'limpieza:iniciada', {
       tareaId: actualizada.id,

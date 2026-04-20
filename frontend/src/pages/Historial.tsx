@@ -75,12 +75,12 @@ export default function Historial() {
         responseType: 'blob',
       });
       const blob = new Blob([resp.data], {
-        type: 'text/csv;charset=utf-8;',
+        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
       });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `alquileres_${desde}_a_${hasta}.csv`;
+      a.download = `alquileres_${desde}_a_${hasta}.xlsx`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);

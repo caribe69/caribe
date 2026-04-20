@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { useAuthStore, Rol } from '@/store/auth';
 import TopBar from './TopBar';
+import { useLiveEvents } from '@/hooks/useLiveEvents';
 
 interface Item {
   to: string;
@@ -64,6 +65,9 @@ const items: Item[] = [
 export default function Layout() {
   const { usuario, logout } = useAuthStore();
   const navigate = useNavigate();
+
+  // Conecta al socket y muestra toasts en vivo
+  useLiveEvents();
 
   const handleLogout = () => {
     logout();

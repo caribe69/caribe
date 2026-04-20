@@ -4,9 +4,11 @@ import { diskStorage } from 'multer';
 import { extname } from 'path';
 import { LimpiezaController } from './limpieza.controller';
 import { LimpiezaService } from './limpieza.service';
+import { EventsModule } from '../events/events.module';
 
 @Module({
   imports: [
+    EventsModule,
     MulterModule.register({
       storage: diskStorage({
         destination: './uploads/limpieza',

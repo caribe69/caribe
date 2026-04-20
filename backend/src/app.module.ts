@@ -14,6 +14,7 @@ import { AlquileresModule } from './alquileres/alquileres.module';
 import { LimpiezaModule } from './limpieza/limpieza.module';
 import { CajaModule } from './caja/caja.module';
 import { VentasModule } from './ventas/ventas.module';
+import { EventsModule } from './events/events.module';
 
 @Module({
   imports: [
@@ -23,6 +24,7 @@ import { VentasModule } from './ventas/ventas.module';
       serveRoot: '/uploads',
     }),
     PrismaModule,
+    EventsModule,
     AuthModule,
     SedesModule,
     UsuariosModule,

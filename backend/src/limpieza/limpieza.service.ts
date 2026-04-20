@@ -12,6 +12,7 @@ import {
 import { PrismaService } from '../prisma/prisma.service';
 import { JwtPayload } from '../auth/auth.service';
 import { enforceSede, resolveSedeId } from '../common/sede-scope';
+import { EventsGateway } from '../events/events.gateway';
 import {
   AsignarTareaDto,
   CompletarTareaDto,
@@ -21,7 +22,10 @@ import {
 
 @Injectable()
 export class LimpiezaService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private events: EventsGateway,
+  ) {}
 
   findAll(
     user: JwtPayload,
@@ -30,7 +34,10 @@ export class LimpiezaService {
   ) {
     const sedeId = resolveSedeId(user, sedeIdQuery);
     const where: any = { sedeId, ...(estado ? { estado } : {}) };
-    if (user.rol === Rol.LIMPIEZA) where.asignadaAId = user.sub;
+    // LIMPIEZA ve sus tareas asignadas + las no asignadas (puede "tomarlas")
+    if (user.rol === Rol.LIMPIEZA) {
+      where.OR = [{ asignadaAId: user.sub }, { asignadaAId: null }];
+    }
     return this.prisma.tareaLimpieza.findMany({
       where,
       include: {
@@ -92,13 +99,30 @@ export class LimpiezaService {
     const t = await this.findOne(id, user);
     if (t.estado !== EstadoTareaLimpieza.PENDIENTE)
       throw new BadRequestException('Tarea no está pendiente');
-    return this.prisma.tareaLimpieza.update({
+
+    // Auto-claim: si la tarea no estaba asignada, se asigna al que inicia
+    const dataToUpdate: any = {
+      estado: EstadoTareaLimpieza.EN_PROCESO,
+      iniciadaEn: new Date(),
+    };
+    if (!t.asignadaAId) dataToUpdate.asignadaAId = user.sub;
+
+    const actualizada = await this.prisma.tareaLimpieza.update({
       where: { id: t.id },
-      data: {
-        estado: EstadoTareaLimpieza.EN_PROCESO,
-        iniciadaEn: new Date(),
+      data: dataToUpdate,
+      include: {
+        habitacion: true,
+        asignadaA: { select: { id: true, nombre: true, username: true } },
       },
     });
+
+    this.events.emitToSede(t.sedeId, 'limpieza:iniciada', {
+      tareaId: actualizada.id,
+      habitacionNumero: actualizada.habitacion.numero,
+      porUsuario: actualizada.asignadaA?.nombre || user.username,
+    });
+
+    return actualizada;
   }
 
   async subirFotos(id: number, files: Express.Multer.File[], user: JwtPayload) {
@@ -111,7 +135,17 @@ export class LimpiezaService {
         path: `/uploads/limpieza/${f.filename}`,
       })),
     });
-    return this.findOne(id, user);
+    const actualizada = await this.findOne(id, user);
+
+    this.events.emitToSede(t.sedeId, 'limpieza:fotos', {
+      tareaId: t.id,
+      habitacionNumero: t.habitacion.numero,
+      porUsuario: actualizada.asignadaA?.nombre || user.username,
+      cantidadFotos: files.length,
+      totalFotos: actualizada.fotos.length,
+    });
+
+    return actualizada;
   }
 
   async registrarUso(
@@ -151,7 +185,7 @@ export class LimpiezaService {
     if (!t.fotos.length)
       throw new BadRequestException('Debes subir al menos una foto de evidencia');
 
-    return this.prisma.$transaction(async (tx) => {
+    const resultado = await this.prisma.$transaction(async (tx) => {
       const act = await tx.tareaLimpieza.update({
         where: { id: t.id },
         data: {
@@ -166,5 +200,13 @@ export class LimpiezaService {
       });
       return act;
     });
+
+    this.events.emitToSede(t.sedeId, 'limpieza:completada', {
+      tareaId: t.id,
+      habitacionNumero: t.habitacion.numero,
+      porUsuario: t.asignadaA?.nombre || user.username,
+    });
+
+    return resultado;
   }
 }

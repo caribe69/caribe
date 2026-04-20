@@ -199,6 +199,19 @@ server {
         proxy_set_header Host $host;
     }
 
+    # Socket.IO (WebSocket + long-polling) para notificaciones en vivo
+    location /socket.io/ {
+        proxy_pass http://127.0.0.1:3001/socket.io/;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_read_timeout 3600s;
+        proxy_send_timeout 3600s;
+    }
+
     # SPA React: todo lo demás cae en index.html
     location / {
         try_files $uri $uri/ /index.html;

@@ -56,6 +56,64 @@ log "Publicando nuevos archivos estáticos..."
 rsync -a --delete "${APP_DIR}/frontend/dist/" "${WEB_ROOT}/"
 chown -R www-data:www-data "${WEB_ROOT}"
 
+# ---------- Refrescar config de Nginx (agrega /socket.io/ si falta) ----------
+NGINX_SITE="/etc/nginx/sites-available/hotel"
+if [ -f "${NGINX_SITE}" ] && ! grep -q "location /socket.io/" "${NGINX_SITE}"; then
+  log "Actualizando nginx con soporte WebSocket (/socket.io/)..."
+  cat > "${NGINX_SITE}" <<'NGINX'
+server {
+    listen 80 default_server;
+    listen [::]:80 default_server;
+
+    server_name _;
+
+    root /var/www/hotel;
+    index index.html;
+
+    client_max_body_size 25M;
+
+    location /api/ {
+        proxy_pass http://127.0.0.1:3001/api/;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_read_timeout 300s;
+    }
+
+    location /uploads/ {
+        proxy_pass http://127.0.0.1:3001/uploads/;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+    }
+
+    location /socket.io/ {
+        proxy_pass http://127.0.0.1:3001/socket.io/;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_read_timeout 3600s;
+        proxy_send_timeout 3600s;
+    }
+
+    location / {
+        try_files $uri $uri/ /index.html;
+    }
+
+    location ~* \.(js|css|png|jpg|jpeg|gif|ico|svg|webp|woff2?)$ {
+        expires 30d;
+        add_header Cache-Control "public, immutable";
+    }
+}
+NGINX
+fi
+
 # ---------- Recargar servicios ----------
 log "Recargando PM2 (sin downtime)..."
 cd "${APP_DIR}"

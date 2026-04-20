@@ -3,7 +3,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { EstadoHabitacion } from '@prisma/client';
+import { EstadoHabitacion, EstadoTareaLimpieza, Rol } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { JwtPayload } from '../auth/auth.service';
 import { resolveSedeId, enforceSede } from '../common/sede-scope';
@@ -71,9 +71,72 @@ export class HabitacionesService {
 
   async cambiarEstado(id: number, dto: CambiarEstadoDto, user: JwtPayload) {
     const h = await this.findOne(id, user);
-    return this.prisma.habitacion.update({
-      where: { id: h.id },
-      data: { estado: dto.estado },
+
+    return this.prisma.$transaction(async (tx) => {
+      const actualizada = await tx.habitacion.update({
+        where: { id: h.id },
+        data: { estado: dto.estado },
+      });
+
+      // Al pasar a ALISTANDO: crear tarea de limpieza auto-asignada
+      // si no existe ya una tarea pendiente/en proceso para esta habitación.
+      if (dto.estado === EstadoHabitacion.ALISTANDO) {
+        const yaExiste = await tx.tareaLimpieza.findFirst({
+          where: {
+            habitacionId: h.id,
+            estado: {
+              in: [
+                EstadoTareaLimpieza.PENDIENTE,
+                EstadoTareaLimpieza.EN_PROCESO,
+              ],
+            },
+          },
+        });
+        if (!yaExiste) {
+          const limpiadoras = await tx.usuario.findMany({
+            where: {
+              sedeId: h.sedeId,
+              rol: Rol.LIMPIEZA,
+              activo: true,
+            },
+            select: {
+              id: true,
+              _count: {
+                select: {
+                  tareasAsignadas: {
+                    where: {
+                      estado: {
+                        in: [
+                          EstadoTareaLimpieza.PENDIENTE,
+                          EstadoTareaLimpieza.EN_PROCESO,
+                        ],
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          });
+          let asignadaAId: number | null = null;
+          if (limpiadoras.length > 0) {
+            limpiadoras.sort(
+              (a, b) => a._count.tareasAsignadas - b._count.tareasAsignadas,
+            );
+            asignadaAId = limpiadoras[0].id;
+          }
+          await tx.tareaLimpieza.create({
+            data: {
+              sedeId: h.sedeId,
+              habitacionId: h.id,
+              estado: EstadoTareaLimpieza.PENDIENTE,
+              notas: `Cambio manual a ALISTANDO`,
+              asignadaAId,
+            },
+          });
+        }
+      }
+
+      return actualizada;
     });
   }
 

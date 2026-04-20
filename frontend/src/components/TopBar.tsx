@@ -19,6 +19,7 @@ import {
 import { useAuthStore, UsuarioInfo } from '@/store/auth';
 import { api } from '@/lib/api';
 import SedeSwitchOverlay from './SedeSwitchOverlay';
+import { useSocketStatus } from '@/hooks/useSocketStatus';
 
 interface PageMeta {
   title: string;
@@ -105,6 +106,7 @@ export default function TopBar({ usuario }: { usuario: UsuarioInfo | null }) {
   const setActiveSede = useAuthStore((s) => s.setActiveSede);
   const qc = useQueryClient();
   const [switching, setSwitching] = useState<string | null>(null);
+  const wsConnected = useSocketStatus();
 
   const { data: sedes } = useQuery({
     queryKey: ['sedes', 'selector'],
@@ -194,10 +196,19 @@ export default function TopBar({ usuario }: { usuario: UsuarioInfo | null }) {
           </div>
         ) : null}
 
-        {/* Notifications */}
-        <button className="relative w-10 h-10 rounded-xl bg-slate-50 hover:bg-slate-100 border border-slate-200 flex items-center justify-center btn-press transition">
+        {/* Notifications + indicador de conexión en vivo */}
+        <button
+          className="relative w-10 h-10 rounded-xl bg-slate-50 hover:bg-slate-100 border border-slate-200 flex items-center justify-center btn-press transition"
+          title={wsConnected ? 'Notificaciones en vivo activas' : 'Sin conexión en vivo'}
+        >
           <Bell size={15} className="text-slate-600" />
-          <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-rose-500 animate-pulse" />
+          <span
+            className={`absolute top-1.5 right-1.5 w-2 h-2 rounded-full ${
+              wsConnected
+                ? 'bg-emerald-500 animate-pulse'
+                : 'bg-slate-300'
+            }`}
+          />
         </button>
 
         {/* User */}

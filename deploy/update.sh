@@ -56,11 +56,10 @@ log "Publicando nuevos archivos estáticos..."
 rsync -a --delete "${APP_DIR}/frontend/dist/" "${WEB_ROOT}/"
 chown -R www-data:www-data "${WEB_ROOT}"
 
-# ---------- Refrescar config de Nginx (agrega /socket.io/ si falta) ----------
+# ---------- Refrescar config de Nginx (siempre la reescribimos idempotente) ----------
 NGINX_SITE="/etc/nginx/sites-available/hotel"
-if [ -f "${NGINX_SITE}" ] && ! grep -q "location /socket.io/" "${NGINX_SITE}"; then
-  log "Actualizando nginx con soporte WebSocket (/socket.io/)..."
-  cat > "${NGINX_SITE}" <<'NGINX'
+log "Reescribiendo config de nginx (WebSocket + API + uploads)..."
+cat > "${NGINX_SITE}" <<'NGINX'
 server {
     listen 80 default_server;
     listen [::]:80 default_server;
@@ -112,7 +111,7 @@ server {
     }
 }
 NGINX
-fi
+ln -sf "${NGINX_SITE}" /etc/nginx/sites-enabled/hotel
 
 # ---------- Recargar servicios ----------
 log "Recargando PM2 (sin downtime)..."

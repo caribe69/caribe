@@ -2,30 +2,46 @@ import { io, Socket } from 'socket.io-client';
 import { useAuthStore } from '@/store/auth';
 
 let socket: Socket | null = null;
+let lastToken: string | null = null;
 
-/**
- * Obtiene la URL base del websocket.
- * En dev, Vite proxy hace /socket.io/ → backend.
- * En prod (detrás de nginx), usa el mismo host que la app con path default.
- */
 function baseUrl(): string {
   if (typeof window === 'undefined') return '';
   const { protocol, host } = window.location;
-  // Socket.io se conecta al mismo host que la web (nginx reenvía)
   return `${protocol}//${host}`;
 }
 
 export function getSocket(): Socket {
-  if (socket && socket.connected) return socket;
   const token = useAuthStore.getState().token;
+
+  // Si el token cambió, recrear la conexión
+  if (socket && token !== lastToken) {
+    socket.disconnect();
+    socket = null;
+  }
+
+  if (socket) return socket;
+
+  lastToken = token;
   socket = io(baseUrl(), {
     auth: token ? { token } : {},
     transports: ['websocket', 'polling'],
     autoConnect: true,
     reconnection: true,
-    reconnectionAttempts: 10,
+    reconnectionAttempts: Infinity,
     reconnectionDelay: 1000,
+    reconnectionDelayMax: 5000,
   });
+
+  socket.on('connect', () => {
+    console.log('[socket] connected', socket?.id);
+  });
+  socket.on('disconnect', (reason) => {
+    console.log('[socket] disconnected:', reason);
+  });
+  socket.on('connect_error', (err) => {
+    console.warn('[socket] connect error:', err.message);
+  });
+
   return socket;
 }
 
@@ -33,5 +49,10 @@ export function disconnectSocket() {
   if (socket) {
     socket.disconnect();
     socket = null;
+    lastToken = null;
   }
+}
+
+export function isSocketConnected(): boolean {
+  return !!socket?.connected;
 }

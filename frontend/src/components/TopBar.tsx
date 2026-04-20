@@ -18,6 +18,7 @@ import {
   FileBarChart,
   Settings,
   MessageSquare,
+  TrendingUp,
 } from 'lucide-react';
 import { useAuthStore, UsuarioInfo } from '@/store/auth';
 import { api } from '@/lib/api';
@@ -107,6 +108,12 @@ const PAGES: Record<string, PageMeta> = {
     eyebrow: 'Mensajería interna',
     Icon: MessageSquare,
     gradient: 'from-fuchsia-500 to-violet-600',
+  },
+  '/reportes': {
+    title: 'Reportes',
+    eyebrow: 'Analítica y comparativos',
+    Icon: TrendingUp,
+    gradient: 'from-emerald-500 to-violet-600',
   },
   '/configuracion': {
     title: 'Configuración',

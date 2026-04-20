@@ -18,6 +18,7 @@ import { EventsModule } from './events/events.module';
 import { ChatModule } from './chat/chat.module';
 import { AnulacionesModule } from './anulaciones/anulaciones.module';
 import { SettingsModule } from './settings/settings.module';
+import { ReportesModule } from './reportes/reportes.module';
 
 @Module({
   imports: [
@@ -46,6 +47,7 @@ import { SettingsModule } from './settings/settings.module';
     ChatModule,
     AnulacionesModule,
     SettingsModule,
+    ReportesModule,
   ],
 })
 export class AppModule {}

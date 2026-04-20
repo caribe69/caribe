@@ -17,6 +17,7 @@ import {
   FileBarChart,
   Settings,
   MessageSquare,
+  TrendingUp,
 } from 'lucide-react';
 import { useAuthStore, Rol } from '@/store/auth';
 import TopBar from './TopBar';
@@ -95,6 +96,12 @@ const items: Item[] = [
     to: '/usuarios',
     label: 'Usuarios',
     icon: Users,
+    roles: ['SUPERADMIN', 'ADMIN_SEDE'],
+  },
+  {
+    to: '/reportes',
+    label: 'Reportes',
+    icon: TrendingUp,
     roles: ['SUPERADMIN', 'ADMIN_SEDE'],
   },
   {

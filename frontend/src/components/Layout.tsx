@@ -1,6 +1,5 @@
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import {
-  Building2,
   BedDouble,
   Package,
   ClipboardList,
@@ -10,6 +9,8 @@ import {
   Users,
   LogOut,
   ShoppingCart,
+  LayoutDashboard,
+  Palmtree,
 } from 'lucide-react';
 import { useAuthStore, Rol } from '@/store/auth';
 import SedeSelector from './SedeSelector';
@@ -22,7 +23,7 @@ interface Item {
 }
 
 const items: Item[] = [
-  { to: '/', label: 'Inicio', icon: Building2 },
+  { to: '/', label: 'Panel', icon: LayoutDashboard },
   { to: '/habitaciones', label: 'Habitaciones', icon: BedDouble },
   { to: '/alquileres', label: 'Alquileres', icon: ClipboardList },
   {
@@ -74,13 +75,31 @@ export default function Layout() {
 
   return (
     <div className="flex h-screen">
-      <aside className="w-64 bg-slate-900 text-slate-100 flex flex-col">
-        <div className="h-16 flex items-center gap-2 px-5 border-b border-slate-800">
-          <Building2 size={22} className="text-brand-500" />
-          <span className="font-semibold">Hotel System</span>
+      <aside
+        className="w-64 flex flex-col text-slate-100"
+        style={{
+          background:
+            'linear-gradient(180deg, var(--color-caribe-900) 0%, var(--color-caribe-950) 100%)',
+        }}
+      >
+        {/* Logo */}
+        <div className="h-20 flex items-center gap-3 px-5 border-b border-white/10">
+          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-gold-400 to-gold-600 flex items-center justify-center shadow-lg">
+            <Palmtree size={20} className="text-caribe-900" />
+          </div>
+          <div>
+            <div className="font-hotel text-lg leading-tight text-white">
+              Caribe Hotel
+            </div>
+            <div className="text-[10px] uppercase tracking-widest text-caribe-200">
+              Management
+            </div>
+          </div>
         </div>
+
         <SedeSelector />
-        <nav className="flex-1 overflow-y-auto p-3 space-y-1">
+
+        <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-0.5">
           {visibles.map((it) => {
             const Icon = it.icon;
             return (
@@ -89,10 +108,10 @@ export default function Layout() {
                 to={it.to}
                 end={it.to === '/'}
                 className={({ isActive }) =>
-                  `flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition ${
+                  `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-all ${
                     isActive
-                      ? 'bg-brand-500 text-white'
-                      : 'text-slate-300 hover:bg-slate-800'
+                      ? 'bg-white/10 text-white font-medium border-l-2 border-gold-400 pl-[10px]'
+                      : 'text-caribe-100 hover:bg-white/5 hover:text-white'
                   }`
                 }
               >
@@ -103,15 +122,24 @@ export default function Layout() {
           })}
         </nav>
 
-        <div className="border-t border-slate-800 p-4 text-sm">
-          <div className="font-medium">{usuario?.nombre}</div>
-          <div className="text-xs text-slate-400">
-            {usuario?.rol}
-            {usuario?.sede ? ` · ${usuario.sede.nombre}` : ''}
+        {/* Usuario */}
+        <div className="border-t border-white/10 p-4">
+          <div className="flex items-center gap-2.5">
+            <div className="w-9 h-9 rounded-full bg-caribe-700 flex items-center justify-center text-sm font-bold text-white">
+              {usuario?.nombre?.[0]?.toUpperCase() || '?'}
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="font-medium text-sm truncate text-white">
+                {usuario?.nombre}
+              </div>
+              <div className="text-[10px] uppercase tracking-wide text-caribe-300 truncate">
+                {usuario?.rol?.replace('_', ' ')}
+              </div>
+            </div>
           </div>
           <button
             onClick={handleLogout}
-            className="mt-3 w-full flex items-center justify-center gap-2 bg-slate-800 hover:bg-slate-700 text-slate-200 py-2 rounded-lg text-xs"
+            className="mt-3 w-full flex items-center justify-center gap-2 bg-white/5 hover:bg-white/10 text-caribe-100 py-2 rounded-lg text-xs border border-white/10"
           >
             <LogOut size={14} /> Cerrar sesión
           </button>
@@ -119,7 +147,7 @@ export default function Layout() {
       </aside>
 
       <main className="flex-1 overflow-y-auto">
-        <div className="p-6">
+        <div className="p-6 max-w-[1600px] mx-auto">
           <Outlet />
         </div>
       </main>

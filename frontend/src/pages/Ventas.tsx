@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { ShoppingCart, Plus, X, Trash2 } from 'lucide-react';
 import { api } from '@/lib/api';
+import { useDialog } from '@/components/ConfirmProvider';
 
 interface Producto {
   id: number;
@@ -29,6 +30,7 @@ interface Venta {
 
 export default function Ventas() {
   const qc = useQueryClient();
+  const dialog = useDialog();
   const [showNew, setShowNew] = useState(false);
 
   const { data } = useQuery({
@@ -100,11 +102,20 @@ export default function Ventas() {
             </div>
             {v.estado === 'ACTIVA' && (
               <button
-                onClick={() => {
-                  const motivo = prompt('Motivo de anulación:');
+                onClick={async () => {
+                  const motivo = await dialog.prompt({
+                    title: 'Anular venta',
+                    message:
+                      'Escribe el motivo. Los productos volverán al stock.',
+                    placeholder: 'Ej. Error de cobro',
+                    confirmText: 'Anular',
+                    variant: 'danger',
+                    multiline: true,
+                    minLength: 3,
+                  });
                   if (motivo) anular.mutate({ id: v.id, motivo });
                 }}
-                className="mt-3 text-xs flex items-center gap-1 bg-red-500 hover:bg-red-600 text-white px-3 py-1.5 rounded"
+                className="mt-3 text-xs flex items-center gap-1 bg-red-500 hover:bg-red-600 text-white px-3 py-1.5 rounded btn-press"
               >
                 <Trash2 size={14} /> Anular
               </button>

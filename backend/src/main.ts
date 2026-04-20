@@ -10,7 +10,9 @@ async function bootstrap() {
     new ValidationPipe({
       whitelist: true,
       transform: true,
-      forbidNonWhitelisted: true,
+      // Dejamos que properties desconocidas se descarten silenciosamente
+      // (el frontend puede inyectar sedeId en body aunque el DTO no lo use).
+      forbidNonWhitelisted: false,
     }),
   );
   const port = process.env.PORT || 3001;

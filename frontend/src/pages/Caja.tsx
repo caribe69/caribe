@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Wallet, Play, StopCircle, FileText, Printer } from 'lucide-react';
 import { useState } from 'react';
 import { api } from '@/lib/api';
+import { useDialog } from '@/components/ConfirmProvider';
 
 interface Turno {
   id: number;
@@ -20,6 +21,7 @@ interface Turno {
 
 export default function Caja() {
   const qc = useQueryClient();
+  const dialog = useDialog();
   const [reporte, setReporte] = useState<any | null>(null);
 
   const turno = useQuery<Turno | null>({
@@ -69,15 +71,17 @@ export default function Caja() {
                 <FileText size={16} /> Ver cierre (previsualización)
               </button>
               <button
-                onClick={() => {
-                  if (
-                    confirm(
-                      '¿Cerrar caja? Esto finaliza tu turno y registra los totales.',
-                    )
-                  )
-                    cerrar.mutate(turno.data!.id);
+                onClick={async () => {
+                  const ok = await dialog.confirm({
+                    title: 'Cerrar caja',
+                    message:
+                      'Al cerrar tu turno se registrarán los totales y no podrás registrar más operaciones hasta abrir caja nuevamente.',
+                    confirmText: 'Cerrar turno',
+                    variant: 'warning',
+                  });
+                  if (ok) cerrar.mutate(turno.data!.id);
                 }}
-                className="flex items-center gap-2 bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg text-sm"
+                className="flex items-center gap-2 bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg text-sm btn-press"
               >
                 <StopCircle size={16} /> Cerrar caja
               </button>

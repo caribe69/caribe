@@ -11,6 +11,7 @@ import {
   List,
 } from 'lucide-react';
 import { api } from '@/lib/api';
+import { useDialog } from '@/components/ConfirmProvider';
 
 interface Habitacion {
   id: number;
@@ -294,6 +295,7 @@ function AlquilerActivoModal({
   onClose: () => void;
 }) {
   const qc = useQueryClient();
+  const dialog = useDialog();
   const [addProdOpen, setAddProdOpen] = useState(false);
 
   // Busca alquiler ACTIVO de esta habitación
@@ -396,20 +398,35 @@ function AlquilerActivoModal({
                 <ShoppingBag size={16} /> Agregar producto
               </button>
               <button
-                onClick={() => {
-                  if (confirm('¿Finalizar alquiler? La habitación pasará a alistando.'))
-                    finalizar.mutate(alquiler.id);
+                onClick={async () => {
+                  const ok = await dialog.confirm({
+                    title: 'Finalizar alquiler',
+                    message:
+                      'La habitación pasará a estado Alistando y se creará una tarea de limpieza automáticamente.',
+                    confirmText: 'Finalizar',
+                    variant: 'success',
+                  });
+                  if (ok) finalizar.mutate(alquiler.id);
                 }}
-                className="flex items-center justify-center gap-2 bg-emerald-500 hover:bg-emerald-600 text-white py-2.5 rounded-lg"
+                className="flex items-center justify-center gap-2 bg-emerald-500 hover:bg-emerald-600 text-white py-2.5 rounded-lg btn-press"
               >
                 <CheckCircle size={16} /> Finalizar alquiler
               </button>
               <button
-                onClick={() => {
-                  const motivo = prompt('Motivo de anulación:');
+                onClick={async () => {
+                  const motivo = await dialog.prompt({
+                    title: 'Anular alquiler',
+                    message:
+                      'Escribe el motivo de la anulación. Los productos consumidos volverán al stock.',
+                    placeholder: 'Ej. Cliente canceló',
+                    confirmText: 'Anular',
+                    variant: 'danger',
+                    multiline: true,
+                    minLength: 3,
+                  });
                   if (motivo) anular.mutate({ id: alquiler.id, motivo });
                 }}
-                className="flex items-center justify-center gap-2 bg-red-500 hover:bg-red-600 text-white py-2.5 rounded-lg"
+                className="flex items-center justify-center gap-2 bg-red-500 hover:bg-red-600 text-white py-2.5 rounded-lg btn-press"
               >
                 <X size={16} /> Anular
               </button>
@@ -703,6 +720,7 @@ function AgregarProductoModal({
 
 function ListaAlquileres() {
   const qc = useQueryClient();
+  const dialog = useDialog();
   const [filtro, setFiltro] = useState<string>('');
 
   const { data, isLoading } = useQuery({
@@ -805,11 +823,20 @@ function ListaAlquileres() {
                   <CheckCircle size={14} /> Finalizar
                 </button>
                 <button
-                  onClick={() => {
-                    const motivo = prompt('Motivo de anulación:');
+                  onClick={async () => {
+                    const motivo = await dialog.prompt({
+                      title: 'Anular alquiler',
+                      message:
+                        'Escribe el motivo. Se devolverán los productos al stock.',
+                      placeholder: 'Ej. Cliente canceló',
+                      confirmText: 'Anular',
+                      variant: 'danger',
+                      multiline: true,
+                      minLength: 3,
+                    });
                     if (motivo) anular.mutate({ id: a.id, motivo });
                   }}
-                  className="text-xs flex items-center gap-1 bg-red-500 hover:bg-red-600 text-white px-3 py-1.5 rounded"
+                  className="text-xs flex items-center gap-1 bg-red-500 hover:bg-red-600 text-white px-3 py-1.5 rounded btn-press"
                 >
                   <X size={14} /> Anular
                 </button>

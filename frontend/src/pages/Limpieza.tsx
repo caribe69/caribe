@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { api } from '@/lib/api';
 import { useAuthStore } from '@/store/auth';
+import { useDialog } from '@/components/ConfirmProvider';
 
 interface Tarea {
   id: number;
@@ -40,6 +41,7 @@ const ESTADOS = [
 
 export default function Limpieza() {
   const qc = useQueryClient();
+  const dialog = useDialog();
   const usuario = useAuthStore((s) => s.usuario);
   const [filtroEstado, setFiltroEstado] = useState('');
   const [asignando, setAsignando] = useState<Tarea | null>(null);
@@ -237,13 +239,15 @@ export default function Limpieza() {
                         ? 'Debes subir al menos una foto de evidencia'
                         : 'Finalizar limpieza'
                     }
-                    onClick={() => {
-                      if (
-                        confirm(
-                          '¿Finalizar? La habitación pasará a DISPONIBLE.',
-                        )
-                      )
-                        completar.mutate(t.id);
+                    onClick={async () => {
+                      const ok = await dialog.confirm({
+                        title: 'Finalizar limpieza',
+                        message:
+                          'La habitación pasará a estado Disponible y podrá alquilarse nuevamente.',
+                        confirmText: 'Finalizar',
+                        variant: 'success',
+                      });
+                      if (ok) completar.mutate(t.id);
                     }}
                     className="text-xs flex items-center gap-1 bg-emerald-500 hover:bg-emerald-600 text-white px-3 py-1.5 rounded disabled:opacity-50 disabled:cursor-not-allowed"
                   >

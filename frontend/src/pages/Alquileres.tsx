@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { ClipboardList, X, CheckCircle, Plus } from 'lucide-react';
+import { ClipboardList, X, CheckCircle, Plus, ShoppingBag } from 'lucide-react';
 import { api } from '@/lib/api';
 
 interface Alquiler {
@@ -26,6 +26,7 @@ export default function Alquileres() {
   const qc = useQueryClient();
   const [filtro, setFiltro] = useState<string>('');
   const [showNuevo, setShowNuevo] = useState(false);
+  const [addProdTo, setAddProdTo] = useState<Alquiler | null>(null);
 
   const { data, isLoading } = useQuery({
     queryKey: ['alquileres', filtro],
@@ -132,7 +133,13 @@ export default function Alquileres() {
             )}
 
             {a.estado === 'ACTIVO' && (
-              <div className="mt-3 flex gap-2">
+              <div className="mt-3 flex gap-2 flex-wrap">
+                <button
+                  onClick={() => setAddProdTo(a)}
+                  className="text-xs flex items-center gap-1 bg-blue-500 hover:bg-blue-600 text-white px-3 py-1.5 rounded"
+                >
+                  <ShoppingBag size={14} /> Agregar producto
+                </button>
                 <button
                   onClick={() => finalizar.mutate(a.id)}
                   className="text-xs flex items-center gap-1 bg-emerald-500 hover:bg-emerald-600 text-white px-3 py-1.5 rounded"
@@ -155,6 +162,95 @@ export default function Alquileres() {
       </div>
 
       {showNuevo && <NuevoAlquilerModal onClose={() => setShowNuevo(false)} />}
+      {addProdTo && (
+        <AgregarProductoModal
+          alquiler={addProdTo}
+          onClose={() => setAddProdTo(null)}
+        />
+      )}
+    </div>
+  );
+}
+
+function AgregarProductoModal({
+  alquiler,
+  onClose,
+}: {
+  alquiler: Alquiler;
+  onClose: () => void;
+}) {
+  const qc = useQueryClient();
+  const [productoId, setProductoId] = useState('');
+  const [cantidad, setCantidad] = useState('1');
+  const [error, setError] = useState<string | null>(null);
+
+  const productos = useQuery({
+    queryKey: ['productos'],
+    queryFn: async () => (await api.get<any[]>('/productos')).data,
+  });
+
+  const add = useMutation({
+    mutationFn: async () =>
+      (
+        await api.post(`/alquileres/${alquiler.id}/consumo`, {
+          productoId: Number(productoId),
+          cantidad: Number(cantidad),
+        })
+      ).data,
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['alquileres'] });
+      qc.invalidateQueries({ queryKey: ['productos'] });
+      onClose();
+    },
+    onError: (err: any) => setError(err.response?.data?.message || 'Error'),
+  });
+
+  return (
+    <div className="fixed inset-0 bg-black/40 flex items-center justify-center p-4 z-50">
+      <div className="bg-white rounded-xl w-full max-w-md p-6">
+        <div className="flex justify-between items-center mb-4">
+          <h2 className="text-lg font-bold">
+            Agregar producto a alquiler #{alquiler.id}
+          </h2>
+          <button onClick={onClose}>
+            <X size={20} />
+          </button>
+        </div>
+        <div className="space-y-3">
+          <select
+            className="w-full border rounded-lg px-3 py-2"
+            value={productoId}
+            onChange={(e) => setProductoId(e.target.value)}
+          >
+            <option value="">Selecciona producto</option>
+            {productos.data?.map((p) => (
+              <option key={p.id} value={p.id} disabled={p.stock === 0}>
+                {p.nombre} · S/ {p.precio} · stock {p.stock}
+              </option>
+            ))}
+          </select>
+          <input
+            type="number"
+            min="1"
+            placeholder="Cantidad"
+            className="w-full border rounded-lg px-3 py-2"
+            value={cantidad}
+            onChange={(e) => setCantidad(e.target.value)}
+          />
+          {error && (
+            <div className="text-sm text-red-600 bg-red-50 p-2 rounded">
+              {error}
+            </div>
+          )}
+          <button
+            onClick={() => add.mutate()}
+            disabled={add.isPending || !productoId || !cantidad}
+            className="w-full bg-brand-500 hover:bg-brand-600 text-white py-2.5 rounded-lg font-medium disabled:opacity-50"
+          >
+            {add.isPending ? 'Agregando...' : 'Agregar'}
+          </button>
+        </div>
+      </div>
     </div>
   );
 }

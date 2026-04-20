@@ -9,6 +9,7 @@ import {
   Building,
   Users,
   LogOut,
+  ShoppingCart,
 } from 'lucide-react';
 import { useAuthStore, Rol } from '@/store/auth';
 import SedeSelector from './SedeSelector';
@@ -24,6 +25,12 @@ const items: Item[] = [
   { to: '/', label: 'Inicio', icon: Building2 },
   { to: '/habitaciones', label: 'Habitaciones', icon: BedDouble },
   { to: '/alquileres', label: 'Alquileres', icon: ClipboardList },
+  {
+    to: '/ventas',
+    label: 'Venta directa',
+    icon: ShoppingCart,
+    roles: ['SUPERADMIN', 'ADMIN_SEDE', 'HOTELERO', 'CAJERO'],
+  },
   { to: '/productos', label: 'Productos', icon: Package },
   {
     to: '/limpieza',

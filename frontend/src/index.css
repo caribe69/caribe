@@ -20,6 +20,23 @@ body {
   color: #0f172a;
 }
 
+/* Impresión: oculta chrome cuando se imprime */
+@media print {
+  .no-print {
+    display: none !important;
+  }
+  .print-only {
+    display: block !important;
+  }
+  body {
+    background: white !important;
+  }
+  aside,
+  nav {
+    display: none !important;
+  }
+}
+
 /* Utilidades de estado de habitación */
 .estado-DISPONIBLE {
   background-color: #dcfce7;

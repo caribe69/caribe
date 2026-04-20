@@ -6,6 +6,7 @@ import Dashboard from '@/pages/Dashboard';
 import Habitaciones from '@/pages/Habitaciones';
 import Productos from '@/pages/Productos';
 import ProductosLimpieza from '@/pages/ProductosLimpieza';
+import Ventas from '@/pages/Ventas';
 import Alquileres from '@/pages/Alquileres';
 import Limpieza from '@/pages/Limpieza';
 import Caja from '@/pages/Caja';
@@ -34,6 +35,7 @@ export default function App() {
         <Route path="habitaciones" element={<Habitaciones />} />
         <Route path="productos" element={<Productos />} />
         <Route path="productos-limpieza" element={<ProductosLimpieza />} />
+        <Route path="ventas" element={<Ventas />} />
         <Route path="alquileres" element={<Alquileres />} />
         <Route path="limpieza" element={<Limpieza />} />
         <Route path="caja" element={<Caja />} />

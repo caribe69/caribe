@@ -6,6 +6,7 @@ import {
 import {
   EstadoAlquiler,
   EstadoTurno,
+  EstadoVenta,
   MetodoPago,
 } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
@@ -47,6 +48,9 @@ export class CajaService {
           where: { estado: { not: EstadoAlquiler.ANULADO } },
           include: { consumos: true },
         },
+        ventas: {
+          where: { estado: { not: EstadoVenta.ANULADA } },
+        },
       },
     });
     if (!turno) throw new NotFoundException('Turno no encontrado');
@@ -68,6 +72,11 @@ export class CajaService {
     for (const a of turno.alquileres) {
       const t = Number(a.total);
       totales[a.metodoPago] += t;
+      total += t;
+    }
+    for (const v of turno.ventas) {
+      const t = Number(v.total);
+      totales[v.metodoPago] += t;
       total += t;
     }
 
@@ -101,6 +110,12 @@ export class CajaService {
           },
           orderBy: { creadoEn: 'asc' },
         },
+        ventas: {
+          include: {
+            items: { include: { producto: true } },
+          },
+          orderBy: { creadoEn: 'asc' },
+        },
       },
     });
     if (!turno) throw new NotFoundException('Turno no encontrado');
@@ -110,6 +125,7 @@ export class CajaService {
       number,
       { nombre: string; cantidad: number; total: number }
     > = {};
+
     for (const a of turno.alquileres) {
       if (a.estado === EstadoAlquiler.ANULADO) continue;
       for (const c of a.consumos) {
@@ -126,9 +142,80 @@ export class CajaService {
       }
     }
 
+    for (const v of turno.ventas) {
+      if (v.estado === EstadoVenta.ANULADA) continue;
+      for (const it of v.items) {
+        const k = it.productoId;
+        if (!productosVendidos[k]) {
+          productosVendidos[k] = {
+            nombre: it.producto.nombre,
+            cantidad: 0,
+            total: 0,
+          };
+        }
+        productosVendidos[k].cantidad += it.cantidad;
+        productosVendidos[k].total += Number(it.subtotal);
+      }
+    }
+
+    // Desglose tipo "cierre de caja físico": H (habitaciones), B (bebidas/productos), O (otros), G (gran total)
+    const alquileresValidos = turno.alquileres.filter(
+      (a) => a.estado !== EstadoAlquiler.ANULADO,
+    );
+    const ventasValidas = turno.ventas.filter(
+      (v) => v.estado !== EstadoVenta.ANULADA,
+    );
+
+    let H = 0; // Habitaciones (solo precio de la habitación)
+    let B = 0; // Bebidas / productos (consumos + ventas directas)
+    for (const a of alquileresValidos) {
+      H += Number(a.precioHabitacion);
+      B += Number(a.totalProductos);
+    }
+    for (const v of ventasValidas) {
+      B += Number(v.total);
+    }
+    const O = 0; // Otros — reservado para ajustes futuros
+    const G = H + B + O;
+
+    // Totales por método de pago (desde alquileres + ventas)
+    const porMetodo: Record<string, number> = {
+      EFECTIVO: 0, VISA: 0, MASTERCARD: 0, YAPE: 0, PLIN: 0, OTRO: 0,
+    };
+    for (const a of alquileresValidos) porMetodo[a.metodoPago] += Number(a.total);
+    for (const v of ventasValidas) porMetodo[v.metodoPago] += Number(v.total);
+
+    const totalDigital =
+      porMetodo.VISA + porMetodo.MASTERCARD + porMetodo.YAPE + porMetodo.PLIN + porMetodo.OTRO;
+    const totalEfectivo = porMetodo.EFECTIVO;
+
+    // Tier de habitaciones: agrupar alquileres por precioHabitacion
+    const tiers: Record<string, number> = {};
+    for (const a of alquileresValidos) {
+      const price = Number(a.precioHabitacion).toFixed(2);
+      tiers[price] = (tiers[price] || 0) + 1;
+    }
+
     return {
       turno,
       productosVendidos: Object.values(productosVendidos),
+      desglose: {
+        H,            // habitaciones
+        B,            // bebidas/productos
+        O,            // otros
+        G,            // gran total
+        totalEfectivo,
+        totalDigital,
+      },
+      porMetodo,
+      alquileres: {
+        cantidad: alquileresValidos.length,
+        porTier: tiers,
+      },
+      ventasDirectas: {
+        cantidad: ventasValidas.length,
+        total: ventasValidas.reduce((s, v) => s + Number(v.total), 0),
+      },
     };
   }
 

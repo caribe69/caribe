@@ -34,6 +34,7 @@ model Sede {
   alquileres        Alquiler[]
   tareasLimpieza    TareaLimpieza[]
   turnosCaja        TurnoCaja[]
+  ventas            Venta[]
 }
 
 model Usuario {
@@ -53,6 +54,8 @@ model Usuario {
   tareasAsignadas      TareaLimpieza[]   @relation("TareaAsignadaA")
   turnosCaja           TurnoCaja[]
   movimientosStock     MovimientoStock[]
+  ventasCreadas        Venta[]           @relation("VentaCreadaPor")
+  ventasAnuladas       Venta[]           @relation("VentaAnuladaPor")
 
   @@index([sedeId])
 }
@@ -121,6 +124,7 @@ model Producto {
 
   consumos    ConsumoProducto[]
   movimientos MovimientoStock[]
+  itemsVenta  ItemVenta[]
 
   @@index([sedeId])
 }
@@ -327,7 +331,58 @@ model TurnoCaja {
   notas          String?
 
   alquileres     Alquiler[]
+  ventas         Venta[]
 
   @@index([sedeId, estado])
   @@index([usuarioId])
+}
+
+// ============================================================
+// VENTA DIRECTA DE PRODUCTOS (sin alquiler)
+// ============================================================
+enum EstadoVenta {
+  ACTIVA
+  ANULADA
+}
+
+model Venta {
+  id               Int         @id @default(autoincrement())
+  sedeId           Int
+  sede             Sede        @relation(fields: [sedeId], references: [id])
+  turnoCajaId      Int
+  turnoCaja        TurnoCaja   @relation(fields: [turnoCajaId], references: [id])
+
+  usuarioId        Int
+  usuario          Usuario     @relation("VentaCreadaPor", fields: [usuarioId], references: [id])
+
+  metodoPago       MetodoPago
+  total            Decimal     @db.Decimal(10, 2)
+  notas            String?
+
+  estado           EstadoVenta @default(ACTIVA)
+  motivoAnulacion  String?
+  anuladoEn        DateTime?
+  anuladoPorId     Int?
+  anuladoPor       Usuario?    @relation("VentaAnuladaPor", fields: [anuladoPorId], references: [id])
+
+  creadoEn         DateTime    @default(now())
+  items            ItemVenta[]
+
+  @@index([sedeId, estado])
+  @@index([turnoCajaId])
+}
+
+model ItemVenta {
+  id          Int      @id @default(autoincrement())
+  ventaId     Int
+  venta       Venta    @relation(fields: [ventaId], references: [id], onDelete: Cascade)
+  productoId  Int
+  producto    Producto @relation(fields: [productoId], references: [id])
+  cantidad    Int
+  precioUnit  Decimal  @db.Decimal(10, 2)
+  subtotal    Decimal  @db.Decimal(10, 2)
+  creadoEn    DateTime @default(now())
+
+  @@index([ventaId])
+  @@index([productoId])
 }

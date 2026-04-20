@@ -6,8 +6,10 @@ import {
   Send,
   ArrowLeft,
   Check,
+  CheckCheck,
   XCircle,
   CheckCircle2,
+  ChevronDown,
   Users as UsersIcon,
 } from 'lucide-react';
 import { api } from '@/lib/api';
@@ -15,6 +17,7 @@ import { useAuthStore } from '@/store/auth';
 import { usePresence } from '@/store/presence';
 import { getSocket } from '@/lib/socket';
 import { useToast } from './ToastProvider';
+import { useDialog } from './ConfirmProvider';
 
 interface Contacto {
   id: number;
@@ -31,6 +34,7 @@ interface Mensaje {
   tipo: string;
   metadata?: any;
   leido: boolean;
+  leidoEn?: string | null;
   creadoEn: string;
   from: { id: number; nombre: string; username: string; rol: string };
   to: { id: number; nombre: string; username: string; rol: string };
@@ -53,7 +57,10 @@ export default function ChatWidget() {
   const iAmTypingRef = useRef(false);
   const qc = useQueryClient();
   const { show: toast } = useToast();
+  const { prompt: dialogPrompt } = useDialog();
   const bottomRef = useRef<HTMLDivElement | null>(null);
+  const scrollRef = useRef<HTMLDivElement | null>(null);
+  const [showScrollDown, setShowScrollDown] = useState(false);
 
   // Permite abrir el chat con un usuario específico desde cualquier parte
   useEffect(() => {
@@ -74,7 +81,6 @@ export default function ChatWidget() {
     queryKey: ['chat', 'inbox'],
     queryFn: async () => (await api.get<Conv[]>('/chat/inbox')).data,
     enabled: !!token,
-    refetchInterval: 10_000,
   });
 
   const contactos = useQuery<Contacto[]>({
@@ -127,9 +133,22 @@ export default function ChatWidget() {
     };
     s.on('chat:typing', onTyping);
 
+    // Doble check: el otro usuario leyó mis mensajes → actualiza cache
+    const onLeido = ({ byUserId, leidoEn }: { byUserId: number; leidoEn: string }) => {
+      qc.setQueryData<Mensaje[]>(['chat', 'with', byUserId], (prev) =>
+        prev?.map((m) =>
+          m.toId === byUserId && !m.leido
+            ? { ...m, leido: true, leidoEn }
+            : m,
+        ),
+      );
+    };
+    s.on('chat:leido', onLeido);
+
     return () => {
       s.off('chat:mensaje', onMsg);
       s.off('chat:typing', onTyping);
+      s.off('chat:leido', onLeido);
     };
   }, [token, activeUserId, qc, toast, usuario?.id]);
 
@@ -159,10 +178,32 @@ export default function ChatWidget() {
     }, 1500);
   };
 
-  // Auto-scroll al fondo cuando cambian los mensajes
+  // Auto-scroll al fondo SOLO si ya estamos cerca del fondo
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [conv.data, activeUserId]);
+    const el = scrollRef.current;
+    if (!el) return;
+    const nearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 80;
+    if (nearBottom) {
+      bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [conv.data]);
+
+  // Al cambiar de conversación, va al fondo sí o sí
+  useEffect(() => {
+    if (activeUserId) {
+      setTimeout(() => {
+        bottomRef.current?.scrollIntoView({ behavior: 'instant' as ScrollBehavior });
+      }, 20);
+    }
+  }, [activeUserId]);
+
+  // Botón "bajar" cuando el usuario scrollea hacia arriba
+  const handleScroll = () => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const d = el.scrollHeight - el.scrollTop - el.clientHeight;
+    setShowScrollDown(d > 150);
+  };
 
   const enviar = useMutation({
     mutationFn: async () => {
@@ -305,7 +346,11 @@ export default function ChatWidget() {
           </div>
 
           {/* Contenido */}
-          <div className="flex-1 overflow-y-auto scroll-premium bg-slate-50">
+          <div
+            ref={scrollRef}
+            onScroll={handleScroll}
+            className="flex-1 overflow-y-auto scroll-premium bg-slate-50 relative"
+          >
             {!activeUserId ? (
               // Lista de conversaciones + contactos
               <Inbox
@@ -315,29 +360,57 @@ export default function ChatWidget() {
                 onSelect={(uid) => setActiveUserId(uid)}
               />
             ) : (
-              // Conversación
-              <div className="p-3 space-y-2">
-                {conv.data?.map((m) => (
-                  <MessageBubble
-                    key={m.id}
-                    m={m}
-                    yoId={usuario?.id || 0}
-                    esAdmin={
-                      usuario?.rol === 'SUPERADMIN' ||
-                      usuario?.rol === 'ADMIN_SEDE'
-                    }
-                    onAprobar={(anulId) =>
-                      aprobar.mutate({ anulacionId: anulId })
-                    }
-                    onRechazar={(anulId) => {
-                      const respuesta = prompt('Razón del rechazo (opcional):');
-                      rechazar.mutate({
-                        anulacionId: anulId,
-                        respuesta: respuesta || undefined,
-                      });
-                    }}
-                  />
-                ))}
+              // Conversación con separadores de fecha y agrupación
+              <div className="p-3 space-y-1">
+                {conv.data?.map((m, idx, arr) => {
+                  const prev = idx > 0 ? arr[idx - 1] : null;
+                  const nuevoDia =
+                    !prev ||
+                    !mismoDia(new Date(prev.creadoEn), new Date(m.creadoEn));
+                  const agrupadoConAnterior =
+                    !!prev &&
+                    prev.fromId === m.fromId &&
+                    !nuevoDia &&
+                    new Date(m.creadoEn).getTime() -
+                      new Date(prev.creadoEn).getTime() <
+                      3 * 60_000 &&
+                    prev.tipo === 'TEXTO' &&
+                    m.tipo === 'TEXTO';
+                  return (
+                    <div key={m.id}>
+                      {nuevoDia && (
+                        <DateSeparator fecha={new Date(m.creadoEn)} />
+                      )}
+                      <MessageBubble
+                        m={m}
+                        yoId={usuario?.id || 0}
+                        esAdmin={
+                          usuario?.rol === 'SUPERADMIN' ||
+                          usuario?.rol === 'ADMIN_SEDE'
+                        }
+                        agrupado={agrupadoConAnterior}
+                        onAprobar={(anulId) =>
+                          aprobar.mutate({ anulacionId: anulId })
+                        }
+                        onRechazar={async (anulId) => {
+                          const respuesta = await dialogPrompt({
+                            title: 'Rechazar anulación',
+                            message: 'Indica la razón del rechazo (opcional).',
+                            placeholder: 'Motivo...',
+                            multiline: true,
+                            variant: 'danger',
+                            confirmText: 'Rechazar',
+                          });
+                          if (respuesta === null) return;
+                          rechazar.mutate({
+                            anulacionId: anulId,
+                            respuesta: respuesta || undefined,
+                          });
+                        }}
+                      />
+                    </div>
+                  );
+                })}
                 {conv.data?.length === 0 && (
                   <div className="text-center text-slate-400 text-sm py-6">
                     Inicia la conversación enviando un mensaje.
@@ -345,6 +418,17 @@ export default function ChatWidget() {
                 )}
                 <div ref={bottomRef} />
               </div>
+            )}
+            {showScrollDown && activeUserId && (
+              <button
+                onClick={() =>
+                  bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
+                }
+                className="sticky bottom-2 left-[calc(100%-3rem)] w-9 h-9 rounded-full bg-white shadow-lg border border-slate-200 flex items-center justify-center text-violet-600 hover:bg-violet-50 btn-press animate-fade-in"
+                aria-label="Bajar al final"
+              >
+                <ChevronDown size={16} />
+              </button>
             )}
           </div>
 
@@ -525,12 +609,14 @@ function MessageBubble({
   m,
   yoId,
   esAdmin,
+  agrupado,
   onAprobar,
   onRechazar,
 }: {
   m: Mensaje;
   yoId: number;
   esAdmin: boolean;
+  agrupado?: boolean;
   onAprobar: (anulId: number) => void;
   onRechazar: (anulId: number) => void;
 }) {
@@ -541,8 +627,6 @@ function MessageBubble({
   const isEspecial = isAnulacionReq || isAprobada || isRechazada;
   const anulId = m.metadata?.anulacionId;
 
-  // Mensajes especiales (anulaciones) SIEMPRE usan su color, sin importar si
-  // son míos o del otro. Así no mezcla el gradiente violeta con el color especial.
   let bubbleClass = '';
   if (isAnulacionReq)
     bubbleClass = 'bg-amber-50 text-amber-900 border border-amber-300';
@@ -552,14 +636,25 @@ function MessageBubble({
     bubbleClass = 'bg-rose-50 text-rose-900 border border-rose-300';
   else if (mine)
     bubbleClass =
-      'bg-gradient-to-br from-violet-600 to-violet-500 text-white rounded-br-sm';
+      'bg-gradient-to-br from-violet-600 to-violet-500 text-white';
   else
-    bubbleClass = 'bg-white text-slate-800 rounded-bl-sm border border-slate-100';
+    bubbleClass = 'bg-white text-slate-800 border border-slate-100';
+
+  // Esquinas: WhatsApp-like → la "cola" se muestra solo en el primero del grupo
+  const cornerMine = agrupado ? 'rounded-2xl' : 'rounded-2xl rounded-br-sm';
+  const cornerOther = agrupado ? 'rounded-2xl' : 'rounded-2xl rounded-bl-sm';
+  const corner = isEspecial
+    ? 'rounded-2xl'
+    : mine
+      ? cornerMine
+      : cornerOther;
 
   return (
-    <div className={`flex ${mine ? 'justify-end' : 'justify-start'}`}>
+    <div
+      className={`flex ${mine ? 'justify-end' : 'justify-start'} ${agrupado ? 'mt-0.5' : 'mt-2'}`}
+    >
       <div
-        className={`max-w-[80%] rounded-2xl px-3 py-2 shadow-sm ${bubbleClass}`}
+        className={`max-w-[80%] px-3 py-2 shadow-sm ${bubbleClass} ${corner}`}
       >
         {isAnulacionReq && (
           <div className="flex items-center gap-1.5 mb-1 text-[10px] font-bold uppercase tracking-wider">
@@ -596,14 +691,60 @@ function MessageBubble({
         )}
 
         <div
-          className={`text-[10px] mt-1 ${mine && !isEspecial ? 'text-violet-100' : 'text-slate-500 opacity-70'}`}
+          className={`text-[10px] mt-1 flex items-center gap-1 ${mine ? 'justify-end' : 'justify-start'} ${mine && !isEspecial ? 'text-violet-100' : 'text-slate-500 opacity-70'}`}
         >
-          {new Date(m.creadoEn).toLocaleTimeString('es-PE', {
-            hour: '2-digit',
-            minute: '2-digit',
-          })}
+          <span>
+            {new Date(m.creadoEn).toLocaleTimeString('es-PE', {
+              hour: '2-digit',
+              minute: '2-digit',
+            })}
+          </span>
+          {mine && !isEspecial && (
+            <span
+              title={
+                m.leido
+                  ? `Leído${m.leidoEn ? ' ' + new Date(m.leidoEn).toLocaleTimeString('es-PE', { hour: '2-digit', minute: '2-digit' }) : ''}`
+                  : 'Entregado'
+              }
+              className={m.leido ? 'text-sky-300' : 'text-violet-200'}
+            >
+              {m.leido ? <CheckCheck size={12} /> : <Check size={12} />}
+            </span>
+          )}
         </div>
       </div>
+    </div>
+  );
+}
+
+// ------ Helpers de fecha / agrupación ------
+
+function mismoDia(a: Date, b: Date) {
+  return (
+    a.getFullYear() === b.getFullYear() &&
+    a.getMonth() === b.getMonth() &&
+    a.getDate() === b.getDate()
+  );
+}
+
+function DateSeparator({ fecha }: { fecha: Date }) {
+  const hoy = new Date();
+  const ayer = new Date();
+  ayer.setDate(hoy.getDate() - 1);
+  let label: string;
+  if (mismoDia(fecha, hoy)) label = 'Hoy';
+  else if (mismoDia(fecha, ayer)) label = 'Ayer';
+  else
+    label = fecha.toLocaleDateString('es-PE', {
+      day: '2-digit',
+      month: 'long',
+      year: fecha.getFullYear() !== hoy.getFullYear() ? 'numeric' : undefined,
+    });
+  return (
+    <div className="flex justify-center my-3">
+      <span className="text-[10px] font-semibold uppercase tracking-widest text-slate-500 bg-white/80 backdrop-blur border border-slate-200 rounded-full px-3 py-1 shadow-sm">
+        {label}
+      </span>
     </div>
   );
 }

@@ -105,6 +105,23 @@ export class EventsGateway implements OnGatewayConnection, OnGatewayDisconnect {
     }
   }
 
+  /**
+   * Relay de "escribiendo..." en el chat. El cliente emite
+   * { toId, typing } y reenviamos al destinatario con fromId.
+   */
+  @SubscribeMessage('chat:typing')
+  handleChatTyping(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() data: { toId: number; typing: boolean },
+  ) {
+    const user = (client.data as { user?: JwtPayload }).user;
+    if (!user || !data?.toId) return;
+    this.server.to(`user:${data.toId}`).emit('chat:typing', {
+      fromId: user.sub,
+      typing: !!data.typing,
+    });
+  }
+
   handleDisconnect(client: Socket) {
     const user = (client.data as { user?: JwtPayload }).user;
     if (!user) return;

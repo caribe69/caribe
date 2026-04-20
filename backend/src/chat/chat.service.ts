@@ -133,6 +133,14 @@ export class ChatService {
       where: { fromId: otherUserId, toId: user.sub, leido: false },
       data: { leido: true, leidoEn: new Date() },
     });
+    if (r.count > 0) {
+      // Notifica al emisor para que actualice el doble-check en tiempo real
+      this.events.emitToUser(otherUserId, 'chat:leido', {
+        byUserId: user.sub,
+        cantidad: r.count,
+        leidoEn: new Date().toISOString(),
+      });
+    }
     return { marcados: r.count };
   }
 

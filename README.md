@@ -74,6 +74,20 @@ Frontend disponible en **http://localhost:5173**
 - [x] **Limpieza**: asignación, inicio, upload de fotos de evidencia (local), registro de productos usados, completado (solo con al menos una foto) → habitación pasa a `DISPONIBLE`.
 - [x] **Caja por turno**: abrir/cerrar por usuario, cálculo automático de totales por método de pago, reporte de productos vendidos.
 
+## Desplegar en un VPS (Ubuntu 24.04)
+
+Ver [`deploy/README.md`](deploy/README.md). Resumen:
+
+```bash
+# Como root en el VPS, una sola vez:
+curl -fsSL https://raw.githubusercontent.com/caribe69/caribe/main/deploy/install.sh | bash
+
+# Para actualizar a la última versión de GitHub:
+bash /opt/hotel/deploy/update.sh
+```
+
+Incluye: Node 22 + PostgreSQL + Nginx + PM2 (con auto-restart y auto-boot).
+
 ## Próximos pasos sugeridos
 
 - [ ] Notificaciones en vivo (WebSockets).

@@ -12,9 +12,11 @@ import {
   Search,
   UserCheck,
   Loader2,
+  Printer,
 } from 'lucide-react';
 import { api } from '@/lib/api';
 import { useDialog } from '@/components/ConfirmProvider';
+import BoletaAlquiler from '@/components/BoletaAlquiler';
 import { useAuthStore } from '@/store/auth';
 import { useToast } from '@/components/ToastProvider';
 
@@ -31,6 +33,7 @@ interface Habitacion {
 
 interface Alquiler {
   id: number;
+  creadoEn: string;
   clienteNombre: string;
   clienteDni: string;
   fechaIngreso: string;
@@ -41,13 +44,21 @@ interface Alquiler {
   metodoPago: string;
   estado: string;
   motivoAnulacion?: string | null;
-  habitacion: { id: number; numero: string; piso: { numero: number } };
+  habitacion: {
+    id: number;
+    numero: string;
+    descripcion?: string | null;
+    piso: { numero: number };
+  };
   consumos: Array<{
     id: number;
     cantidad: number;
+    precioUnit: string;
     subtotal: string;
     producto: { nombre: string };
   }>;
+  creadoPor?: { id?: number; nombre: string; username?: string } | null;
+  sede?: { nombre?: string };
 }
 
 export default function Alquileres() {
@@ -855,6 +866,7 @@ function ListaAlquileres() {
   const qc = useQueryClient();
   const dialog = useDialog();
   const [filtro, setFiltro] = useState<string>('');
+  const [boletaAlquiler, setBoletaAlquiler] = useState<Alquiler | null>(null);
 
   const { data, isLoading } = useQuery({
     queryKey: ['alquileres', filtro],
@@ -947,37 +959,53 @@ function ListaAlquileres() {
               </div>
             )}
 
-            {a.estado === 'ACTIVO' && (
-              <div className="mt-3 flex gap-2 flex-wrap">
+            <div className="mt-3 flex gap-2 flex-wrap">
+              {a.estado === 'ACTIVO' && (
+                <>
+                  <button
+                    onClick={() => finalizar.mutate(a.id)}
+                    className="text-xs flex items-center gap-1 bg-emerald-500 hover:bg-emerald-600 text-white px-3 py-1.5 rounded"
+                  >
+                    <CheckCircle size={14} /> Finalizar
+                  </button>
+                  <button
+                    onClick={async () => {
+                      const motivo = await dialog.prompt({
+                        title: 'Anular alquiler',
+                        message:
+                          'Escribe el motivo. Se devolverán los productos al stock.',
+                        placeholder: 'Ej. Cliente canceló',
+                        confirmText: 'Anular',
+                        variant: 'danger',
+                        multiline: true,
+                        minLength: 3,
+                      });
+                      if (motivo) anular.mutate({ id: a.id, motivo });
+                    }}
+                    className="text-xs flex items-center gap-1 bg-red-500 hover:bg-red-600 text-white px-3 py-1.5 rounded btn-press"
+                  >
+                    <X size={14} /> Anular
+                  </button>
+                </>
+              )}
+              {a.estado !== 'ANULADO' && (
                 <button
-                  onClick={() => finalizar.mutate(a.id)}
-                  className="text-xs flex items-center gap-1 bg-emerald-500 hover:bg-emerald-600 text-white px-3 py-1.5 rounded"
+                  onClick={() => setBoletaAlquiler(a)}
+                  className="text-xs flex items-center gap-1 bg-violet-600 hover:bg-violet-700 text-white px-3 py-1.5 rounded btn-press"
                 >
-                  <CheckCircle size={14} /> Finalizar
+                  <Printer size={14} /> Imprimir boleta
                 </button>
-                <button
-                  onClick={async () => {
-                    const motivo = await dialog.prompt({
-                      title: 'Anular alquiler',
-                      message:
-                        'Escribe el motivo. Se devolverán los productos al stock.',
-                      placeholder: 'Ej. Cliente canceló',
-                      confirmText: 'Anular',
-                      variant: 'danger',
-                      multiline: true,
-                      minLength: 3,
-                    });
-                    if (motivo) anular.mutate({ id: a.id, motivo });
-                  }}
-                  className="text-xs flex items-center gap-1 bg-red-500 hover:bg-red-600 text-white px-3 py-1.5 rounded btn-press"
-                >
-                  <X size={14} /> Anular
-                </button>
-              </div>
-            )}
+              )}
+            </div>
           </div>
         ))}
       </div>
+      {boletaAlquiler && (
+        <BoletaAlquiler
+          alquiler={boletaAlquiler as any}
+          onClose={() => setBoletaAlquiler(null)}
+        />
+      )}
     </div>
   );
 }

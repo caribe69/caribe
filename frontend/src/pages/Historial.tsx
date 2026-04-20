@@ -26,7 +26,7 @@ interface AlquilerHist {
     cantidad: number;
     producto: { nombre: string };
   }>;
-  creadoPor?: { nombre: string };
+  creadoPor?: { nombre: string; username?: string };
 }
 
 function today() {
@@ -192,6 +192,7 @@ export default function Historial() {
               <Th>Hab.</Th>
               <Th>Cliente</Th>
               <Th>DNI</Th>
+              <Th>Usuario</Th>
               <Th className="text-right">Total</Th>
               <Th>Método</Th>
               <Th>Estado</Th>
@@ -200,7 +201,7 @@ export default function Historial() {
           <tbody>
             {query.isLoading && (
               <tr>
-                <td colSpan={9} className="px-6 py-12 text-center text-slate-400">
+                <td colSpan={10} className="px-6 py-12 text-center text-slate-400">
                   Cargando...
                 </td>
               </tr>
@@ -253,6 +254,16 @@ export default function Historial() {
                     <Td className="text-xs text-slate-600 font-mono">
                       {a.clienteDni}
                     </Td>
+                    <Td>
+                      <div className="flex items-center gap-1.5">
+                        <div className="w-6 h-6 rounded-full bg-gradient-to-br from-violet-400 to-violet-600 flex items-center justify-center text-white text-[10px] font-bold shrink-0">
+                          {a.creadoPor?.nombre?.[0]?.toUpperCase() || '?'}
+                        </div>
+                        <span className="text-xs text-slate-700 truncate max-w-[110px]">
+                          {a.creadoPor?.nombre || '—'}
+                        </span>
+                      </div>
+                    </Td>
                     <Td className="text-right font-semibold tabular-nums">
                       S/ {Number(a.total).toFixed(2)}
                     </Td>
@@ -269,7 +280,7 @@ export default function Historial() {
               })}
             {!query.isLoading && query.data?.length === 0 && (
               <tr>
-                <td colSpan={9} className="px-6 py-16 text-center text-slate-400">
+                <td colSpan={10} className="px-6 py-16 text-center text-slate-400">
                   <Search size={40} className="mx-auto text-slate-300 mb-2" />
                   Sin alquileres en este rango
                 </td>

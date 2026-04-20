@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { useAuthStore, Rol } from '@/store/auth';
 import TopBar from './TopBar';
+import ChatWidget from './ChatWidget';
 import { useLiveEvents } from '@/hooks/useLiveEvents';
 
 interface Item {
@@ -164,6 +165,9 @@ export default function Layout() {
           <Outlet />
         </div>
       </main>
+
+      {/* Chat widget flotante */}
+      <ChatWidget />
     </div>
   );
 }

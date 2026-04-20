@@ -12,6 +12,8 @@ import {
 } from 'lucide-react';
 import { api } from '@/lib/api';
 import { useDialog } from '@/components/ConfirmProvider';
+import { useAuthStore } from '@/store/auth';
+import { useToast } from '@/components/ToastProvider';
 
 interface Habitacion {
   id: number;
@@ -296,6 +298,10 @@ function AlquilerActivoModal({
 }) {
   const qc = useQueryClient();
   const dialog = useDialog();
+  const usuario = useAuthStore((s) => s.usuario);
+  const toast = useToast();
+  const esAdmin =
+    usuario?.rol === 'SUPERADMIN' || usuario?.rol === 'ADMIN_SEDE';
   const [addProdOpen, setAddProdOpen] = useState(false);
 
   // Busca alquiler ACTIVO de esta habitación
@@ -414,21 +420,60 @@ function AlquilerActivoModal({
               </button>
               <button
                 onClick={async () => {
-                  const motivo = await dialog.prompt({
-                    title: 'Anular alquiler',
-                    message:
-                      'Escribe el motivo de la anulación. Los productos consumidos volverán al stock.',
-                    placeholder: 'Ej. Cliente canceló',
-                    confirmText: 'Anular',
-                    variant: 'danger',
-                    multiline: true,
-                    minLength: 3,
-                  });
-                  if (motivo) anular.mutate({ id: alquiler.id, motivo });
+                  if (esAdmin) {
+                    const motivo = await dialog.prompt({
+                      title: 'Anular alquiler',
+                      message:
+                        'Escribe el motivo de la anulación. Los productos consumidos volverán al stock.',
+                      placeholder: 'Ej. Cliente canceló',
+                      confirmText: 'Anular',
+                      variant: 'danger',
+                      multiline: true,
+                      minLength: 3,
+                    });
+                    if (motivo) anular.mutate({ id: alquiler.id, motivo });
+                  } else {
+                    // Recepcionista/cajero: solicita al admin
+                    const motivo = await dialog.prompt({
+                      title: 'Solicitar anulación',
+                      message:
+                        'La anulación requiere aprobación del administrador. Se abrirá el chat con tu solicitud.',
+                      placeholder: 'Explica el motivo al administrador',
+                      confirmText: 'Enviar solicitud',
+                      variant: 'warning',
+                      multiline: true,
+                      minLength: 3,
+                    });
+                    if (motivo) {
+                      try {
+                        await api.post(
+                          `/anulaciones/alquileres/${alquiler.id}`,
+                          { motivo },
+                        );
+                        toast.show({
+                          type: 'success',
+                          title: 'Solicitud enviada',
+                          description:
+                            'El administrador recibirá tu solicitud en el chat.',
+                        });
+                        // Abre el chat (le avisará al admin)
+                        window.dispatchEvent(new CustomEvent('chat:open'));
+                        onClose();
+                      } catch (err: any) {
+                        toast.show({
+                          type: 'error',
+                          title: 'No se pudo enviar',
+                          description:
+                            err.response?.data?.message || err.message,
+                        });
+                      }
+                    }
+                  }
                 }}
                 className="flex items-center justify-center gap-2 bg-red-500 hover:bg-red-600 text-white py-2.5 rounded-lg btn-press"
               >
-                <X size={16} /> Anular
+                <X size={16} />
+                {esAdmin ? 'Anular' : 'Solicitar anulación'}
               </button>
             </div>
 

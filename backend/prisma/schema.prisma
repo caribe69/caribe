@@ -35,6 +35,8 @@ model Sede {
   tareasLimpieza    TareaLimpieza[]
   turnosCaja        TurnoCaja[]
   ventas            Venta[]
+  mensajes          Mensaje[]
+  anulacionRequests AnulacionRequest[]
 }
 
 model Usuario {
@@ -56,6 +58,10 @@ model Usuario {
   movimientosStock     MovimientoStock[]
   ventasCreadas        Venta[]           @relation("VentaCreadaPor")
   ventasAnuladas       Venta[]           @relation("VentaAnuladaPor")
+  mensajesEnviados     Mensaje[]         @relation("MensajeFrom")
+  mensajesRecibidos    Mensaje[]         @relation("MensajeTo")
+  anulacionesSolicitadas AnulacionRequest[] @relation("AnuReqSolic")
+  anulacionesAprobadas   AnulacionRequest[] @relation("AnuReqAprob")
 
   @@index([sedeId])
 }
@@ -201,6 +207,7 @@ model Alquiler {
   creadoEn        DateTime        @default(now())
 
   consumos        ConsumoProducto[]
+  anulacionRequests AnulacionRequest[]
 
   @@index([sedeId, estado])
   @@index([habitacionId])
@@ -385,4 +392,47 @@ model ItemVenta {
 
   @@index([ventaId])
   @@index([productoId])
+}
+
+// ============================================================
+// CHAT & ANULACIONES
+// ============================================================
+model Mensaje {
+  id        Int      @id @default(autoincrement())
+  sedeId    Int
+  sede      Sede     @relation(fields: [sedeId], references: [id])
+  fromId    Int
+  from      Usuario  @relation("MensajeFrom", fields: [fromId], references: [id])
+  toId      Int
+  to        Usuario  @relation("MensajeTo", fields: [toId], references: [id])
+  texto     String
+  tipo      String   @default("TEXTO")
+  metadata  Json?
+  leido     Boolean  @default(false)
+  leidoEn   DateTime?
+  creadoEn  DateTime @default(now())
+
+  @@index([toId, leido])
+  @@index([fromId, toId, creadoEn])
+  @@index([sedeId])
+}
+
+model AnulacionRequest {
+  id             Int       @id @default(autoincrement())
+  sedeId         Int
+  sede           Sede      @relation(fields: [sedeId], references: [id])
+  alquilerId     Int
+  alquiler       Alquiler  @relation(fields: [alquilerId], references: [id])
+  solicitanteId  Int
+  solicitante    Usuario   @relation("AnuReqSolic", fields: [solicitanteId], references: [id])
+  motivo         String
+  estado         String    @default("PENDIENTE")
+  respuestaAdmin String?
+  aprobadorId    Int?
+  aprobador      Usuario?  @relation("AnuReqAprob", fields: [aprobadorId], references: [id])
+  respondidoEn   DateTime?
+  creadoEn       DateTime  @default(now())
+
+  @@index([sedeId, estado])
+  @@index([solicitanteId])
 }

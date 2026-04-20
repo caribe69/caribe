@@ -15,6 +15,8 @@ import { LimpiezaModule } from './limpieza/limpieza.module';
 import { CajaModule } from './caja/caja.module';
 import { VentasModule } from './ventas/ventas.module';
 import { EventsModule } from './events/events.module';
+import { ChatModule } from './chat/chat.module';
+import { AnulacionesModule } from './anulaciones/anulaciones.module';
 
 @Module({
   imports: [
@@ -40,6 +42,8 @@ import { EventsModule } from './events/events.module';
     LimpiezaModule,
     CajaModule,
     VentasModule,
+    ChatModule,
+    AnulacionesModule,
   ],
 })
 export class AppModule {}

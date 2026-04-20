@@ -1,32 +1,46 @@
 @import "tailwindcss";
 
 @theme {
-  /* Paleta Caribe */
+  /* Paleta Violeta (primary estilo Dabang) */
+  --color-violet-50: #f5f3ff;
+  --color-violet-100: #ede9fe;
+  --color-violet-200: #ddd6fe;
+  --color-violet-300: #c4b5fd;
+  --color-violet-400: #a78bfa;
+  --color-violet-500: #8b5cf6;
+  --color-violet-600: #7c3aed;
+  --color-violet-700: #6d28d9;
+  --color-violet-800: #5b21b6;
+  --color-violet-900: #4c1d95;
+
+  /* Caribe (acento secundario) */
   --color-caribe-50: #f0fdfa;
   --color-caribe-100: #ccfbf1;
-  --color-caribe-200: #99f6e4;
-  --color-caribe-300: #5eead4;
-  --color-caribe-400: #2dd4bf;
   --color-caribe-500: #14b8a6;
   --color-caribe-600: #0891b2;
   --color-caribe-700: #0e7490;
-  --color-caribe-800: #155e75;
   --color-caribe-900: #164e63;
-  --color-caribe-950: #0c2e3d;
 
-  /* Dorado sutil (acento) */
-  --color-gold-200: #fef3c7;
-  --color-gold-300: #fde68a;
+  /* Dorado sutil */
   --color-gold-400: #facc15;
   --color-gold-500: #d4a017;
-  --color-gold-600: #b8860b;
 
-  /* Brand aliases (compat con código existente) */
-  --color-brand-50: #f0fdfa;
-  --color-brand-100: #ccfbf1;
-  --color-brand-500: #0891b2;
-  --color-brand-600: #0e7490;
-  --color-brand-700: #155e75;
+  /* Pasteles (KPIs) */
+  --color-pastel-pink-bg: #fce7f3;
+  --color-pastel-pink-fg: #be185d;
+  --color-pastel-yellow-bg: #fef3c7;
+  --color-pastel-yellow-fg: #a16207;
+  --color-pastel-green-bg: #d1fae5;
+  --color-pastel-green-fg: #047857;
+  --color-pastel-purple-bg: #ede9fe;
+  --color-pastel-purple-fg: #6d28d9;
+
+  /* Brand aliases = violeta */
+  --color-brand-50: #f5f3ff;
+  --color-brand-100: #ede9fe;
+  --color-brand-500: #7c3aed;
+  --color-brand-600: #6d28d9;
+  --color-brand-700: #5b21b6;
 
   --font-serif: Georgia, 'Cormorant Garamond', 'Times New Roman', serif;
 }
@@ -39,7 +53,7 @@ body,
 
 body {
   font-family: system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
-  background: linear-gradient(180deg, #f8fafc 0%, #f0fdfa 100%);
+  background: linear-gradient(135deg, #f5f5f4 0%, #f0fdf4 100%);
   background-attachment: fixed;
   color: #0f172a;
   -webkit-font-smoothing: antialiased;
@@ -56,20 +70,18 @@ h3 {
   letter-spacing: -0.01em;
 }
 
-/* Scrollbar elegante */
 ::-webkit-scrollbar {
-  width: 10px;
-  height: 10px;
+  width: 8px;
+  height: 8px;
 }
 ::-webkit-scrollbar-thumb {
-  background: #cbd5e1;
+  background: #e2e8f0;
   border-radius: 10px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #94a3b8;
+  background: #cbd5e1;
 }
 
-/* Impresión */
 @media print {
   .no-print {
     display: none !important;
@@ -86,7 +98,6 @@ h3 {
   }
 }
 
-/* Estados de habitación (chips) */
 .estado-DISPONIBLE {
   background-color: #dcfce7;
   color: #166534;
@@ -100,8 +111,8 @@ h3 {
   color: #92400e;
 }
 .estado-MANTENIMIENTO {
-  background-color: #e0e7ff;
-  color: #3730a3;
+  background-color: #dbeafe;
+  color: #1e40af;
 }
 .estado-FUERA_SERVICIO {
   background-color: #e2e8f0;

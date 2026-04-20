@@ -10,20 +10,21 @@ import {
   LogOut,
   ShoppingCart,
   LayoutDashboard,
-  Palmtree,
+  Hotel,
+  Crown,
 } from 'lucide-react';
 import { useAuthStore, Rol } from '@/store/auth';
-import SedeSelector from './SedeSelector';
+import TopBar from './TopBar';
 
 interface Item {
   to: string;
   label: string;
-  icon: React.ComponentType<{ size?: number }>;
+  icon: React.ComponentType<{ size?: number; className?: string }>;
   roles?: Rol[];
 }
 
 const items: Item[] = [
-  { to: '/', label: 'Panel', icon: LayoutDashboard },
+  { to: '/', label: 'Dashboard', icon: LayoutDashboard },
   { to: '/habitaciones', label: 'Habitaciones', icon: BedDouble },
   { to: '/alquileres', label: 'Alquileres', icon: ClipboardList },
   {
@@ -74,32 +75,26 @@ export default function Layout() {
   );
 
   return (
-    <div className="flex h-screen">
-      <aside
-        className="w-64 flex flex-col text-slate-100"
-        style={{
-          background:
-            'linear-gradient(180deg, var(--color-caribe-900) 0%, var(--color-caribe-950) 100%)',
-        }}
-      >
+    <div className="flex min-h-screen p-4 gap-4 bg-gradient-to-br from-slate-50 via-violet-50/30 to-emerald-50/20">
+      {/* Sidebar */}
+      <aside className="w-60 shrink-0 bg-white rounded-3xl shadow-sm flex flex-col overflow-hidden">
         {/* Logo */}
-        <div className="h-20 flex items-center gap-3 px-5 border-b border-white/10">
-          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-gold-400 to-gold-600 flex items-center justify-center shadow-lg">
-            <Palmtree size={20} className="text-caribe-900" />
+        <div className="px-6 pt-6 pb-5 flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-500 to-violet-700 flex items-center justify-center shadow-md">
+            <Hotel size={20} className="text-white" />
           </div>
           <div>
-            <div className="font-hotel text-lg leading-tight text-white">
-              Caribe Hotel
+            <div className="font-hotel text-xl font-bold text-slate-900 leading-none">
+              Caribe
             </div>
-            <div className="text-[10px] uppercase tracking-widest text-caribe-200">
-              Management
+            <div className="text-[10px] uppercase tracking-widest text-slate-400 mt-0.5">
+              Hotel
             </div>
           </div>
         </div>
 
-        <SedeSelector />
-
-        <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-0.5">
+        {/* Nav */}
+        <nav className="flex-1 overflow-y-auto px-3 py-2 space-y-1">
           {visibles.map((it) => {
             const Icon = it.icon;
             return (
@@ -108,10 +103,10 @@ export default function Layout() {
                 to={it.to}
                 end={it.to === '/'}
                 className={({ isActive }) =>
-                  `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-all ${
+                  `flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all ${
                     isActive
-                      ? 'bg-white/10 text-white font-medium border-l-2 border-gold-400 pl-[10px]'
-                      : 'text-caribe-100 hover:bg-white/5 hover:text-white'
+                      ? 'bg-gradient-to-r from-violet-600 to-violet-500 text-white shadow-lg shadow-violet-500/30'
+                      : 'text-slate-500 hover:bg-slate-50 hover:text-slate-800'
                   }`
                 }
               >
@@ -122,32 +117,34 @@ export default function Layout() {
           })}
         </nav>
 
-        {/* Usuario */}
-        <div className="border-t border-white/10 p-4">
-          <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-full bg-caribe-700 flex items-center justify-center text-sm font-bold text-white">
-              {usuario?.nombre?.[0]?.toUpperCase() || '?'}
-            </div>
-            <div className="flex-1 min-w-0">
-              <div className="font-medium text-sm truncate text-white">
-                {usuario?.nombre}
+        {/* Promo card */}
+        <div className="p-3">
+          <div className="relative overflow-hidden bg-gradient-to-br from-violet-600 via-violet-700 to-violet-900 rounded-2xl p-5 text-white">
+            <div className="absolute -right-4 -top-4 w-20 h-20 rounded-full bg-white/10" />
+            <div className="absolute -right-8 -bottom-8 w-24 h-24 rounded-full bg-white/5" />
+            <div className="relative">
+              <div className="w-10 h-10 rounded-xl bg-white/20 backdrop-blur flex items-center justify-center mb-3">
+                <Crown size={18} className="text-gold-400" />
               </div>
-              <div className="text-[10px] uppercase tracking-wide text-caribe-300 truncate">
-                {usuario?.rol?.replace('_', ' ')}
+              <div className="font-bold text-sm">Caribe Pro</div>
+              <div className="text-[11px] text-violet-200 mt-0.5 leading-snug">
+                Reportes avanzados y multi-sede
               </div>
+              <button
+                onClick={handleLogout}
+                className="mt-3 inline-flex items-center gap-1 bg-white text-violet-700 text-xs font-semibold px-3 py-1.5 rounded-lg shadow"
+              >
+                <LogOut size={12} /> Salir
+              </button>
             </div>
           </div>
-          <button
-            onClick={handleLogout}
-            className="mt-3 w-full flex items-center justify-center gap-2 bg-white/5 hover:bg-white/10 text-caribe-100 py-2 rounded-lg text-xs border border-white/10"
-          >
-            <LogOut size={14} /> Cerrar sesión
-          </button>
         </div>
       </aside>
 
-      <main className="flex-1 overflow-y-auto">
-        <div className="p-6 max-w-[1600px] mx-auto">
+      {/* Main column */}
+      <main className="flex-1 flex flex-col min-w-0">
+        <TopBar usuario={usuario} />
+        <div className="flex-1 overflow-y-auto pr-1 pt-5">
           <Outlet />
         </div>
       </main>

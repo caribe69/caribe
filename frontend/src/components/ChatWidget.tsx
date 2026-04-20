@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import { api } from '@/lib/api';
 import { useAuthStore } from '@/store/auth';
+import { usePresence } from '@/store/presence';
 import { getSocket } from '@/lib/socket';
 import { useToast } from './ToastProvider';
 
@@ -43,9 +44,13 @@ interface Conv {
 export default function ChatWidget() {
   const token = useAuthStore((s) => s.token);
   const usuario = useAuthStore((s) => s.usuario);
+  const online = usePresence((s) => s.online);
   const [abierto, setAbierto] = useState(false);
   const [activeUserId, setActiveUserId] = useState<number | null>(null);
   const [texto, setTexto] = useState('');
+  const [partnerTyping, setPartnerTyping] = useState(false);
+  const typingTimeoutRef = useRef<number | null>(null);
+  const iAmTypingRef = useRef(false);
   const qc = useQueryClient();
   const { show: toast } = useToast();
   const bottomRef = useRef<HTMLDivElement | null>(null);
@@ -116,10 +121,43 @@ export default function ChatWidget() {
       }
     };
     s.on('chat:mensaje', onMsg);
+
+    const onTyping = ({ fromId, typing }: { fromId: number; typing: boolean }) => {
+      if (fromId === activeUserId) setPartnerTyping(typing);
+    };
+    s.on('chat:typing', onTyping);
+
     return () => {
       s.off('chat:mensaje', onMsg);
+      s.off('chat:typing', onTyping);
     };
   }, [token, activeUserId, qc, toast, usuario?.id]);
+
+  // Limpia el "escribiendo" al cambiar de conversación
+  useEffect(() => {
+    setPartnerTyping(false);
+  }, [activeUserId]);
+
+  const emitTyping = (typing: boolean) => {
+    if (!activeUserId) return;
+    try {
+      getSocket().emit('chat:typing', { toId: activeUserId, typing });
+    } catch {}
+  };
+
+  const onTextoChange = (v: string) => {
+    setTexto(v);
+    if (!activeUserId) return;
+    if (!iAmTypingRef.current && v.length > 0) {
+      iAmTypingRef.current = true;
+      emitTyping(true);
+    }
+    if (typingTimeoutRef.current) window.clearTimeout(typingTimeoutRef.current);
+    typingTimeoutRef.current = window.setTimeout(() => {
+      iAmTypingRef.current = false;
+      emitTyping(false);
+    }, 1500);
+  };
 
   // Auto-scroll al fondo cuando cambian los mensajes
   useEffect(() => {
@@ -138,6 +176,11 @@ export default function ChatWidget() {
     },
     onSuccess: () => {
       setTexto('');
+      // Apaga el estado "escribiendo" al enviar
+      if (iAmTypingRef.current) {
+        iAmTypingRef.current = false;
+        emitTyping(false);
+      }
       qc.invalidateQueries({ queryKey: ['chat', 'with', activeUserId] });
       qc.invalidateQueries({ queryKey: ['chat', 'inbox'] });
     },
@@ -213,15 +256,34 @@ export default function ChatWidget() {
             <div className="flex-1 min-w-0">
               {activeUserId && activeContacto ? (
                 <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-full bg-white/20 backdrop-blur flex items-center justify-center text-sm font-bold">
-                    {activeContacto.nombre?.[0]?.toUpperCase()}
+                  <div className="relative">
+                    <div className="w-8 h-8 rounded-full bg-white/20 backdrop-blur flex items-center justify-center text-sm font-bold">
+                      {activeContacto.nombre?.[0]?.toUpperCase()}
+                    </div>
+                    <span
+                      className={`absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2 border-violet-700 ${
+                        online.has(activeContacto.id)
+                          ? 'bg-emerald-400'
+                          : 'bg-slate-400'
+                      }`}
+                    />
                   </div>
                   <div className="min-w-0">
                     <div className="font-semibold truncate">
                       {activeContacto.nombre}
                     </div>
-                    <div className="text-[10px] uppercase tracking-wider text-violet-200">
-                      {activeContacto.rol?.replace('_', ' ')}
+                    <div className="text-[10px] uppercase tracking-wider text-violet-200 flex items-center gap-1">
+                      {online.has(activeContacto.id) ? (
+                        <>
+                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                          en línea
+                        </>
+                      ) : (
+                        <>
+                          <span className="w-1.5 h-1.5 rounded-full bg-slate-400" />
+                          desconectado · {activeContacto.rol?.replace('_', ' ')}
+                        </>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -249,6 +311,7 @@ export default function ChatWidget() {
               <Inbox
                 conversaciones={inbox.data || []}
                 contactos={contactos.data || []}
+                online={online}
                 onSelect={(uid) => setActiveUserId(uid)}
               />
             ) : (
@@ -287,11 +350,24 @@ export default function ChatWidget() {
 
           {/* Input */}
           {activeUserId && (
-            <div className="p-3 border-t border-slate-100 bg-white">
-              <div className="flex gap-2 items-end">
+            <div className="border-t border-slate-100 bg-white">
+              {/* Indicador 'escribiendo...' */}
+              {partnerTyping && (
+                <div className="px-4 pt-2 pb-1 flex items-center gap-2 text-[11px] text-violet-600 animate-fade-in">
+                  <span className="flex gap-0.5">
+                    <span className="w-1.5 h-1.5 rounded-full bg-violet-500 animate-bounce" style={{ animationDelay: '0ms' }} />
+                    <span className="w-1.5 h-1.5 rounded-full bg-violet-500 animate-bounce" style={{ animationDelay: '150ms' }} />
+                    <span className="w-1.5 h-1.5 rounded-full bg-violet-500 animate-bounce" style={{ animationDelay: '300ms' }} />
+                  </span>
+                  <span className="font-medium">
+                    {activeContacto?.nombre?.split(' ')[0] || 'El contacto'} está escribiendo...
+                  </span>
+                </div>
+              )}
+              <div className="p-3 flex gap-2 items-end">
                 <textarea
                   value={texto}
-                  onChange={(e) => setTexto(e.target.value)}
+                  onChange={(e) => onTextoChange(e.target.value)}
                   onKeyDown={(e) => {
                     if (e.key === 'Enter' && !e.shiftKey) {
                       e.preventDefault();
@@ -321,17 +397,31 @@ export default function ChatWidget() {
 function Inbox({
   conversaciones,
   contactos,
+  online,
   onSelect,
 }: {
   conversaciones: Conv[];
   contactos: Contacto[];
+  online: Set<number>;
   onSelect: (uid: number) => void;
 }) {
+  const onlineCount = contactos.filter((c) => online.has(c.id)).length;
   const yaConversando = new Set(conversaciones.map((c) => c.usuario.id));
   const nuevos = contactos.filter((c) => !yaConversando.has(c.id));
 
   return (
     <div>
+      {/* Indicador de gente online */}
+      <div className="px-4 py-2 bg-emerald-50/40 border-b border-emerald-100 flex items-center gap-2 text-xs">
+        <span className="relative flex w-2 h-2">
+          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+          <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
+        </span>
+        <span className="text-emerald-700 font-semibold">
+          {onlineCount} conectado{onlineCount === 1 ? '' : 's'} ahora
+        </span>
+      </div>
+
       {conversaciones.length > 0 && (
         <div>
           <div className="px-4 py-2 text-[10px] font-bold uppercase tracking-widest text-slate-400">
@@ -343,8 +433,17 @@ function Inbox({
               onClick={() => onSelect(c.usuario.id)}
               className="w-full flex items-center gap-3 px-4 py-3 hover:bg-white transition text-left"
             >
-              <div className="w-11 h-11 rounded-full bg-gradient-to-br from-violet-500 to-violet-700 flex items-center justify-center text-white font-bold shrink-0">
-                {c.usuario.nombre?.[0]?.toUpperCase()}
+              <div className="relative shrink-0">
+                <div className="w-11 h-11 rounded-full bg-gradient-to-br from-violet-500 to-violet-700 flex items-center justify-center text-white font-bold">
+                  {c.usuario.nombre?.[0]?.toUpperCase()}
+                </div>
+                <span
+                  className={`absolute bottom-0 right-0 w-3 h-3 rounded-full border-2 border-slate-50 ${
+                    online.has(c.usuario.id)
+                      ? 'bg-emerald-500'
+                      : 'bg-slate-400'
+                  }`}
+                />
               </div>
               <div className="flex-1 min-w-0">
                 <div className="flex justify-between items-baseline gap-2">
@@ -385,14 +484,26 @@ function Inbox({
               onClick={() => onSelect(u.id)}
               className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-white transition text-left"
             >
-              <div className="w-9 h-9 rounded-full bg-slate-200 flex items-center justify-center text-slate-700 font-bold text-sm shrink-0">
-                {u.nombre?.[0]?.toUpperCase()}
+              <div className="relative shrink-0">
+                <div className="w-9 h-9 rounded-full bg-slate-200 flex items-center justify-center text-slate-700 font-bold text-sm">
+                  {u.nombre?.[0]?.toUpperCase()}
+                </div>
+                <span
+                  className={`absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full border-2 border-slate-50 ${
+                    online.has(u.id) ? 'bg-emerald-500' : 'bg-slate-300'
+                  }`}
+                />
               </div>
               <div className="flex-1 min-w-0">
                 <div className="text-sm font-medium text-slate-800 truncate">
                   {u.nombre}
                 </div>
-                <div className="text-[10px] text-slate-400 uppercase tracking-wider">
+                <div className="text-[10px] text-slate-400 uppercase tracking-wider flex items-center gap-1">
+                  {online.has(u.id) && (
+                    <span className="text-emerald-600 font-bold normal-case tracking-normal">
+                      en línea ·
+                    </span>
+                  )}
                   {u.rol?.replace('_', ' ')}
                 </div>
               </div>
@@ -427,18 +538,28 @@ function MessageBubble({
   const isAnulacionReq = m.tipo === 'ANULACION_REQUEST';
   const isAprobada = m.tipo === 'ANULACION_APROBADA';
   const isRechazada = m.tipo === 'ANULACION_RECHAZADA';
+  const isEspecial = isAnulacionReq || isAprobada || isRechazada;
   const anulId = m.metadata?.anulacionId;
+
+  // Mensajes especiales (anulaciones) SIEMPRE usan su color, sin importar si
+  // son míos o del otro. Así no mezcla el gradiente violeta con el color especial.
+  let bubbleClass = '';
+  if (isAnulacionReq)
+    bubbleClass = 'bg-amber-50 text-amber-900 border border-amber-300';
+  else if (isAprobada)
+    bubbleClass = 'bg-emerald-50 text-emerald-900 border border-emerald-300';
+  else if (isRechazada)
+    bubbleClass = 'bg-rose-50 text-rose-900 border border-rose-300';
+  else if (mine)
+    bubbleClass =
+      'bg-gradient-to-br from-violet-600 to-violet-500 text-white rounded-br-sm';
+  else
+    bubbleClass = 'bg-white text-slate-800 rounded-bl-sm border border-slate-100';
 
   return (
     <div className={`flex ${mine ? 'justify-end' : 'justify-start'}`}>
       <div
-        className={`max-w-[80%] rounded-2xl px-3 py-2 shadow-sm ${
-          mine
-            ? 'bg-gradient-to-br from-violet-600 to-violet-500 text-white rounded-br-sm'
-            : 'bg-white text-slate-800 rounded-bl-sm border border-slate-100'
-        } ${isAnulacionReq ? '!bg-amber-50 !text-amber-900 border border-amber-300' : ''}
-        ${isAprobada ? '!bg-emerald-50 !text-emerald-900 border border-emerald-300' : ''}
-        ${isRechazada ? '!bg-rose-50 !text-rose-900 border border-rose-300' : ''}`}
+        className={`max-w-[80%] rounded-2xl px-3 py-2 shadow-sm ${bubbleClass}`}
       >
         {isAnulacionReq && (
           <div className="flex items-center gap-1.5 mb-1 text-[10px] font-bold uppercase tracking-wider">
@@ -475,7 +596,7 @@ function MessageBubble({
         )}
 
         <div
-          className={`text-[10px] mt-1 ${mine && !isAnulacionReq && !isAprobada && !isRechazada ? 'text-violet-100' : 'text-slate-400'}`}
+          className={`text-[10px] mt-1 ${mine && !isEspecial ? 'text-violet-100' : 'text-slate-500 opacity-70'}`}
         >
           {new Date(m.creadoEn).toLocaleTimeString('es-PE', {
             hour: '2-digit',

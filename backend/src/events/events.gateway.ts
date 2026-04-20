@@ -30,6 +30,9 @@ export class EventsGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @WebSocketServer()
   server: Server;
 
+  // userId → cantidad de sockets conectados (múltiples pestañas/devices)
+  private onlineUsers = new Map<number, number>();
+
   constructor(private readonly jwt: JwtService) {}
 
   handleConnection(client: Socket) {
@@ -58,6 +61,16 @@ export class EventsGateway implements OnGatewayConnection, OnGatewayDisconnect {
       if (payload.rol === 'SUPERADMIN') {
         client.join('superadmin');
       }
+
+      // Presence: marca usuario online
+      const prev = this.onlineUsers.get(payload.sub) || 0;
+      this.onlineUsers.set(payload.sub, prev + 1);
+      if (prev === 0) {
+        // primera conexión del usuario → notifica a todos
+        this.server.emit('presence:online', { userId: payload.sub });
+      }
+      // Envía al recién conectado la lista actual
+      client.emit('presence:list', Array.from(this.onlineUsers.keys()));
 
       this.logger.log(
         `Conectado ${payload.username} (${payload.rol}) → sede:${activeSedeId}`,
@@ -94,7 +107,19 @@ export class EventsGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
   handleDisconnect(client: Socket) {
     const user = (client.data as { user?: JwtPayload }).user;
-    if (user) this.logger.log(`Desconectado ${user.username}`);
+    if (!user) return;
+
+    // Presence: disminuye contador; si llega a 0, emite offline
+    const prev = this.onlineUsers.get(user.sub) || 1;
+    const next = prev - 1;
+    if (next <= 0) {
+      this.onlineUsers.delete(user.sub);
+      this.server.emit('presence:offline', { userId: user.sub });
+    } else {
+      this.onlineUsers.set(user.sub, next);
+    }
+
+    this.logger.log(`Desconectado ${user.username}`);
   }
 
   /** Emite a todos los usuarios de una sede + a cualquier SUPERADMIN */
@@ -121,5 +146,10 @@ export class EventsGateway implements OnGatewayConnection, OnGatewayDisconnect {
   /** Emite a un usuario específico */
   emitToUser(userId: number, event: string, payload: any) {
     this.server.to(`user:${userId}`).emit(event, payload);
+  }
+
+  /** Lista de usuarios online actuales */
+  getOnlineUserIds(): number[] {
+    return Array.from(this.onlineUsers.keys());
   }
 }

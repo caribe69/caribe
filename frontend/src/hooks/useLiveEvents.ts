@@ -3,6 +3,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { getSocket } from '@/lib/socket';
 import { useToast } from '@/components/ToastProvider';
 import { useAuthStore } from '@/store/auth';
+import { usePresence } from '@/store/presence';
 
 /**
  * Se conecta al socket y muestra toasts + invalida queries cuando llegan
@@ -64,10 +65,22 @@ export function useLiveEvents() {
     s.on('limpieza:fotos', onLimpFotos);
     s.on('limpieza:completada', onLimpCompletada);
 
+    // Presencia en vivo
+    const { setList, addOnline, removeOnline } = usePresence.getState();
+    const onList = (ids: number[]) => setList(ids);
+    const onOnline = ({ userId }: { userId: number }) => addOnline(userId);
+    const onOffline = ({ userId }: { userId: number }) => removeOnline(userId);
+    s.on('presence:list', onList);
+    s.on('presence:online', onOnline);
+    s.on('presence:offline', onOffline);
+
     return () => {
       s.off('limpieza:iniciada', onLimpIniciada);
       s.off('limpieza:fotos', onLimpFotos);
       s.off('limpieza:completada', onLimpCompletada);
+      s.off('presence:list', onList);
+      s.off('presence:online', onOnline);
+      s.off('presence:offline', onOffline);
     };
-  }, [token]); // solo depende del token (auth), no de show/qc
+  }, [token]);
 }

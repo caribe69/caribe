@@ -22,9 +22,13 @@ cd "${APP_DIR}/backend"
 log "Instalando dependencias backend (si cambiaron)..."
 npm ci --no-audit --no-fund
 
-log "Aplicando migraciones de base de datos..."
+log "Generando cliente Prisma y aplicando cambios de schema..."
 npx prisma generate
-npx prisma migrate deploy
+if [ -d "prisma/migrations" ] && [ -n "$(ls -A prisma/migrations 2>/dev/null | grep -v migration_lock.toml || true)" ]; then
+  npx prisma migrate deploy
+else
+  npx prisma db push --skip-generate --accept-data-loss
+fi
 
 log "Compilando backend..."
 npm run build

@@ -123,9 +123,10 @@ cd "${APP_DIR}/backend"
 log "Instalando dependencias backend..."
 npm ci --no-audit --no-fund
 
-log "Generando cliente Prisma y ejecutando migraciones..."
+log "Generando cliente Prisma y aplicando schema a la BD..."
 npx prisma generate
-npx prisma migrate deploy || npx prisma db push
+# Usamos db push (no hay carpeta de migraciones aún) — crea/actualiza tablas desde schema.prisma
+npx prisma db push --skip-generate --accept-data-loss
 
 # Seed solo si no hay usuarios aún
 if ! sudo -u postgres psql -d "${DB_NAME}" -t -c "SELECT COUNT(*) FROM \"Usuario\";" 2>/dev/null | grep -qE '[1-9]'; then

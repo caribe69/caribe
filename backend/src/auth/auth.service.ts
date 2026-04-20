@@ -32,11 +32,25 @@ export class AuthService {
     const ok = await bcrypt.compare(dto.password, user.passwordHash);
     if (!ok) throw new UnauthorizedException('Credenciales inválidas');
 
+    // SUPERADMIN sin sede asignada: usar la primera sede activa como sede por defecto
+    let sedeEfectiva = user.sede;
+    let sedeIdEfectivo = user.sedeId;
+    if (user.rol === 'SUPERADMIN' && !sedeIdEfectivo) {
+      const primera = await this.prisma.sede.findFirst({
+        where: { activa: true },
+        orderBy: { id: 'asc' },
+      });
+      if (primera) {
+        sedeIdEfectivo = primera.id;
+        sedeEfectiva = primera;
+      }
+    }
+
     const payload: JwtPayload = {
       sub: user.id,
       username: user.username,
       rol: user.rol,
-      sedeId: user.sedeId,
+      sedeId: sedeIdEfectivo,
     };
     return {
       access_token: this.jwt.sign(payload),
@@ -46,8 +60,10 @@ export class AuthService {
         username: user.username,
         email: user.email,
         rol: user.rol,
-        sedeId: user.sedeId,
-        sede: user.sede ? { id: user.sede.id, nombre: user.sede.nombre } : null,
+        sedeId: sedeIdEfectivo,
+        sede: sedeEfectiva
+          ? { id: sedeEfectiva.id, nombre: sedeEfectiva.nombre }
+          : null,
       },
     };
   }

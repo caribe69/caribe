@@ -3,6 +3,9 @@ import {
   WebSocketServer,
   OnGatewayConnection,
   OnGatewayDisconnect,
+  SubscribeMessage,
+  MessageBody,
+  ConnectedSocket,
 } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
 import { Injectable, Logger } from '@nestjs/common';
@@ -43,16 +46,49 @@ export class EventsGateway implements OnGatewayConnection, OnGatewayDisconnect {
       const payload = this.jwt.verify<JwtPayload>(token);
       (client.data as { user?: JwtPayload }).user = payload;
 
-      if (payload.sedeId) client.join(`sede:${payload.sedeId}`);
+      // Sede activa (del handshake, con fallback a la del token)
+      const activeSedeId =
+        Number(client.handshake.auth?.activeSedeId) || payload.sedeId;
+
+      if (activeSedeId) client.join(`sede:${activeSedeId}`);
       if (payload.rol) client.join(`rol:${payload.rol}`);
       client.join(`user:${payload.sub}`);
 
+      // SUPERADMIN se une a todas las sedes (recibe eventos globales)
+      if (payload.rol === 'SUPERADMIN') {
+        client.join('superadmin');
+      }
+
       this.logger.log(
-        `Conectado ${payload.username} (${payload.rol}) → sede:${payload.sedeId}`,
+        `Conectado ${payload.username} (${payload.rol}) → sede:${activeSedeId}`,
       );
     } catch (err) {
       this.logger.warn(`Token inválido, desconectando`);
       client.disconnect(true);
+    }
+  }
+
+  /**
+   * Permite al cliente cambiar de sede sin reconectar.
+   * Útil para SUPERADMIN cuando cambia en el selector.
+   */
+  @SubscribeMessage('switch-sede')
+  handleSwitchSede(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() data: { sedeId: number },
+  ) {
+    const user = (client.data as { user?: JwtPayload }).user;
+    if (!user) return;
+
+    // Salir de todos los rooms sede:*
+    for (const room of client.rooms) {
+      if (room.startsWith('sede:')) client.leave(room);
+    }
+    if (data.sedeId) {
+      client.join(`sede:${data.sedeId}`);
+      this.logger.log(
+        `${user.username} cambió a sede:${data.sedeId}`,
+      );
     }
   }
 
@@ -61,9 +97,11 @@ export class EventsGateway implements OnGatewayConnection, OnGatewayDisconnect {
     if (user) this.logger.log(`Desconectado ${user.username}`);
   }
 
-  /** Emite a todos los usuarios de una sede */
+  /** Emite a todos los usuarios de una sede + a cualquier SUPERADMIN */
   emitToSede(sedeId: number, event: string, payload: any) {
-    this.server.to(`sede:${sedeId}`).emit(event, payload);
+    const body = { ...payload, sedeId };
+    this.server.to(`sede:${sedeId}`).emit(event, body);
+    this.server.to('superadmin').emit(event, body);
   }
 
   /** Emite a todos los usuarios con un rol específico de una sede */

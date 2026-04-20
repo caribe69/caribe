@@ -20,6 +20,7 @@ import { useAuthStore, UsuarioInfo } from '@/store/auth';
 import { api } from '@/lib/api';
 import SedeSwitchOverlay from './SedeSwitchOverlay';
 import { useSocketStatus } from '@/hooks/useSocketStatus';
+import { switchSocketSede } from '@/lib/socket';
 
 interface PageMeta {
   title: string;
@@ -124,6 +125,7 @@ export default function TopBar({ usuario }: { usuario: UsuarioInfo | null }) {
     if (!sede) return;
     setSwitching(sede.nombre);
     setActiveSede(id);
+    switchSocketSede(id);
     qc.clear();
     setTimeout(() => setSwitching(null), 1500);
   };

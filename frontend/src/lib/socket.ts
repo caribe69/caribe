@@ -11,7 +11,7 @@ function baseUrl(): string {
 }
 
 export function getSocket(): Socket {
-  const token = useAuthStore.getState().token;
+  const { token, activeSedeId } = useAuthStore.getState();
 
   // Si el token cambió, recrear la conexión
   if (socket && token !== lastToken) {
@@ -23,7 +23,7 @@ export function getSocket(): Socket {
 
   lastToken = token;
   socket = io(baseUrl(), {
-    auth: token ? { token } : {},
+    auth: token ? { token, activeSedeId } : {},
     transports: ['websocket', 'polling'],
     autoConnect: true,
     reconnection: true,
@@ -50,6 +50,13 @@ export function disconnectSocket() {
     socket.disconnect();
     socket = null;
     lastToken = null;
+  }
+}
+
+/** Notifica al servidor de un cambio de sede activa (sin reconectar) */
+export function switchSocketSede(sedeId: number) {
+  if (socket?.connected) {
+    socket.emit('switch-sede', { sedeId });
   }
 }
 

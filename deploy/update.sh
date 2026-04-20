@@ -30,11 +30,13 @@ else
   npx prisma db push --skip-generate --accept-data-loss
 fi
 
-log "Compilando backend..."
+log "Compilando backend (clean build)..."
+rm -rf "${APP_DIR}/backend/dist" "${APP_DIR}/backend/tsconfig.tsbuildinfo"
 npm run build
 
-if [ ! -f "${APP_DIR}/backend/dist/main.js" ]; then
-  echo "ERROR: el build del backend no produjo dist/main.js" >&2
+if [ ! -f "${APP_DIR}/backend/dist/main.js" ] || [ ! -f "${APP_DIR}/backend/dist/prisma/prisma.module.js" ]; then
+  echo "ERROR: el build del backend está incompleto" >&2
+  ls -la "${APP_DIR}/backend/dist" || true
   exit 1
 fi
 

@@ -1,4 +1,6 @@
 import { Body, Controller, Post, UseGuards } from '@nestjs/common';
+import { IsInt, IsOptional, IsString } from 'class-validator';
+import { Type } from 'class-transformer';
 import { Rol } from '@prisma/client';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../auth/roles.guard';
@@ -8,8 +10,8 @@ import { JwtPayload } from '../auth/auth.service';
 import { EventsGateway } from './events.gateway';
 
 class TestEventDto {
-  sedeId?: number;
-  event?: string;
+  @IsOptional() @Type(() => Number) @IsInt() sedeId?: number;
+  @IsOptional() @IsString() event?: string;
 }
 
 @UseGuards(JwtAuthGuard, RolesGuard)

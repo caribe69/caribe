@@ -615,12 +615,13 @@ function NuevoAlquilerModal({
                 )}
               </div>
             </div>
-            {lookup?.frecuente && (
+            {lookup?.fuente === 'local' && (
               <div className="mt-2 flex items-center gap-2 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-lg px-3 py-2 text-xs">
                 <UserCheck size={14} />
                 <span>
-                  <b>Cliente frecuente</b> · {lookup.visitas} visita
-                  {lookup.visitas === 1 ? '' : 's'} · última:{' '}
+                  <b>Cliente recurrente</b> · encontrado en el sistema ·{' '}
+                  {lookup.visitas} visita{lookup.visitas === 1 ? '' : 's'} ·
+                  última:{' '}
                   {new Date(lookup.ultimaVisita).toLocaleDateString('es-PE')}
                 </span>
               </div>
@@ -629,22 +630,21 @@ function NuevoAlquilerModal({
               <div className="mt-2 flex items-center gap-2 bg-violet-50 border border-violet-200 text-violet-800 rounded-lg px-3 py-2 text-xs">
                 <Search size={14} />
                 <span>
-                  Datos de RENIEC: <b>{lookup.nombre}</b>
+                  <b>Encontrado en RENIEC</b> · {lookup.nombre}
                 </span>
               </div>
             )}
-            {lookup?.fuente === 'ninguna' &&
+            {lookup &&
+              !lookup.encontrado &&
               form.clienteDni.length === 8 &&
               !buscando && (
-                <div className="mt-2 text-xs text-slate-500">
-                  Cliente nuevo. Completa los datos manualmente.
+                <div className="mt-2 flex items-center gap-2 bg-amber-50 border border-amber-200 text-amber-800 rounded-lg px-3 py-2 text-xs">
+                  <span>
+                    <b>No encontrado</b> · no está en el sistema ni en RENIEC.
+                    Rellena los datos manualmente.
+                  </span>
                 </div>
               )}
-            {lookup?.fuente === 'api_error' && (
-              <div className="mt-2 text-xs text-amber-700">
-                No se pudo consultar RENIEC. Completa los datos manualmente.
-              </div>
-            )}
           </div>
 
           <input

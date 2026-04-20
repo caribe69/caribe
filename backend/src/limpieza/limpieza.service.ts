@@ -185,6 +185,8 @@ export class LimpiezaService {
           productoId: producto.id,
           cantidad: dto.cantidad,
         },
+        // Incluye el producto para que el cliente pueda mostrar nombre + unidad
+        include: { producto: true },
       });
       await tx.productoLimpieza.update({
         where: { id: producto.id },
@@ -201,8 +203,8 @@ export class LimpiezaService {
     if (!t.fotos.length)
       throw new BadRequestException('Debes subir al menos una foto de evidencia');
 
-    const resultado = await this.prisma.$transaction(async (tx) => {
-      const act = await tx.tareaLimpieza.update({
+    await this.prisma.$transaction(async (tx) => {
+      await tx.tareaLimpieza.update({
         where: { id: t.id },
         data: {
           estado: EstadoTareaLimpieza.COMPLETADA,
@@ -214,8 +216,10 @@ export class LimpiezaService {
         where: { id: t.habitacionId },
         data: { estado: EstadoHabitacion.DISPONIBLE },
       });
-      return act;
     });
+
+    // Devuelve la tarea completa (con piso, fotos, productos) para el cliente
+    const actualizada = await this.findOne(id, user);
 
     this.events.emitToSede(t.sedeId, 'limpieza:completada', {
       tareaId: t.id,
@@ -223,6 +227,6 @@ export class LimpiezaService {
       porUsuario: t.asignadaA?.nombre || user.username,
     });
 
-    return resultado;
+    return actualizada;
   }
 }

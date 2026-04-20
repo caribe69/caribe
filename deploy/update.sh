@@ -17,6 +17,13 @@ log "Git pull..."
 git fetch --all
 git reset --hard origin/main
 
+# Auto-re-exec con la versión recién descargada del script (evita que bash
+# ejecute la versión vieja cacheada en memoria cuando el script se modificó)
+if [ -z "${HOTEL_UPDATE_REEXEC:-}" ]; then
+  export HOTEL_UPDATE_REEXEC=1
+  exec bash "${APP_DIR}/deploy/update.sh" "$@"
+fi
+
 log "Instalando dependencias (workspaces)..."
 NODE_ENV=development npm ci --no-audit --no-fund --include=dev
 

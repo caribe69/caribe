@@ -221,13 +221,90 @@ export class CajaService {
 
   async listarTurnos(user: JwtPayload, sedeIdQuery?: number) {
     const sedeId = resolveSedeId(user, sedeIdQuery);
+    const where: any = { sedeId };
+    // ADMIN_SEDE / SUPERADMIN ven todos los turnos de la sede;
+    // otros roles (HOTELERO / CAJERO / LIMPIEZA) ven solo los suyos.
+    if (user.rol !== 'SUPERADMIN' && user.rol !== 'ADMIN_SEDE') {
+      where.usuarioId = user.sub;
+    }
     return this.prisma.turnoCaja.findMany({
-      where: { sedeId },
+      where,
       include: {
         usuario: { select: { id: true, nombre: true, username: true } },
       },
       orderBy: { abiertoEn: 'desc' },
-      take: 100,
+      take: 200,
     });
+  }
+
+  /** Estadísticas agregadas (alcance según rol) */
+  async estadisticas(user: JwtPayload, sedeIdQuery?: number) {
+    const sedeId = resolveSedeId(user, sedeIdQuery);
+    const where: any = { sedeId, estado: 'CERRADO' };
+    if (user.rol !== 'SUPERADMIN' && user.rol !== 'ADMIN_SEDE') {
+      where.usuarioId = user.sub;
+    }
+
+    const hoy = new Date();
+    hoy.setHours(0, 0, 0, 0);
+    const semana = new Date(hoy);
+    semana.setDate(semana.getDate() - 7);
+    const mes = new Date(hoy);
+    mes.setDate(mes.getDate() - 30);
+
+    const turnos = await this.prisma.turnoCaja.findMany({
+      where,
+      select: {
+        id: true,
+        cerradoEn: true,
+        totalEfectivo: true,
+        totalVisa: true,
+        totalMaster: true,
+        totalYape: true,
+        totalPlin: true,
+        totalOtro: true,
+        totalGeneral: true,
+      },
+      orderBy: { cerradoEn: 'desc' },
+      take: 200,
+    });
+
+    const agregar = (desde: Date) => {
+      const relevantes = turnos.filter(
+        (t) => t.cerradoEn && new Date(t.cerradoEn) >= desde,
+      );
+      const total = relevantes.reduce(
+        (s, t) => s + Number(t.totalGeneral),
+        0,
+      );
+      const efectivo = relevantes.reduce(
+        (s, t) => s + Number(t.totalEfectivo),
+        0,
+      );
+      const visa = relevantes.reduce((s, t) => s + Number(t.totalVisa), 0);
+      const master = relevantes.reduce(
+        (s, t) => s + Number(t.totalMaster),
+        0,
+      );
+      const yape = relevantes.reduce((s, t) => s + Number(t.totalYape), 0);
+      const plin = relevantes.reduce((s, t) => s + Number(t.totalPlin), 0);
+      const otro = relevantes.reduce((s, t) => s + Number(t.totalOtro), 0);
+      return {
+        cantidadTurnos: relevantes.length,
+        total,
+        promedio: relevantes.length ? total / relevantes.length : 0,
+        porMetodo: { efectivo, visa, master, yape, plin, otro },
+      };
+    };
+
+    return {
+      scope:
+        user.rol === 'SUPERADMIN' || user.rol === 'ADMIN_SEDE'
+          ? 'sede'
+          : 'personal',
+      hoy: agregar(hoy),
+      semana: agregar(semana),
+      mes: agregar(mes),
+    };
   }
 }

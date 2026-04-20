@@ -59,13 +59,24 @@ export class CajaController {
     return this.service.reporte(id, user);
   }
 
-  @Roles(Rol.SUPERADMIN, Rol.ADMIN_SEDE)
+  // Cualquier rol autenticado: ADMIN ve todos de la sede, resto solo los suyos
   @Get('turnos')
   listar(
     @CurrentUser() user: JwtPayload,
     @Query('sedeId') sedeId?: string,
   ) {
     return this.service.listarTurnos(
+      user,
+      sedeId ? Number(sedeId) : undefined,
+    );
+  }
+
+  @Get('estadisticas')
+  estadisticas(
+    @CurrentUser() user: JwtPayload,
+    @Query('sedeId') sedeId?: string,
+  ) {
+    return this.service.estadisticas(
       user,
       sedeId ? Number(sedeId) : undefined,
     );

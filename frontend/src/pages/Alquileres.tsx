@@ -15,10 +15,12 @@ import {
   Printer,
   Clock3,
   CalendarPlus,
+  Briefcase,
 } from 'lucide-react';
 import { api } from '@/lib/api';
 import { useDialog } from '@/components/ConfirmProvider';
 import BoletaAlquiler from '@/components/BoletaAlquiler';
+import ReservaGrupalModal from '@/components/ReservaGrupalModal';
 import { useAuthStore } from '@/store/auth';
 import { useToast } from '@/components/ToastProvider';
 
@@ -82,10 +84,17 @@ interface Alquiler {
 
 export default function Alquileres() {
   const [vista, setVista] = useState<'mapa' | 'lista'>('mapa');
+  const [grupalOpen, setGrupalOpen] = useState(false);
 
   return (
     <div>
-      <div className="flex items-center justify-end mb-5">
+      <div className="flex items-center justify-between mb-5 flex-wrap gap-3">
+        <button
+          onClick={() => setGrupalOpen(true)}
+          className="inline-flex items-center gap-2 bg-gradient-to-r from-amber-500 to-amber-400 hover:from-amber-600 hover:to-amber-500 text-white px-4 py-2.5 rounded-xl text-sm font-semibold shadow-md shadow-amber-500/30 transition btn-press"
+        >
+          <Briefcase size={16} /> Reserva corporativa
+        </button>
         <div className="flex gap-1 bg-white border border-slate-200 rounded-xl p-1 shadow-sm">
           <button
             onClick={() => setVista('mapa')}
@@ -111,6 +120,10 @@ export default function Alquileres() {
       </div>
 
       {vista === 'mapa' ? <MapaHabitaciones /> : <ListaAlquileres />}
+
+      {grupalOpen && (
+        <ReservaGrupalModal onClose={() => setGrupalOpen(false)} />
+      )}
     </div>
   );
 }

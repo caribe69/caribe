@@ -40,6 +40,7 @@ model Sede {
   anulacionRequests AnulacionRequest[]
   transferenciasOrigen  TransferenciaSede[] @relation("TransferenciaOrigen")
   transferenciasDestino TransferenciaSede[] @relation("TransferenciaDestino")
+  reservasGrupales  ReservaGrupal[]
 }
 
 model Usuario {
@@ -67,6 +68,7 @@ model Usuario {
   anulacionesAprobadas   AnulacionRequest[] @relation("AnuReqAprob")
   transferenciasCreadas   TransferenciaSede[] @relation("TransferenciaCreada")
   transferenciasRecibidas TransferenciaSede[] @relation("TransferenciaRecibida")
+  reservasGrupalesCreadas  ReservaGrupal[] @relation("ReservaGrupalCreadaPor")
 
   @@index([sedeId])
 }
@@ -189,6 +191,10 @@ model Alquiler {
   turnoCajaId     Int?
   turnoCaja       TurnoCaja?      @relation(fields: [turnoCajaId], references: [id])
 
+  // Si forma parte de una reserva corporativa/grupal
+  reservaGrupalId Int?
+  reservaGrupal   ReservaGrupal?  @relation(fields: [reservaGrupalId], references: [id])
+
   clienteNombre   String
   clienteDni      String
   clienteTelefono String?
@@ -226,6 +232,39 @@ model Alquiler {
   @@index([sedeId, estado])
   @@index([habitacionId])
   @@index([turnoCajaId])
+  @@index([reservaGrupalId])
+}
+
+model ReservaGrupal {
+  id                     Int        @id @default(autoincrement())
+  sedeId                 Int
+  sede                   Sede       @relation(fields: [sedeId], references: [id])
+  turnoCajaId            Int?
+  turnoCaja              TurnoCaja? @relation(fields: [turnoCajaId], references: [id])
+
+  // Datos de la empresa (siempre FACTURA con RUC)
+  clienteRuc             String
+  clienteRazonSocial     String
+  clienteDireccionFiscal String?
+  contactoNombre         String?
+  contactoTelefono       String?
+
+  fechaIngreso           DateTime
+  fechaSalida            DateTime
+
+  total                  Decimal    @db.Decimal(10, 2)
+  metodoPago             MetodoPago
+  notas                  String?
+  estado                 EstadoAlquiler @default(ACTIVO)
+
+  creadoPorId            Int
+  creadoPor              Usuario    @relation("ReservaGrupalCreadaPor", fields: [creadoPorId], references: [id])
+  creadoEn               DateTime   @default(now())
+
+  alquileres             Alquiler[]
+
+  @@index([sedeId, estado])
+  @@index([clienteRuc])
 }
 
 model ConsumoProducto {
@@ -406,6 +445,7 @@ model TurnoCaja {
 
   alquileres     Alquiler[]
   ventas         Venta[]
+  reservasGrupales ReservaGrupal[]
 
   @@index([sedeId, estado])
   @@index([usuarioId])

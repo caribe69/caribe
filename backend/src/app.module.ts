@@ -20,6 +20,7 @@ import { AnulacionesModule } from './anulaciones/anulaciones.module';
 import { SettingsModule } from './settings/settings.module';
 import { ReportesModule } from './reportes/reportes.module';
 import { TransferenciasModule } from './transferencias/transferencias.module';
+import { ReservasGrupalesModule } from './reservas-grupales/reservas-grupales.module';
 
 @Module({
   imports: [
@@ -50,6 +51,7 @@ import { TransferenciasModule } from './transferencias/transferencias.module';
     SettingsModule,
     ReportesModule,
     TransferenciasModule,
+    ReservasGrupalesModule,
   ],
 })
 export class AppModule {}

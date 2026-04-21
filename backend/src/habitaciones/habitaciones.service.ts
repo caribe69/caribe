@@ -3,7 +3,12 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { EstadoHabitacion, EstadoTareaLimpieza, Rol } from '@prisma/client';
+import {
+  EstadoAlquiler,
+  EstadoHabitacion,
+  EstadoTareaLimpieza,
+  Rol,
+} from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { JwtPayload } from '../auth/auth.service';
 import { resolveSedeId, enforceSede } from '../common/sede-scope';
@@ -17,17 +22,43 @@ import {
 export class HabitacionesService {
   constructor(private prisma: PrismaService) {}
 
-  findAll(user: JwtPayload, sedeIdQuery?: number, estado?: EstadoHabitacion) {
+  async findAll(
+    user: JwtPayload,
+    sedeIdQuery?: number,
+    estado?: EstadoHabitacion,
+  ) {
     const sedeId = resolveSedeId(user, sedeIdQuery);
-    return this.prisma.habitacion.findMany({
+    const habitaciones = await this.prisma.habitacion.findMany({
       where: {
         sedeId,
         ...(estado ? { estado } : {}),
         activa: true,
       },
-      include: { piso: true },
+      include: {
+        piso: true,
+        // Alquiler activo (si está OCUPADA)
+        alquileres: {
+          where: {
+            estado: { in: [EstadoAlquiler.ACTIVO, EstadoAlquiler.FINALIZADO] },
+          },
+          orderBy: { creadoEn: 'desc' },
+          take: 1,
+          select: {
+            id: true,
+            estado: true,
+            clienteNombre: true,
+            clienteDni: true,
+            fechaIngreso: true,
+            fechaSalida: true,
+            fechaSalidaReal: true,
+            total: true,
+            creadoEn: true,
+          },
+        },
+      },
       orderBy: [{ pisoId: 'asc' }, { numero: 'asc' }],
     });
+    return habitaciones;
   }
 
   async findOne(id: number, user: JwtPayload) {

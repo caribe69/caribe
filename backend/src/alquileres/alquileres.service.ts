@@ -21,6 +21,7 @@ import {
   AgregarConsumoDto,
   AnularAlquilerDto,
   CreateAlquilerDto,
+  ExtenderAlquilerDto,
   FinalizarAlquilerDto,
 } from './alquiler.dto';
 
@@ -340,6 +341,71 @@ export class AlquileresService {
       });
 
       return act;
+    });
+  }
+
+  /**
+   * Calcula cuánto costaría extender sin aplicar el cambio.
+   * Devuelve { costo, nuevaFechaSalida, nuevoPrecioHabitacion, nuevoTotal }.
+   */
+  async cotizarExtension(id: number, dto: ExtenderAlquilerDto, user: JwtPayload) {
+    const alquiler = await this.findOne(id, user);
+    const habitacion = await this.prisma.habitacion.findUnique({
+      where: { id: alquiler.habitacionId },
+    });
+    if (!habitacion) throw new NotFoundException('Habitación no encontrada');
+
+    const precioUnidad =
+      dto.tipo === 'HORA'
+        ? Number(habitacion.precioHora)
+        : Number(habitacion.precioNoche);
+    const costo = precioUnidad * dto.cantidad;
+
+    const fechaActual = new Date(alquiler.fechaSalida);
+    const nuevaFechaSalida = new Date(fechaActual);
+    if (dto.tipo === 'HORA') {
+      nuevaFechaSalida.setHours(nuevaFechaSalida.getHours() + dto.cantidad);
+    } else {
+      nuevaFechaSalida.setDate(nuevaFechaSalida.getDate() + dto.cantidad);
+    }
+
+    const nuevoPrecioHabitacion = Number(alquiler.precioHabitacion) + costo;
+    const nuevoTotal = Number(alquiler.totalProductos) + nuevoPrecioHabitacion;
+
+    return {
+      alquilerId: alquiler.id,
+      tipo: dto.tipo,
+      cantidad: dto.cantidad,
+      precioUnidad,
+      costo,
+      nuevaFechaSalida: nuevaFechaSalida.toISOString(),
+      nuevoPrecioHabitacion,
+      nuevoTotal,
+    };
+  }
+
+  async extender(id: number, dto: ExtenderAlquilerDto, user: JwtPayload) {
+    const alquiler = await this.findOne(id, user);
+    if (alquiler.estado !== EstadoAlquiler.ACTIVO)
+      throw new BadRequestException('Solo puedes extender alquileres activos');
+
+    const cot = await this.cotizarExtension(id, dto, user);
+
+    return this.prisma.alquiler.update({
+      where: { id: alquiler.id },
+      data: {
+        fechaSalida: new Date(cot.nuevaFechaSalida),
+        precioHabitacion: cot.nuevoPrecioHabitacion,
+        total: cot.nuevoTotal,
+        notas: alquiler.notas
+          ? `${alquiler.notas}\nExtendido ${dto.cantidad} ${dto.tipo === 'HORA' ? 'hora(s)' : 'día(s)'} (+S/ ${cot.costo.toFixed(2)})`
+          : `Extendido ${dto.cantidad} ${dto.tipo === 'HORA' ? 'hora(s)' : 'día(s)'} (+S/ ${cot.costo.toFixed(2)})`,
+      },
+      include: {
+        habitacion: { include: { piso: true } },
+        consumos: { include: { producto: true } },
+        creadoPor: { select: { id: true, nombre: true, username: true } },
+      },
     });
   }
 

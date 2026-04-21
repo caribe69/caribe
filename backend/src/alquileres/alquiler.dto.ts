@@ -39,3 +39,10 @@ export class FinalizarAlquilerDto {
 export class AnularAlquilerDto {
   @IsString() @MinLength(3) motivo: string;
 }
+
+export class ExtenderAlquilerDto {
+  @IsEnum({ HORA: 'HORA', DIA: 'DIA' } as const)
+  tipo: 'HORA' | 'DIA';
+
+  @Type(() => Number) @IsInt() @Min(1) cantidad: number;
+}

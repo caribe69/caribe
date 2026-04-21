@@ -23,6 +23,7 @@ import {
   AgregarConsumoDto,
   AnularAlquilerDto,
   CreateAlquilerDto,
+  ExtenderAlquilerDto,
   FinalizarAlquilerDto,
 } from './alquiler.dto';
 
@@ -357,6 +358,26 @@ export class AlquileresController {
     @CurrentUser() user: JwtPayload,
   ) {
     return this.service.finalizar(id, dto, user);
+  }
+
+  @Roles(Rol.SUPERADMIN, Rol.ADMIN_SEDE, Rol.HOTELERO, Rol.CAJERO)
+  @Post(':id/cotizar-extension')
+  cotizarExtension(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: ExtenderAlquilerDto,
+    @CurrentUser() user: JwtPayload,
+  ) {
+    return this.service.cotizarExtension(id, dto, user);
+  }
+
+  @Roles(Rol.SUPERADMIN, Rol.ADMIN_SEDE, Rol.HOTELERO, Rol.CAJERO)
+  @Patch(':id/extender')
+  extender(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: ExtenderAlquilerDto,
+    @CurrentUser() user: JwtPayload,
+  ) {
+    return this.service.extender(id, dto, user);
   }
 
   @Roles(Rol.SUPERADMIN, Rol.ADMIN_SEDE, Rol.HOTELERO, Rol.CAJERO)

@@ -13,6 +13,8 @@ import {
   UserCheck,
   Loader2,
   Printer,
+  Clock3,
+  CalendarPlus,
 } from 'lucide-react';
 import { api } from '@/lib/api';
 import { useDialog } from '@/components/ConfirmProvider';
@@ -29,6 +31,17 @@ interface Habitacion {
   precioNoche: string;
   estado: string;
   piso: { id: number; numero: number; nombre?: string };
+  alquileres?: Array<{
+    id: number;
+    estado: string;
+    clienteNombre: string;
+    clienteDni: string;
+    fechaIngreso: string;
+    fechaSalida: string;
+    fechaSalidaReal: string | null;
+    total: string;
+    creadoEn: string;
+  }>;
 }
 
 interface Alquiler {
@@ -174,6 +187,13 @@ function MapaHabitaciones() {
   const [reservar, setReservar] = useState<Habitacion | null>(null);
   const [verAlquiler, setVerAlquiler] = useState<Habitacion | null>(null);
 
+  // Tick cada 60s para actualizar "hace X min" en vivo
+  const [tick, setTick] = useState(Date.now());
+  useEffect(() => {
+    const t = setInterval(() => setTick(Date.now()), 60_000);
+    return () => clearInterval(t);
+  }, []);
+
   const { data, isLoading } = useQuery({
     queryKey: ['habitaciones'],
     queryFn: async () =>
@@ -210,10 +230,36 @@ function MapaHabitaciones() {
         {data?.map((h) => {
           const s = ESTADO_STYLES[h.estado] || ESTADO_STYLES.FUERA_SERVICIO;
           const clickable = h.estado === 'DISPONIBLE' || h.estado === 'OCUPADA';
+          const alquilerRef = h.alquileres?.[0];
+
+          // Tiempo transcurrido (OCUPADA: desde creadoEn; ALISTANDO: desde fechaSalidaReal)
+          const tiempoBase =
+            h.estado === 'OCUPADA' && alquilerRef?.estado === 'ACTIVO'
+              ? new Date(alquilerRef.creadoEn)
+              : h.estado === 'ALISTANDO' && alquilerRef?.fechaSalidaReal
+                ? new Date(alquilerRef.fechaSalidaReal)
+                : null;
+          const minutosEn = tiempoBase
+            ? Math.floor((tick - tiempoBase.getTime()) / 60000)
+            : 0;
+          const alistandoAtrasada =
+            h.estado === 'ALISTANDO' && minutosEn >= 30;
+
+          // Tooltip title completo
+          let tooltip = '';
+          if (h.estado === 'OCUPADA' && alquilerRef) {
+            tooltip = `${alquilerRef.clienteNombre} · DNI ${alquilerRef.clienteDni}\nIngreso: ${new Date(alquilerRef.creadoEn).toLocaleString('es-PE')}\nSalida prevista: ${new Date(alquilerRef.fechaSalida).toLocaleString('es-PE')}\nLleva: ${formatDuracion(minutosEn)}`;
+          } else if (h.estado === 'ALISTANDO') {
+            tooltip = tiempoBase
+              ? `En limpieza desde: ${tiempoBase.toLocaleString('es-PE')}\nHace ${formatDuracion(minutosEn)}${alistandoAtrasada ? ' · ⚠ atrasado' : ''}`
+              : 'En limpieza';
+          }
+
           return (
             <button
               key={h.id}
               disabled={!clickable}
+              title={tooltip || undefined}
               onClick={() => {
                 if (h.estado === 'DISPONIBLE') setReservar(h);
                 else if (h.estado === 'OCUPADA') setVerAlquiler(h);
@@ -222,8 +268,15 @@ function MapaHabitaciones() {
                 clickable
                   ? 'hover:shadow-xl hover:-translate-y-1 cursor-pointer'
                   : 'cursor-not-allowed opacity-80'
-              }`}
+              } ${alistandoAtrasada ? 'ring-2 ring-rose-400 shadow-rose-300' : ''}`}
             >
+              {/* Badge de atraso para ALISTANDO */}
+              {alistandoAtrasada && (
+                <div className="absolute -top-2 -right-2 z-10 bg-rose-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-lg animate-bounce">
+                  ATRASADO
+                </div>
+              )}
+
               {/* Top row: badge + icon */}
               <div className="flex items-start justify-between mb-3">
                 <div
@@ -258,6 +311,37 @@ function MapaHabitaciones() {
               {h.caracteristicas && (
                 <div className="mt-0.5 text-xs text-slate-500 line-clamp-1">
                   {h.caracteristicas}
+                </div>
+              )}
+
+              {/* Info del huésped (solo OCUPADA) */}
+              {h.estado === 'OCUPADA' && alquilerRef && (
+                <div className="mt-3 bg-white/70 backdrop-blur-sm border border-white rounded-xl px-2.5 py-1.5">
+                  <div className="text-[10px] text-slate-500 uppercase tracking-widest font-semibold">
+                    Huésped
+                  </div>
+                  <div className="text-xs font-bold text-slate-800 truncate">
+                    {alquilerRef.clienteNombre}
+                  </div>
+                  <div className="flex items-center gap-1 text-[10px] text-slate-500 mt-0.5 font-medium">
+                    <Clock3 size={10} />
+                    {formatDuracion(minutosEn)}
+                  </div>
+                </div>
+              )}
+
+              {/* Tiempo de ALISTANDO */}
+              {h.estado === 'ALISTANDO' && tiempoBase && (
+                <div
+                  className={`mt-3 rounded-xl px-2.5 py-1.5 text-[11px] font-semibold flex items-center gap-1.5 ${
+                    alistandoAtrasada
+                      ? 'bg-rose-100 text-rose-700 border border-rose-300'
+                      : 'bg-white/70 text-slate-700 border border-white'
+                  }`}
+                >
+                  <Clock3 size={11} />
+                  {alistandoAtrasada ? '⚠ Limpiando hace' : 'En limpieza hace'}{' '}
+                  {formatDuracion(minutosEn)}
                 </div>
               )}
 
@@ -866,7 +950,9 @@ function ListaAlquileres() {
   const qc = useQueryClient();
   const dialog = useDialog();
   const [filtro, setFiltro] = useState<string>('');
+  const [busqueda, setBusqueda] = useState('');
   const [boletaAlquiler, setBoletaAlquiler] = useState<Alquiler | null>(null);
+  const [extender, setExtender] = useState<Alquiler | null>(null);
 
   const { data, isLoading } = useQuery({
     queryKey: ['alquileres', filtro],
@@ -877,6 +963,20 @@ function ListaAlquileres() {
         )
       ).data,
   });
+
+  // Filtrado client-side por búsqueda
+  const filtrados = useMemo(() => {
+    if (!data) return [];
+    const q = busqueda.trim().toLowerCase();
+    if (!q) return data;
+    return data.filter(
+      (a) =>
+        a.clienteNombre.toLowerCase().includes(q) ||
+        a.clienteDni.toLowerCase().includes(q) ||
+        a.habitacion.numero.toLowerCase().includes(q) ||
+        String(a.id).includes(q),
+    );
+  }, [data, busqueda]);
 
   const anular = useMutation({
     mutationFn: async ({ id, motivo }: { id: number; motivo: string }) =>
@@ -892,26 +992,51 @@ function ListaAlquileres() {
 
   return (
     <div>
-      <div className="flex gap-2 mb-4 flex-wrap">
+      <div className="flex gap-2 mb-4 flex-wrap items-center">
         {['', 'ACTIVO', 'FINALIZADO', 'ANULADO'].map((e) => (
           <button
             key={e || 'todos'}
             onClick={() => setFiltro(e)}
-            className={`px-3 py-1.5 rounded text-sm ${
+            className={`px-3 py-1.5 rounded-xl text-sm font-medium transition ${
               filtro === e
-                ? 'bg-brand-500 text-white'
-                : 'bg-white border hover:bg-slate-50'
+                ? 'bg-gradient-to-r from-violet-600 to-violet-500 text-white shadow-md shadow-violet-500/30'
+                : 'bg-white border border-slate-200 hover:bg-slate-50 text-slate-700'
             }`}
           >
             {e || 'Todos'}
           </button>
         ))}
+        <div className="flex-1 min-w-[240px] relative ml-auto">
+          <Search
+            size={14}
+            className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
+          />
+          <input
+            value={busqueda}
+            onChange={(e) => setBusqueda(e.target.value)}
+            placeholder="Buscar por nombre, DNI, habitación o #..."
+            className="w-full bg-white border border-slate-200 rounded-xl pl-9 pr-8 py-2 text-sm focus:outline-none focus:border-violet-400 focus:ring-2 focus:ring-violet-100"
+          />
+          {busqueda && (
+            <button
+              onClick={() => setBusqueda('')}
+              className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-slate-700"
+            >
+              <X size={13} />
+            </button>
+          )}
+        </div>
       </div>
 
       {isLoading && <div>Cargando...</div>}
 
       <div className="space-y-3">
-        {data?.map((a) => (
+        {filtrados.length === 0 && !isLoading && busqueda && (
+          <div className="bg-white rounded-xl border border-slate-200 p-8 text-center text-slate-400 text-sm">
+            Sin resultados para <b>"{busqueda}"</b>
+          </div>
+        )}
+        {filtrados.map((a) => (
           <div key={a.id} className="bg-white rounded-xl border p-4 shadow-sm">
             <div className="flex justify-between items-start">
               <div>
@@ -964,9 +1089,15 @@ function ListaAlquileres() {
                 <>
                   <button
                     onClick={() => finalizar.mutate(a.id)}
-                    className="text-xs flex items-center gap-1 bg-emerald-500 hover:bg-emerald-600 text-white px-3 py-1.5 rounded"
+                    className="text-xs flex items-center gap-1 bg-emerald-500 hover:bg-emerald-600 text-white px-3 py-1.5 rounded btn-press"
                   >
                     <CheckCircle size={14} /> Finalizar
+                  </button>
+                  <button
+                    onClick={() => setExtender(a)}
+                    className="text-xs flex items-center gap-1 bg-amber-500 hover:bg-amber-600 text-white px-3 py-1.5 rounded btn-press"
+                  >
+                    <CalendarPlus size={14} /> Extender
                   </button>
                   <button
                     onClick={async () => {
@@ -1006,6 +1137,245 @@ function ListaAlquileres() {
           onClose={() => setBoletaAlquiler(null)}
         />
       )}
+      {extender && (
+        <ExtenderAlquilerModal
+          alquiler={extender}
+          onClose={() => setExtender(null)}
+        />
+      )}
     </div>
   );
+}
+
+function ExtenderAlquilerModal({
+  alquiler,
+  onClose,
+}: {
+  alquiler: Alquiler;
+  onClose: () => void;
+}) {
+  const qc = useQueryClient();
+  const { show: toast } = useToast();
+  const [tipo, setTipo] = useState<'HORA' | 'DIA'>('HORA');
+  const [cantidad, setCantidad] = useState(1);
+
+  const cotizacion = useQuery({
+    queryKey: ['extender-cotizar', alquiler.id, tipo, cantidad],
+    queryFn: async () =>
+      (
+        await api.post(`/alquileres/${alquiler.id}/cotizar-extension`, {
+          tipo,
+          cantidad,
+        })
+      ).data as {
+        costo: number;
+        precioUnidad: number;
+        nuevaFechaSalida: string;
+        nuevoTotal: number;
+      },
+    enabled: cantidad > 0,
+  });
+
+  const ejecutar = useMutation({
+    mutationFn: async () =>
+      (
+        await api.patch(`/alquileres/${alquiler.id}/extender`, {
+          tipo,
+          cantidad,
+        })
+      ).data,
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['alquileres'] });
+      qc.invalidateQueries({ queryKey: ['habitaciones'] });
+      toast({
+        type: 'success',
+        title: 'Estadía extendida',
+        description: `+${cantidad} ${tipo === 'HORA' ? 'hora(s)' : 'día(s)'} · S/ ${cotizacion.data?.costo.toFixed(2)}`,
+      });
+      onClose();
+    },
+    onError: (err: any) =>
+      toast({
+        type: 'error',
+        title: 'Error',
+        description: err.response?.data?.message || err.message,
+      }),
+  });
+
+  return (
+    <div className="fixed inset-0 bg-slate-950/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-fade-in">
+      <div className="bg-white rounded-3xl w-full max-w-md shadow-2xl animate-scale-in">
+        <div className="flex justify-between items-center p-5 border-b border-slate-100">
+          <div>
+            <h2 className="font-hotel text-lg font-bold text-slate-900">
+              Extender estadía
+            </h2>
+            <div className="text-xs text-slate-500 mt-0.5">
+              Hab. {alquiler.habitacion.numero} · {alquiler.clienteNombre}
+            </div>
+          </div>
+          <button
+            onClick={onClose}
+            className="w-8 h-8 rounded-lg hover:bg-slate-100 flex items-center justify-center"
+          >
+            <X size={18} className="text-slate-500" />
+          </button>
+        </div>
+
+        <div className="p-5 space-y-4">
+          {/* Tipo */}
+          <div className="flex bg-slate-100 rounded-xl p-1">
+            <button
+              onClick={() => setTipo('HORA')}
+              className={`flex-1 py-2.5 rounded-lg text-sm font-medium transition ${
+                tipo === 'HORA'
+                  ? 'bg-white shadow-sm text-violet-700'
+                  : 'text-slate-600'
+              }`}
+            >
+              Por hora
+            </button>
+            <button
+              onClick={() => setTipo('DIA')}
+              className={`flex-1 py-2.5 rounded-lg text-sm font-medium transition ${
+                tipo === 'DIA'
+                  ? 'bg-white shadow-sm text-violet-700'
+                  : 'text-slate-600'
+              }`}
+            >
+              Por día
+            </button>
+          </div>
+
+          {/* Cantidad */}
+          <div>
+            <label className="text-[10px] font-semibold text-slate-500 uppercase tracking-widest">
+              Cuánto {tipo === 'HORA' ? 'hora(s)' : 'día(s)'}
+            </label>
+            <div className="flex gap-2 mt-1">
+              <button
+                onClick={() => setCantidad(Math.max(1, cantidad - 1))}
+                className="w-10 h-10 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-lg"
+              >
+                −
+              </button>
+              <input
+                type="number"
+                min="1"
+                value={cantidad}
+                onChange={(e) =>
+                  setCantidad(Math.max(1, parseInt(e.target.value) || 1))
+                }
+                className="flex-1 border border-slate-200 rounded-xl text-center text-2xl font-bold tabular-nums focus:outline-none focus:border-violet-400"
+              />
+              <button
+                onClick={() => setCantidad(cantidad + 1)}
+                className="w-10 h-10 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-lg"
+              >
+                +
+              </button>
+            </div>
+            <div className="flex gap-1.5 mt-2 flex-wrap">
+              {(tipo === 'HORA' ? [1, 2, 3, 4, 6, 12] : [1, 2, 3, 5, 7]).map(
+                (n) => (
+                  <button
+                    key={n}
+                    onClick={() => setCantidad(n)}
+                    className={`px-2.5 py-1 rounded-lg text-xs font-medium ${
+                      cantidad === n
+                        ? 'bg-violet-600 text-white'
+                        : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                    }`}
+                  >
+                    {n} {tipo === 'HORA' ? 'h' : 'd'}
+                  </button>
+                ),
+              )}
+            </div>
+          </div>
+
+          {/* Cotización */}
+          <div className="bg-gradient-to-br from-violet-50 to-violet-100 border border-violet-200 rounded-2xl p-4">
+            {cotizacion.isLoading ? (
+              <div className="text-center text-slate-500 text-sm">
+                Calculando...
+              </div>
+            ) : cotizacion.data ? (
+              <div className="space-y-2">
+                <div className="flex justify-between text-sm">
+                  <span className="text-slate-600">
+                    Precio por {tipo === 'HORA' ? 'hora' : 'día'}
+                  </span>
+                  <span className="font-semibold tabular-nums">
+                    S/ {cotizacion.data.precioUnidad.toFixed(2)}
+                  </span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-slate-600">Cantidad</span>
+                  <span className="font-semibold tabular-nums">× {cantidad}</span>
+                </div>
+                <div className="h-px bg-violet-200" />
+                <div className="flex justify-between items-baseline">
+                  <span className="text-sm font-semibold text-violet-700">
+                    Costo extensión
+                  </span>
+                  <span className="text-2xl font-hotel font-bold text-violet-700 tabular-nums">
+                    + S/ {cotizacion.data.costo.toFixed(2)}
+                  </span>
+                </div>
+                <div className="h-px bg-violet-200" />
+                <div className="flex justify-between text-xs">
+                  <span className="text-slate-500">Nueva salida</span>
+                  <span className="font-semibold text-slate-700">
+                    {new Date(cotizacion.data.nuevaFechaSalida).toLocaleString(
+                      'es-PE',
+                      {
+                        day: '2-digit',
+                        month: 'short',
+                        hour: '2-digit',
+                        minute: '2-digit',
+                      },
+                    )}
+                  </span>
+                </div>
+                <div className="flex justify-between text-xs">
+                  <span className="text-slate-500">Nuevo total del alquiler</span>
+                  <span className="font-bold text-emerald-700 tabular-nums">
+                    S/ {cotizacion.data.nuevoTotal.toFixed(2)}
+                  </span>
+                </div>
+              </div>
+            ) : null}
+          </div>
+
+          <div className="flex gap-2 pt-1">
+            <button
+              onClick={onClose}
+              className="flex-1 bg-slate-100 hover:bg-slate-200 py-2.5 rounded-xl font-medium text-slate-700 btn-press"
+            >
+              Cancelar
+            </button>
+            <button
+              onClick={() => ejecutar.mutate()}
+              disabled={ejecutar.isPending || !cotizacion.data}
+              className="flex-1 bg-gradient-to-r from-amber-500 to-amber-400 hover:from-amber-600 hover:to-amber-500 text-white py-2.5 rounded-xl font-semibold shadow-md shadow-amber-500/30 btn-press disabled:opacity-40"
+            >
+              {ejecutar.isPending ? 'Extendiendo...' : 'Confirmar extensión'}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function formatDuracion(mins: number): string {
+  if (mins < 1) return 'ahora';
+  if (mins < 60) return `${mins} min`;
+  const h = Math.floor(mins / 60);
+  const m = mins % 60;
+  if (h < 24) return m ? `${h}h ${m}m` : `${h}h`;
+  const d = Math.floor(h / 24);
+  const hr = h % 24;
+  return hr ? `${d}d ${hr}h` : `${d}d`;
 }

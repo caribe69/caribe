@@ -176,8 +176,6 @@ ${SNIPPET_SISTEMA_BODY}
 # Redirección HTTP → HTTPS (todos los dominios)
 # ==========================================================================
 server {
-    listen 80;
-    listen [::]:80;
     listen 80 default_server;
     listen [::]:80 default_server;
     server_name caribeperu.com www.caribeperu.com sistema.caribeperu.com _;

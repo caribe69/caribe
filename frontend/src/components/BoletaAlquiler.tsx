@@ -118,20 +118,15 @@ function BoletaContenido({
   const baseImponible = totalNum / (1 + IGV_RATE);
   const igv = totalNum - baseImponible;
 
-  const nochesPrecio = Number(alquiler.precioHabitacion);
+  // El comprobante SOLO lista el alojamiento como concepto.
+  // Los consumos (productos) son gasto interno y no se facturan al cliente
+  // en el documento impreso: el importe se consolida en el alojamiento.
   const items: Array<{ cant: number; desc: string; importe: number }> = [];
   items.push({
     cant: 1,
     desc: `ALOJAMIENTO ${(alquiler.habitacion.descripcion || 'HABITACION').toUpperCase()} X 1 DIA`,
-    importe: nochesPrecio,
+    importe: totalNum,
   });
-  for (const c of alquiler.consumos || []) {
-    items.push({
-      cant: c.cantidad,
-      desc: c.producto.nombre,
-      importe: Number(c.subtotal),
-    });
-  }
 
   // Correlativo simple basado en ID (no es SUNAT real, es visual)
   const esFactura = alquiler.tipoComprobante === 'FACTURA';

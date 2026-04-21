@@ -359,7 +359,12 @@ export default function ReservaGrupalModal({
                     inputMode="numeric"
                     maxLength={11}
                     placeholder="20123456789"
-                    className="w-full border border-slate-200 rounded-xl px-3.5 py-2.5 pr-10 text-sm font-mono focus:outline-none focus:border-amber-400 focus:ring-2 focus:ring-amber-100"
+                    className={`w-full border rounded-xl px-3.5 py-2.5 pr-10 text-sm font-mono focus:outline-none focus:ring-2 ${
+                      ruc.length === 11 &&
+                      !/^(10|15|17|20)\d{9}$/.test(ruc)
+                        ? 'border-rose-400 focus:border-rose-500 focus:ring-rose-100'
+                        : 'border-slate-200 focus:border-amber-400 focus:ring-amber-100'
+                    }`}
                   />
                   <div className="absolute right-3 top-1/2 -translate-y-1/2">
                     {buscandoRuc ? (
@@ -372,6 +377,23 @@ export default function ReservaGrupalModal({
                     )}
                   </div>
                 </div>
+                {ruc.length > 0 && ruc.length < 11 && (
+                  <div className="mt-1.5 text-[11px] text-slate-500">
+                    RUC tiene 11 dígitos · Faltan {11 - ruc.length}
+                  </div>
+                )}
+                {ruc.length === 11 &&
+                  !/^(10|15|17|20)\d{9}$/.test(ruc) && (
+                    <div className="mt-1.5 text-[11px] text-rose-700 bg-rose-50 border border-rose-200 rounded-lg px-2.5 py-1.5">
+                      ⚠ <b>RUC inválido.</b> Los RUCs peruanos deben empezar con:{' '}
+                      <code className="bg-white px-1 rounded">10</code> (natural con
+                      negocio),{' '}
+                      <code className="bg-white px-1 rounded">15</code> (sucesiones),{' '}
+                      <code className="bg-white px-1 rounded">17</code> (no
+                      domiciliados) o{' '}
+                      <code className="bg-white px-1 rounded">20</code> (empresas).
+                    </div>
+                  )}
               </div>
 
               {rucData?.fuente === 'local' && (
@@ -551,7 +573,16 @@ export default function ReservaGrupalModal({
                 <b className="text-amber-700">S/ {total.toFixed(2)}</b>
               </>
             )}
-            {step === 2 && razonSocial && (
+            {step === 2 && !validoStep2 && (
+              <span className="text-rose-600">
+                {!/^(10|15|17|20)\d{9}$/.test(ruc)
+                  ? 'Ingresa un RUC válido (11 dígitos, empieza con 10/15/17/20)'
+                  : razonSocial.length < 3
+                    ? 'Completa la razón social'
+                    : ''}
+              </span>
+            )}
+            {step === 2 && validoStep2 && (
               <>
                 FACTURA · RUC {ruc} ·{' '}
                 <b className="text-amber-700">{razonSocial}</b>

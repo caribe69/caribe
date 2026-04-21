@@ -62,21 +62,20 @@ mkdir -p "${LANDING_ROOT}"
 rsync -a --delete "${APP_DIR}/landing/" "${LANDING_ROOT}/"
 chown -R www-data:www-data "${LANDING_ROOT}"
 
-# ---------- Refrescar config de Nginx ----------
+# ---------- Refrescar config de Nginx (detecta SSL y lo preserva) ----------
 NGINX_SITE="/etc/nginx/sites-available/hotel"
-log "Reescribiendo config de nginx (landing + sistema + fallback IP)..."
-cat > "${NGINX_SITE}" <<'NGINX'
-# ==========================================================================
-# LANDING PÚBLICA · caribeperu.com + www.caribeperu.com
-# ==========================================================================
-server {
-    listen 80;
-    listen [::]:80;
-    server_name caribeperu.com www.caribeperu.com;
+CERT_DIR="/etc/letsencrypt/live/caribeperu.com"
+if [ -f "${CERT_DIR}/fullchain.pem" ] && [ -f "${CERT_DIR}/privkey.pem" ]; then
+  HAS_SSL=1
+  log "Certificado SSL detectado · generando config nginx con HTTPS..."
+else
+  HAS_SSL=0
+  log "Sin certificado SSL · generando config nginx solo HTTP..."
+fi
 
-    root /var/www/landing;
+# Bloques comunes
+SNIPPET_LANDING_BODY='    root /var/www/landing;
     index index.html;
-
     client_max_body_size 5M;
 
     # Redirige www → dominio raíz
@@ -91,21 +90,10 @@ server {
     location ~* \.(js|css|png|jpg|jpeg|gif|ico|svg|webp|woff2?)$ {
         expires 30d;
         add_header Cache-Control "public, immutable";
-    }
-}
+    }'
 
-# ==========================================================================
-# SISTEMA PRIVADO · sistema.caribeperu.com
-# (También accesible por IP como fallback → default_server)
-# ==========================================================================
-server {
-    listen 80 default_server;
-    listen [::]:80 default_server;
-    server_name sistema.caribeperu.com _;
-
-    root /var/www/hotel;
+SNIPPET_SISTEMA_BODY='    root /var/www/hotel;
     index index.html;
-
     client_max_body_size 25M;
 
     location /api/ {
@@ -120,7 +108,6 @@ server {
         proxy_read_timeout 300s;
     }
 
-    # ^~ evita que la regex de cache-estáticos abajo intercepte las fotos
     location ^~ /uploads/ {
         proxy_pass http://127.0.0.1:3001/uploads/;
         proxy_http_version 1.1;
@@ -149,9 +136,82 @@ server {
     location ~* \.(js|css|png|jpg|jpeg|gif|ico|svg|webp|woff2?)$ {
         expires 30d;
         add_header Cache-Control "public, immutable";
-    }
+    }'
+
+if [ "$HAS_SSL" = "1" ]; then
+  cat > "${NGINX_SITE}" <<NGINX
+# ==========================================================================
+# LANDING PÚBLICA (HTTPS) · caribeperu.com + www.caribeperu.com
+# ==========================================================================
+server {
+    listen 443 ssl;
+    listen [::]:443 ssl;
+    http2 on;
+    server_name caribeperu.com www.caribeperu.com;
+
+    ssl_certificate ${CERT_DIR}/fullchain.pem;
+    ssl_certificate_key ${CERT_DIR}/privkey.pem;
+    include /etc/letsencrypt/options-ssl-nginx.conf;
+    ssl_dhparam /etc/letsencrypt/ssl-dhparams.pem;
+
+${SNIPPET_LANDING_BODY}
+}
+
+# ==========================================================================
+# SISTEMA PRIVADO (HTTPS) · sistema.caribeperu.com
+# ==========================================================================
+server {
+    listen 443 ssl default_server;
+    listen [::]:443 ssl default_server;
+    http2 on;
+    server_name sistema.caribeperu.com _;
+
+    ssl_certificate ${CERT_DIR}/fullchain.pem;
+    ssl_certificate_key ${CERT_DIR}/privkey.pem;
+    include /etc/letsencrypt/options-ssl-nginx.conf;
+    ssl_dhparam /etc/letsencrypt/ssl-dhparams.pem;
+
+${SNIPPET_SISTEMA_BODY}
+}
+
+# ==========================================================================
+# Redirección HTTP → HTTPS (todos los dominios)
+# ==========================================================================
+server {
+    listen 80;
+    listen [::]:80;
+    listen 80 default_server;
+    listen [::]:80 default_server;
+    server_name caribeperu.com www.caribeperu.com sistema.caribeperu.com _;
+    return 301 https://\$host\$request_uri;
 }
 NGINX
+else
+  cat > "${NGINX_SITE}" <<NGINX
+# ==========================================================================
+# LANDING PÚBLICA · caribeperu.com + www.caribeperu.com
+# ==========================================================================
+server {
+    listen 80;
+    listen [::]:80;
+    server_name caribeperu.com www.caribeperu.com;
+
+${SNIPPET_LANDING_BODY}
+}
+
+# ==========================================================================
+# SISTEMA PRIVADO · sistema.caribeperu.com (+ fallback IP directa)
+# ==========================================================================
+server {
+    listen 80 default_server;
+    listen [::]:80 default_server;
+    server_name sistema.caribeperu.com _;
+
+${SNIPPET_SISTEMA_BODY}
+}
+NGINX
+fi
+
 ln -sf "${NGINX_SITE}" /etc/nginx/sites-enabled/hotel
 rm -f /etc/nginx/sites-enabled/default
 

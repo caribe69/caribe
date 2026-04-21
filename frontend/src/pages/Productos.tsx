@@ -273,58 +273,218 @@ function AjusteStockModal({
   producto: Producto;
   onClose: () => void;
 }) {
-  const [cantidad, setCantidad] = useState('');
+  const qc = useQueryClient();
+  const [modo, setModo] = useState<'ajuste' | 'establecer'>('ajuste');
+  const [delta, setDelta] = useState('');
+  const [absoluto, setAbsoluto] = useState(String(producto.stock));
   const [motivo, setMotivo] = useState('');
   const [error, setError] = useState<string | null>(null);
+
+  // En modo 'establecer' la cantidad enviada es (nuevoStock - stockActual)
+  const cantidadAEnviar =
+    modo === 'ajuste'
+      ? Number(delta)
+      : Number(absoluto) - producto.stock;
+
+  const stockResultante =
+    modo === 'ajuste'
+      ? producto.stock + (Number(delta) || 0)
+      : Number(absoluto) || 0;
 
   const ajuste = useMutation({
     mutationFn: async () =>
       (
         await api.post(`/productos/${producto.id}/ajuste-stock`, {
-          cantidad: Number(cantidad),
-          motivo: motivo || undefined,
+          cantidad: cantidadAEnviar,
+          motivo:
+            motivo ||
+            (modo === 'establecer'
+              ? `Conteo físico → ${absoluto}`
+              : undefined),
         })
       ).data,
-    onSuccess: () => onClose(),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['productos'] });
+      onClose();
+    },
     onError: (err: any) => setError(err.response?.data?.message || 'Error'),
   });
 
+  const valido =
+    modo === 'ajuste'
+      ? delta !== '' && !isNaN(Number(delta)) && Number(delta) !== 0
+      : absoluto !== '' &&
+        !isNaN(Number(absoluto)) &&
+        Number(absoluto) >= 0 &&
+        Number(absoluto) !== producto.stock;
+
   return (
-    <Modal title={`Ajustar stock: ${producto.nombre}`} onClose={onClose}>
-      <div className="text-sm text-slate-600">
-        Stock actual: <span className="font-bold">{producto.stock}</span>
+    <Modal title={`Stock · ${producto.nombre}`} onClose={onClose}>
+      {/* Stock actual destacado */}
+      <div className="bg-gradient-to-br from-violet-50 to-violet-100 border border-violet-200 rounded-2xl p-4 flex items-center justify-between">
+        <div>
+          <div className="text-[10px] font-semibold text-violet-600 uppercase tracking-widest">
+            Stock actual
+          </div>
+          <div className="text-3xl font-hotel font-bold text-violet-700 mt-0.5">
+            {producto.stock}
+          </div>
+        </div>
+        <div className="text-right">
+          <div className="text-[10px] font-semibold text-slate-500 uppercase tracking-widest">
+            Quedará
+          </div>
+          <div
+            className={`text-3xl font-hotel font-bold mt-0.5 ${
+              stockResultante < 0
+                ? 'text-rose-600'
+                : stockResultante !== producto.stock
+                  ? 'text-emerald-600'
+                  : 'text-slate-400'
+            }`}
+          >
+            {stockResultante}
+          </div>
+        </div>
       </div>
-      <input
-        type="number"
-        placeholder="Cantidad (positiva para añadir, negativa para quitar)"
-        className="w-full border rounded-lg px-3 py-2"
-        value={cantidad}
-        onChange={(e) => setCantidad(e.target.value)}
-      />
-      <input
-        placeholder="Motivo"
-        className="w-full border rounded-lg px-3 py-2"
-        value={motivo}
-        onChange={(e) => setMotivo(e.target.value)}
-      />
+
+      {/* Tabs modo */}
+      <div className="flex bg-slate-100 rounded-xl p-1">
+        <button
+          onClick={() => setModo('ajuste')}
+          className={`flex-1 py-2 rounded-lg text-sm font-medium transition ${
+            modo === 'ajuste'
+              ? 'bg-white shadow-sm text-violet-700'
+              : 'text-slate-600'
+          }`}
+        >
+          Ajustar +/−
+        </button>
+        <button
+          onClick={() => setModo('establecer')}
+          className={`flex-1 py-2 rounded-lg text-sm font-medium transition ${
+            modo === 'establecer'
+              ? 'bg-white shadow-sm text-violet-700'
+              : 'text-slate-600'
+          }`}
+        >
+          Establecer exacto
+        </button>
+      </div>
+
+      {modo === 'ajuste' ? (
+        <div>
+          <label className="text-[10px] font-semibold text-slate-500 uppercase tracking-widest">
+            Cantidad a sumar o restar
+          </label>
+          <div className="flex gap-2 mt-1">
+            <button
+              onClick={() =>
+                setDelta(String((Number(delta) || 0) - 1))
+              }
+              className="w-10 h-10 rounded-xl bg-rose-100 hover:bg-rose-200 text-rose-700 font-bold text-xl btn-press"
+            >
+              −
+            </button>
+            <input
+              type="number"
+              placeholder="Ej: 10 (añadir) · -3 (quitar)"
+              className="flex-1 border border-slate-200 rounded-xl px-3 py-2.5 text-center text-lg font-semibold tabular-nums focus:outline-none focus:border-violet-400 focus:ring-2 focus:ring-violet-100"
+              value={delta}
+              onChange={(e) => setDelta(e.target.value)}
+            />
+            <button
+              onClick={() =>
+                setDelta(String((Number(delta) || 0) + 1))
+              }
+              className="w-10 h-10 rounded-xl bg-emerald-100 hover:bg-emerald-200 text-emerald-700 font-bold text-xl btn-press"
+            >
+              +
+            </button>
+          </div>
+          <div className="flex gap-1.5 mt-2 flex-wrap">
+            {[-10, -5, -1, 1, 5, 10, 25, 50].map((n) => (
+              <button
+                key={n}
+                onClick={() =>
+                  setDelta(String((Number(delta) || 0) + n))
+                }
+                className={`px-2.5 py-1 rounded-lg text-xs font-medium ${
+                  n > 0
+                    ? 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100'
+                    : 'bg-rose-50 text-rose-700 hover:bg-rose-100'
+                }`}
+              >
+                {n > 0 ? '+' : ''}
+                {n}
+              </button>
+            ))}
+          </div>
+        </div>
+      ) : (
+        <div>
+          <label className="text-[10px] font-semibold text-slate-500 uppercase tracking-widest">
+            Nuevo stock exacto (conteo físico)
+          </label>
+          <input
+            type="number"
+            min="0"
+            placeholder="Nuevo total"
+            className="w-full mt-1 border border-slate-200 rounded-xl px-3 py-2.5 text-center text-2xl font-bold tabular-nums focus:outline-none focus:border-violet-400 focus:ring-2 focus:ring-violet-100"
+            value={absoluto}
+            onChange={(e) => setAbsoluto(e.target.value)}
+          />
+          <div className="text-xs text-slate-500 mt-2">
+            Se registrará el movimiento como{' '}
+            <b className={cantidadAEnviar > 0 ? 'text-emerald-700' : 'text-rose-700'}>
+              {cantidadAEnviar > 0 ? '+' : ''}
+              {cantidadAEnviar}
+            </b>{' '}
+            para mantener el historial.
+          </div>
+        </div>
+      )}
+
+      <div>
+        <label className="text-[10px] font-semibold text-slate-500 uppercase tracking-widest">
+          Motivo (opcional)
+        </label>
+        <input
+          placeholder={
+            modo === 'establecer'
+              ? 'Ej: Conteo físico mensual'
+              : 'Ej: Compra, merma, devolución'
+          }
+          className="w-full mt-1 border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-violet-400 focus:ring-2 focus:ring-violet-100"
+          value={motivo}
+          onChange={(e) => setMotivo(e.target.value)}
+        />
+      </div>
+
+      {stockResultante < 0 && (
+        <div className="text-xs text-rose-700 bg-rose-50 border border-rose-200 rounded-lg p-2.5">
+          ⚠ El stock no puede quedar negativo.
+        </div>
+      )}
       {error && (
-        <div className="text-sm text-red-600 bg-red-50 p-2 rounded">
+        <div className="text-sm text-rose-700 bg-rose-50 border border-rose-200 rounded-lg p-2.5">
           {error}
         </div>
       )}
-      <div className="flex gap-2 pt-2">
+
+      <div className="flex gap-2 pt-1">
         <button
           onClick={onClose}
-          className="flex-1 bg-slate-100 hover:bg-slate-200 py-2 rounded-lg"
+          className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 py-2.5 rounded-xl font-medium btn-press"
         >
           Cancelar
         </button>
         <button
           onClick={() => ajuste.mutate()}
-          disabled={ajuste.isPending || !cantidad}
-          className="flex-1 bg-brand-500 hover:bg-brand-600 text-white py-2 rounded-lg disabled:opacity-50"
+          disabled={ajuste.isPending || !valido || stockResultante < 0}
+          className="flex-1 bg-gradient-to-r from-violet-600 to-violet-500 hover:from-violet-700 hover:to-violet-600 text-white py-2.5 rounded-xl font-semibold shadow-md shadow-violet-500/30 disabled:opacity-40 btn-press"
         >
-          {ajuste.isPending ? 'Guardando...' : 'Guardar'}
+          {ajuste.isPending ? 'Guardando...' : 'Guardar cambio'}
         </button>
       </div>
     </Modal>

@@ -244,9 +244,27 @@ export default function Configuracion() {
           primero en tu historial (cliente frecuente) y si no existe consultará
           el servicio externo para auto-completar los datos del huésped.
         </p>
+        <div className="bg-violet-50 border border-violet-200 rounded-xl p-3 mb-4 text-xs text-violet-900">
+          <div className="font-semibold mb-1">📌 Proveedores soportados:</div>
+          <div>
+            <b>apisperu.com</b> — plan básico solo devuelve nombres.{' '}
+            <code className="bg-white px-1 py-0.5 rounded">
+              https://dniruc.apisperu.com/api/v1/dni
+            </code>
+          </div>
+          <div className="mt-1">
+            <b>perudevs.com</b> — incluye fecha nacimiento + edad:{' '}
+            <code className="bg-white px-1 py-0.5 rounded">
+              https://api.perudevs.com/api/v1/dni/complete
+            </code>
+          </div>
+          <div className="mt-1 text-violet-700">
+            El sistema detecta el proveedor automáticamente por la URL.
+          </div>
+        </div>
 
         <div className="grid md:grid-cols-2 gap-4">
-          <Field label="Token API DNI (apisperu.com)">
+          <Field label="Token / Key API DNI">
             <div className="relative">
               <input
                 type={showDniToken ? 'text' : 'password'}

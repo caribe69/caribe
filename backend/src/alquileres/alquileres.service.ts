@@ -69,24 +69,54 @@ export class AlquileresService {
     if (!cfg.token) return { fuente: 'ninguna', encontrado: false, dni };
 
     try {
-      const url = `${cfg.url}/${dni}?token=${encodeURIComponent(cfg.token)}`;
+      // Detectar proveedor según la URL configurada
+      const isPerudevs = /perudevs\.com/i.test(cfg.url);
+      const url = isPerudevs
+        ? `${cfg.url}?document=${dni}&key=${encodeURIComponent(cfg.token)}`
+        : `${cfg.url}/${dni}?token=${encodeURIComponent(cfg.token)}`;
+
       const resp = await fetch(url, { signal: AbortSignal.timeout(8000) });
       if (!resp.ok) return { fuente: 'api_error', encontrado: false, dni };
       const data: any = await resp.json();
-      const nombre = [data.nombres, data.apellidoPaterno, data.apellidoMaterno]
-        .filter(Boolean)
-        .join(' ')
+
+      // perudevs devuelve { estado, mensaje, resultado: {...} }
+      // apisperu devuelve directamente los campos en el root
+      const r = data.resultado || data;
+
+      const nombre = (
+        r.nombre_completo ||
+        [
+          r.nombres,
+          r.apellido_paterno || r.apellidoPaterno,
+          r.apellido_materno || r.apellidoMaterno,
+        ]
+          .filter(Boolean)
+          .join(' ')
+      )
+        .toString()
         .trim();
+
       if (!nombre) return { fuente: 'api_vacio', encontrado: false, dni };
 
-      // Intentar extraer fecha de nacimiento y calcular edad si viene
+      // Extraer fecha nacimiento - perudevs: "DD/MM/YYYY", apisperu: ISO
       let fechaNacimiento: string | null = null;
       let edad: number | null = null;
       const rawFecha =
-        data.fechaNacimiento || data.fecha_nacimiento || data.fecNacimiento;
+        r.fecha_nacimiento || r.fechaNacimiento || r.fecNacimiento;
       if (rawFecha) {
-        const d = new Date(rawFecha);
-        if (!isNaN(d.getTime())) {
+        let d: Date | null = null;
+        // Formato DD/MM/YYYY (perudevs)
+        const m = String(rawFecha).match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+        if (m) {
+          d = new Date(
+            Number(m[3]),
+            Number(m[2]) - 1,
+            Number(m[1]),
+          );
+        } else {
+          d = new Date(rawFecha);
+        }
+        if (d && !isNaN(d.getTime())) {
           fechaNacimiento = d.toISOString();
           const hoy = new Date();
           edad = hoy.getFullYear() - d.getFullYear();
@@ -102,11 +132,12 @@ export class AlquileresService {
         encontrado: true,
         frecuente: false,
         dni,
-        nombre,
+        nombre: nombre.toUpperCase(),
         telefono: null,
         visitas: 0,
         fechaNacimiento,
         edad,
+        genero: r.genero || r.sexo || null,
       };
     } catch {
       return { fuente: 'api_error', encontrado: false, dni };

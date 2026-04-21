@@ -45,4 +45,7 @@ export class ExtenderAlquilerDto {
   tipo: 'HORA' | 'DIA';
 
   @Type(() => Number) @IsInt() @Min(1) cantidad: number;
+
+  /** Precio manual opcional que sobreescribe el calculado automático */
+  @IsOptional() @Type(() => Number) @IsNumber() @Min(0) costoManual?: number;
 }

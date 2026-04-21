@@ -194,6 +194,9 @@ function MapaHabitaciones() {
     return () => clearInterval(t);
   }, []);
 
+  const [busqueda, setBusqueda] = useState('');
+  const [filtroEstado, setFiltroEstado] = useState<string>('');
+
   const { data, isLoading } = useQuery({
     queryKey: ['habitaciones'],
     queryFn: async () =>
@@ -206,28 +209,100 @@ function MapaHabitaciones() {
     return r;
   }, [data]);
 
+  // Filtrado por búsqueda + estado
+  const habitacionesFiltradas = useMemo(() => {
+    if (!data) return [];
+    const q = busqueda.trim().toLowerCase();
+    return data.filter((h) => {
+      if (filtroEstado && h.estado !== filtroEstado) return false;
+      if (!q) return true;
+      const alq = h.alquileres?.[0];
+      return (
+        h.numero.toLowerCase().includes(q) ||
+        String(h.piso.numero).includes(q) ||
+        (h.descripcion || '').toLowerCase().includes(q) ||
+        (alq?.clienteNombre || '').toLowerCase().includes(q) ||
+        (alq?.clienteDni || '').toLowerCase().includes(q)
+      );
+    });
+  }, [data, busqueda, filtroEstado]);
+
   return (
     <div>
-      {/* Leyenda */}
-      <div className="flex flex-wrap gap-2 mb-5">
-        {Object.entries(ESTADO_STYLES).map(([key, s]) => (
-          <div
-            key={key}
-            className="inline-flex items-center gap-2 bg-white border border-slate-200 rounded-full px-3 py-1.5 text-xs shadow-sm"
+      {/* Buscador + Leyenda clickable (filtra por estado) */}
+      <div className="flex flex-wrap gap-3 mb-5 items-center">
+        <div className="relative flex-1 min-w-[240px] max-w-md">
+          <Search
+            size={14}
+            className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
+          />
+          <input
+            value={busqueda}
+            onChange={(e) => setBusqueda(e.target.value)}
+            placeholder="Buscar habitación, cliente, DNI o piso..."
+            className="w-full bg-white border border-slate-200 rounded-xl pl-9 pr-8 py-2.5 text-sm focus:outline-none focus:border-violet-400 focus:ring-2 focus:ring-violet-100"
+          />
+          {busqueda && (
+            <button
+              onClick={() => setBusqueda('')}
+              className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-slate-700"
+            >
+              <X size={13} />
+            </button>
+          )}
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <button
+            onClick={() => setFiltroEstado('')}
+            className={`inline-flex items-center gap-2 border rounded-full px-3 py-1.5 text-xs transition ${
+              filtroEstado === ''
+                ? 'bg-violet-600 border-violet-600 text-white shadow-md shadow-violet-500/30'
+                : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'
+            }`}
           >
-            <span className={`w-2 h-2 rounded-full ${s.dot}`} />
-            <span className="text-slate-700 font-medium">{s.label}</span>
-            <span className="text-slate-400">{porEstado[key] || 0}</span>
-          </div>
-        ))}
+            <span className="font-medium">Todas</span>
+            <span className={filtroEstado === '' ? 'text-violet-100' : 'text-slate-400'}>
+              {data?.length || 0}
+            </span>
+          </button>
+          {Object.entries(ESTADO_STYLES).map(([key, s]) => (
+            <button
+              key={key}
+              onClick={() => setFiltroEstado(filtroEstado === key ? '' : key)}
+              className={`inline-flex items-center gap-2 border rounded-full px-3 py-1.5 text-xs transition ${
+                filtroEstado === key
+                  ? 'bg-slate-900 border-slate-900 text-white shadow-md'
+                  : 'bg-white border-slate-200 hover:bg-slate-50'
+              }`}
+            >
+              <span className={`w-2 h-2 rounded-full ${s.dot}`} />
+              <span className={filtroEstado === key ? 'text-white font-medium' : 'text-slate-700 font-medium'}>
+                {s.label}
+              </span>
+              <span className={filtroEstado === key ? 'text-slate-300' : 'text-slate-400'}>
+                {porEstado[key] || 0}
+              </span>
+            </button>
+          ))}
+        </div>
       </div>
 
       {isLoading && (
         <div className="text-slate-500 text-center py-12">Cargando...</div>
       )}
 
+      {!isLoading && habitacionesFiltradas.length === 0 && (busqueda || filtroEstado) && (
+        <div className="bg-white rounded-3xl border border-slate-200 p-8 text-center text-slate-400 text-sm">
+          {busqueda ? (
+            <>Sin resultados para <b>"{busqueda}"</b></>
+          ) : (
+            'Sin habitaciones en este estado'
+          )}
+        </div>
+      )}
+
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 stagger-children">
-        {data?.map((h) => {
+        {habitacionesFiltradas.map((h) => {
           const s = ESTADO_STYLES[h.estado] || ESTADO_STYLES.FUERA_SERVICIO;
           const clickable = h.estado === 'DISPONIBLE' || h.estado === 'OCUPADA';
           const alquilerRef = h.alquileres?.[0];
@@ -401,6 +476,8 @@ function AlquilerActivoModal({
   const esAdmin =
     usuario?.rol === 'SUPERADMIN' || usuario?.rol === 'ADMIN_SEDE';
   const [addProdOpen, setAddProdOpen] = useState(false);
+  const [extenderOpen, setExtenderOpen] = useState(false);
+  const [boletaOpen, setBoletaOpen] = useState(false);
 
   // Busca alquiler ACTIVO de esta habitación
   const { data: alquileres } = useQuery({
@@ -497,9 +574,21 @@ function AlquilerActivoModal({
             <div className="flex flex-col gap-2">
               <button
                 onClick={() => setAddProdOpen(true)}
-                className="flex items-center justify-center gap-2 bg-blue-500 hover:bg-blue-600 text-white py-2.5 rounded-lg"
+                className="flex items-center justify-center gap-2 bg-blue-500 hover:bg-blue-600 text-white py-2.5 rounded-lg btn-press"
               >
                 <ShoppingBag size={16} /> Agregar producto
+              </button>
+              <button
+                onClick={() => setExtenderOpen(true)}
+                className="flex items-center justify-center gap-2 bg-amber-500 hover:bg-amber-600 text-white py-2.5 rounded-lg btn-press"
+              >
+                <CalendarPlus size={16} /> Extender estadía
+              </button>
+              <button
+                onClick={() => setBoletaOpen(true)}
+                className="flex items-center justify-center gap-2 bg-violet-600 hover:bg-violet-700 text-white py-2.5 rounded-lg btn-press"
+              >
+                <Printer size={16} /> Imprimir boleta
               </button>
               <button
                 onClick={async () => {
@@ -579,6 +668,18 @@ function AlquilerActivoModal({
               <AgregarProductoModal
                 alquilerId={alquiler.id}
                 onClose={() => setAddProdOpen(false)}
+              />
+            )}
+            {extenderOpen && (
+              <ExtenderAlquilerModal
+                alquiler={alquiler}
+                onClose={() => setExtenderOpen(false)}
+              />
+            )}
+            {boletaOpen && (
+              <BoletaAlquiler
+                alquiler={alquiler as any}
+                onClose={() => setBoletaOpen(false)}
               />
             )}
           </>
@@ -1158,7 +1259,10 @@ function ExtenderAlquilerModal({
   const { show: toast } = useToast();
   const [tipo, setTipo] = useState<'HORA' | 'DIA'>('HORA');
   const [cantidad, setCantidad] = useState(1);
+  const [precioManual, setPrecioManual] = useState<string>('');
+  const [manualActivo, setManualActivo] = useState(false);
 
+  // Cotización automática (sin costoManual) — solo para mostrar el sugerido
   const cotizacion = useQuery({
     queryKey: ['extender-cotizar', alquiler.id, tipo, cantidad],
     queryFn: async () =>
@@ -1169,6 +1273,7 @@ function ExtenderAlquilerModal({
         })
       ).data as {
         costo: number;
+        costoAuto: number;
         precioUnidad: number;
         nuevaFechaSalida: string;
         nuevoTotal: number;
@@ -1176,12 +1281,24 @@ function ExtenderAlquilerModal({
     enabled: cantidad > 0,
   });
 
+  // Precio final a enviar: manual si está activo, si no el sugerido
+  const costoFinal = manualActivo
+    ? Number(precioManual) || 0
+    : cotizacion.data?.costoAuto ?? 0;
+
+  const totalFinal = cotizacion.data
+    ? Number(alquiler.totalProductos) +
+      Number(alquiler.precioHabitacion) +
+      costoFinal
+    : 0;
+
   const ejecutar = useMutation({
     mutationFn: async () =>
       (
         await api.patch(`/alquileres/${alquiler.id}/extender`, {
           tipo,
           cantidad,
+          ...(manualActivo ? { costoManual: costoFinal } : {}),
         })
       ).data,
     onSuccess: () => {
@@ -1190,7 +1307,7 @@ function ExtenderAlquilerModal({
       toast({
         type: 'success',
         title: 'Estadía extendida',
-        description: `+${cantidad} ${tipo === 'HORA' ? 'hora(s)' : 'día(s)'} · S/ ${cotizacion.data?.costo.toFixed(2)}`,
+        description: `+${cantidad} ${tipo === 'HORA' ? 'hora(s)' : 'día(s)'} · S/ ${costoFinal.toFixed(2)}`,
       });
       onClose();
     },
@@ -1294,35 +1411,86 @@ function ExtenderAlquilerModal({
             </div>
           </div>
 
-          {/* Cotización */}
-          <div className="bg-gradient-to-br from-violet-50 to-violet-100 border border-violet-200 rounded-2xl p-4">
+          {/* Precio editable */}
+          <div className="bg-gradient-to-br from-violet-50 to-violet-100 border border-violet-200 rounded-2xl p-4 space-y-3">
             {cotizacion.isLoading ? (
               <div className="text-center text-slate-500 text-sm">
-                Calculando...
+                Calculando precio sugerido...
               </div>
             ) : cotizacion.data ? (
-              <div className="space-y-2">
-                <div className="flex justify-between text-sm">
-                  <span className="text-slate-600">
-                    Precio por {tipo === 'HORA' ? 'hora' : 'día'}
-                  </span>
-                  <span className="font-semibold tabular-nums">
-                    S/ {cotizacion.data.precioUnidad.toFixed(2)}
-                  </span>
+              <>
+                <div className="flex items-center justify-between">
+                  <div className="text-[10px] uppercase tracking-widest text-violet-700 font-semibold">
+                    Precio de la extensión
+                  </div>
+                  <label className="flex items-center gap-1.5 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={manualActivo}
+                      onChange={(e) => {
+                        setManualActivo(e.target.checked);
+                        if (e.target.checked && !precioManual) {
+                          setPrecioManual(
+                            cotizacion.data!.costoAuto.toFixed(2),
+                          );
+                        }
+                      }}
+                      className="w-3.5 h-3.5 accent-violet-600"
+                    />
+                    <span className="text-[11px] font-semibold text-slate-700">
+                      Editar manual
+                    </span>
+                  </label>
                 </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-slate-600">Cantidad</span>
-                  <span className="font-semibold tabular-nums">× {cantidad}</span>
-                </div>
-                <div className="h-px bg-violet-200" />
-                <div className="flex justify-between items-baseline">
-                  <span className="text-sm font-semibold text-violet-700">
-                    Costo extensión
-                  </span>
-                  <span className="text-2xl font-hotel font-bold text-violet-700 tabular-nums">
-                    + S/ {cotizacion.data.costo.toFixed(2)}
-                  </span>
-                </div>
+
+                {manualActivo ? (
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-lg font-bold text-slate-700">
+                        S/
+                      </span>
+                      <input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        value={precioManual}
+                        onChange={(e) => setPrecioManual(e.target.value)}
+                        className="flex-1 border border-violet-300 rounded-xl px-3 py-2 text-2xl font-bold tabular-nums text-center focus:outline-none focus:border-violet-500 focus:ring-2 focus:ring-violet-200 bg-white"
+                        placeholder="0.00"
+                        autoFocus
+                      />
+                    </div>
+                    <div className="text-[11px] text-slate-500 mt-1.5 flex items-center justify-between">
+                      <span>
+                        Sugerido por tarifa:{' '}
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setPrecioManual(
+                              cotizacion.data!.costoAuto.toFixed(2),
+                            )
+                          }
+                          className="font-semibold text-violet-700 hover:underline"
+                        >
+                          S/ {cotizacion.data.costoAuto.toFixed(2)}
+                        </button>
+                      </span>
+                      <span className="text-slate-400">
+                        {cantidad} × S/ {cotizacion.data.precioUnidad.toFixed(2)}
+                      </span>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex items-baseline justify-between">
+                    <span className="text-sm text-slate-600">
+                      {cantidad} × S/ {cotizacion.data.precioUnidad.toFixed(2)}
+                    </span>
+                    <span className="text-3xl font-hotel font-bold text-violet-700 tabular-nums">
+                      + S/ {cotizacion.data.costoAuto.toFixed(2)}
+                    </span>
+                  </div>
+                )}
+
                 <div className="h-px bg-violet-200" />
                 <div className="flex justify-between text-xs">
                   <span className="text-slate-500">Nueva salida</span>
@@ -1341,10 +1509,10 @@ function ExtenderAlquilerModal({
                 <div className="flex justify-between text-xs">
                   <span className="text-slate-500">Nuevo total del alquiler</span>
                   <span className="font-bold text-emerald-700 tabular-nums">
-                    S/ {cotizacion.data.nuevoTotal.toFixed(2)}
+                    S/ {totalFinal.toFixed(2)}
                   </span>
                 </div>
-              </div>
+              </>
             ) : null}
           </div>
 

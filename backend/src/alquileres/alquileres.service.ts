@@ -359,7 +359,12 @@ export class AlquileresService {
       dto.tipo === 'HORA'
         ? Number(habitacion.precioHora)
         : Number(habitacion.precioNoche);
-    const costo = precioUnidad * dto.cantidad;
+    const costoAuto = precioUnidad * dto.cantidad;
+    // Si viene costoManual usarlo; si no, el automático
+    const costo =
+      dto.costoManual !== undefined && dto.costoManual !== null
+        ? Number(dto.costoManual)
+        : costoAuto;
 
     const fechaActual = new Date(alquiler.fechaSalida);
     const nuevaFechaSalida = new Date(fechaActual);
@@ -377,7 +382,9 @@ export class AlquileresService {
       tipo: dto.tipo,
       cantidad: dto.cantidad,
       precioUnidad,
+      costoAuto,
       costo,
+      manual: costo !== costoAuto,
       nuevaFechaSalida: nuevaFechaSalida.toISOString(),
       nuevoPrecioHabitacion,
       nuevoTotal,

@@ -144,9 +144,8 @@ if [ "$HAS_SSL" = "1" ]; then
 # LANDING PÚBLICA (HTTPS) · caribeperu.com + www.caribeperu.com
 # ==========================================================================
 server {
-    listen 443 ssl;
-    listen [::]:443 ssl;
-    http2 on;
+    listen 443 ssl http2;
+    listen [::]:443 ssl http2;
     server_name caribeperu.com www.caribeperu.com;
 
     ssl_certificate ${CERT_DIR}/fullchain.pem;
@@ -161,9 +160,8 @@ ${SNIPPET_LANDING_BODY}
 # SISTEMA PRIVADO (HTTPS) · sistema.caribeperu.com
 # ==========================================================================
 server {
-    listen 443 ssl default_server;
-    listen [::]:443 ssl default_server;
-    http2 on;
+    listen 443 ssl http2 default_server;
+    listen [::]:443 ssl http2 default_server;
     server_name sistema.caribeperu.com _;
 
     ssl_certificate ${CERT_DIR}/fullchain.pem;

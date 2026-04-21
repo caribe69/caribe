@@ -1,12 +1,17 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Building, Plus } from 'lucide-react';
+import { Building, Plus, Star } from 'lucide-react';
 import { useState } from 'react';
 import { api } from '@/lib/api';
+import { useAuthStore } from '@/store/auth';
+import { useToast } from '@/components/ToastProvider';
 import { usePagination } from '@/hooks/usePagination';
 import Pagination from '@/components/Pagination';
 
 export default function Sedes() {
   const qc = useQueryClient();
+  const { show: toast } = useToast();
+  const usuario = useAuthStore((s) => s.usuario);
+  const esSuperadmin = usuario?.rol === 'SUPERADMIN';
   const [show, setShow] = useState(false);
   const [form, setForm] = useState({ nombre: '', direccion: '', telefono: '' });
 
@@ -23,6 +28,19 @@ export default function Sedes() {
       qc.invalidateQueries({ queryKey: ['sedes'] });
       setShow(false);
       setForm({ nombre: '', direccion: '', telefono: '' });
+    },
+  });
+
+  const marcarPrincipal = useMutation({
+    mutationFn: async (id: number) =>
+      (await api.patch(`/sedes/${id}/principal`)).data,
+    onSuccess: (data: any) => {
+      qc.invalidateQueries({ queryKey: ['sedes'] });
+      toast({
+        type: 'success',
+        title: 'Sede principal',
+        description: `${data.nombre} es ahora la sede principal`,
+      });
     },
   });
 
@@ -63,6 +81,11 @@ export default function Sedes() {
               <th className="text-left px-6 py-4 text-[11px] font-semibold text-slate-400 uppercase tracking-widest">
                 Estado
               </th>
+              {esSuperadmin && (
+                <th className="text-right px-6 py-4 text-[11px] font-semibold text-slate-400 uppercase tracking-widest">
+                  Acciones
+                </th>
+              )}
             </tr>
           </thead>
           <tbody>
@@ -76,11 +99,31 @@ export default function Sedes() {
                 </td>
                 <td className="px-6 py-4">
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-500 to-violet-700 flex items-center justify-center shrink-0">
-                      <Building size={18} className="text-white" />
+                    <div
+                      className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${
+                        s.esPrincipal
+                          ? 'bg-gradient-to-br from-amber-400 to-amber-500 shadow-md shadow-amber-500/30'
+                          : 'bg-gradient-to-br from-violet-500 to-violet-700'
+                      }`}
+                    >
+                      {s.esPrincipal ? (
+                        <Star
+                          size={18}
+                          className="text-white fill-white"
+                        />
+                      ) : (
+                        <Building size={18} className="text-white" />
+                      )}
                     </div>
-                    <div className="font-semibold text-slate-800">
-                      {s.nombre}
+                    <div>
+                      <div className="font-semibold text-slate-800">
+                        {s.nombre}
+                      </div>
+                      {s.esPrincipal && (
+                        <div className="text-[10px] uppercase tracking-widest text-amber-600 font-bold">
+                          ⭐ Sede principal
+                        </div>
+                      )}
                     </div>
                   </div>
                 </td>
@@ -102,12 +145,29 @@ export default function Sedes() {
                     {s.activa ? 'Activa' : 'Inactiva'}
                   </span>
                 </td>
+                {esSuperadmin && (
+                  <td className="px-6 py-4 text-right">
+                    {!s.esPrincipal ? (
+                      <button
+                        onClick={() => marcarPrincipal.mutate(s.id)}
+                        disabled={marcarPrincipal.isPending}
+                        className="inline-flex items-center gap-1 text-xs bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-300 px-3 py-1.5 rounded-lg transition btn-press"
+                      >
+                        <Star size={12} /> Marcar principal
+                      </button>
+                    ) : (
+                      <span className="text-[10px] text-amber-600 font-bold">
+                        ✓ Principal
+                      </span>
+                    )}
+                  </td>
+                )}
               </tr>
             ))}
             {data?.length === 0 && !isLoading && (
               <tr>
                 <td
-                  colSpan={5}
+                  colSpan={esSuperadmin ? 6 : 5}
                   className="px-6 py-16 text-center text-slate-400"
                 >
                   <Building

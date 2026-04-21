@@ -24,6 +24,7 @@ model Sede {
   direccion   String?
   telefono    String?
   activa      Boolean  @default(true)
+  esPrincipal Boolean  @default(false)
   creadaEn    DateTime @default(now())
 
   usuarios          Usuario[]
@@ -37,6 +38,8 @@ model Sede {
   ventas            Venta[]
   mensajes          Mensaje[]
   anulacionRequests AnulacionRequest[]
+  transferenciasOrigen  TransferenciaSede[] @relation("TransferenciaOrigen")
+  transferenciasDestino TransferenciaSede[] @relation("TransferenciaDestino")
 }
 
 model Usuario {
@@ -62,6 +65,8 @@ model Usuario {
   mensajesRecibidos    Mensaje[]         @relation("MensajeTo")
   anulacionesSolicitadas AnulacionRequest[] @relation("AnuReqSolic")
   anulacionesAprobadas   AnulacionRequest[] @relation("AnuReqAprob")
+  transferenciasCreadas   TransferenciaSede[] @relation("TransferenciaCreada")
+  transferenciasRecibidas TransferenciaSede[] @relation("TransferenciaRecibida")
 
   @@index([sedeId])
 }
@@ -131,6 +136,8 @@ model Producto {
   consumos    ConsumoProducto[]
   movimientos MovimientoStock[]
   itemsVenta  ItemVenta[]
+  transferenciasOrigen  TransferenciaItem[] @relation("TransferenciaItemOrigen")
+  transferenciasDestino TransferenciaItem[] @relation("TransferenciaItemDestino")
 
   @@index([sedeId])
 }
@@ -245,6 +252,59 @@ enum TipoMovimiento {
   SALIDA_LIMPIEZA
   AJUSTE
   ANULACION
+  TRANSFERENCIA_SALIDA
+  TRANSFERENCIA_ENTRADA
+}
+
+enum EstadoTransferencia {
+  ENVIADA
+  RECIBIDA
+  RECHAZADA
+  CANCELADA
+}
+
+model TransferenciaSede {
+  id              Int                  @id @default(autoincrement())
+  sedeOrigenId    Int
+  sedeOrigen      Sede                 @relation("TransferenciaOrigen", fields: [sedeOrigenId], references: [id])
+  sedeDestinoId   Int
+  sedeDestino     Sede                 @relation("TransferenciaDestino", fields: [sedeDestinoId], references: [id])
+
+  estado          EstadoTransferencia  @default(ENVIADA)
+  notas           String?
+
+  creadoPorId     Int
+  creadoPor       Usuario              @relation("TransferenciaCreada", fields: [creadoPorId], references: [id])
+  creadoEn        DateTime             @default(now())
+
+  recibidoPorId   Int?
+  recibidoPor     Usuario?             @relation("TransferenciaRecibida", fields: [recibidoPorId], references: [id])
+  recibidoEn      DateTime?
+
+  motivoRechazo   String?
+
+  items           TransferenciaItem[]
+
+  @@index([sedeOrigenId, estado])
+  @@index([sedeDestinoId, estado])
+}
+
+model TransferenciaItem {
+  id               Int               @id @default(autoincrement())
+  transferenciaId  Int
+  transferencia    TransferenciaSede @relation(fields: [transferenciaId], references: [id], onDelete: Cascade)
+
+  productoOrigenId  Int
+  productoOrigen    Producto          @relation("TransferenciaItemOrigen", fields: [productoOrigenId], references: [id])
+
+  productoDestinoId Int?
+  productoDestino   Producto?         @relation("TransferenciaItemDestino", fields: [productoDestinoId], references: [id])
+
+  nombreProducto   String
+  precio           Decimal           @db.Decimal(10, 2)
+  cantidad         Int
+
+  @@index([transferenciaId])
 }
 
 model MovimientoStock {

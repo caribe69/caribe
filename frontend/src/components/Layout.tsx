@@ -17,6 +17,7 @@ import {
   Settings,
   MessageSquare,
   TrendingUp,
+  Truck,
 } from 'lucide-react';
 import { useAuthStore, Rol } from '@/store/auth';
 import TopBar from './TopBar';
@@ -102,6 +103,12 @@ const items: Item[] = [
     label: 'Reportes',
     icon: TrendingUp,
     roles: ['SUPERADMIN', 'ADMIN_SEDE'],
+  },
+  {
+    to: '/transferencias',
+    label: 'Transferencias',
+    icon: Truck,
+    roles: ['SUPERADMIN', 'ADMIN_SEDE', 'HOTELERO', 'CAJERO'],
   },
   {
     to: '/chat',

@@ -32,4 +32,22 @@ export class SedesService {
       data: { activa: !sede.activa },
     });
   }
+
+  /**
+   * Marca una sede como principal. Solo puede haber UNA principal a la vez:
+   * desmarca todas las demás en la misma transacción.
+   */
+  async setPrincipal(id: number) {
+    await this.findOne(id);
+    return this.prisma.$transaction(async (tx) => {
+      await tx.sede.updateMany({
+        where: { esPrincipal: true, NOT: { id } },
+        data: { esPrincipal: false },
+      });
+      return tx.sede.update({
+        where: { id },
+        data: { esPrincipal: true },
+      });
+    });
+  }
 }

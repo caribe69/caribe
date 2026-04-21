@@ -47,4 +47,10 @@ export class SedesController {
   toggle(@Param('id', ParseIntPipe) id: number) {
     return this.sedes.toggleActiva(id);
   }
+
+  @Roles(Rol.SUPERADMIN)
+  @Patch(':id/principal')
+  setPrincipal(@Param('id', ParseIntPipe) id: number) {
+    return this.sedes.setPrincipal(id);
+  }
 }

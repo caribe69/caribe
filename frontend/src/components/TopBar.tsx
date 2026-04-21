@@ -19,6 +19,7 @@ import {
   Settings,
   MessageSquare,
   TrendingUp,
+  Truck,
 } from 'lucide-react';
 import { useAuthStore, UsuarioInfo } from '@/store/auth';
 import { api } from '@/lib/api';
@@ -114,6 +115,12 @@ const PAGES: Record<string, PageMeta> = {
     eyebrow: 'Analítica y comparativos',
     Icon: TrendingUp,
     gradient: 'from-emerald-500 to-violet-600',
+  },
+  '/transferencias': {
+    title: 'Transferencias',
+    eyebrow: 'Movimientos entre sedes',
+    Icon: Truck,
+    gradient: 'from-indigo-500 to-violet-600',
   },
   '/configuracion': {
     title: 'Configuración',

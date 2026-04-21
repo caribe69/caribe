@@ -1,10 +1,11 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Calendar, Download, FileSpreadsheet, Search } from 'lucide-react';
+import { Calendar, Download, FileSpreadsheet, Search, Printer } from 'lucide-react';
 import { api } from '@/lib/api';
 import { useAuthStore } from '@/store/auth';
 import { usePagination } from '@/hooks/usePagination';
 import Pagination from '@/components/Pagination';
+import BoletaAlquiler from '@/components/BoletaAlquiler';
 
 interface AlquilerHist {
   id: number;
@@ -43,6 +44,7 @@ export default function Historial() {
   const [desde, setDesde] = useState(daysAgo(7));
   const [hasta, setHasta] = useState(today());
   const [descargando, setDescargando] = useState(false);
+  const [boleta, setBoleta] = useState<AlquilerHist | null>(null);
 
   const query = useQuery<AlquilerHist[]>({
     queryKey: ['alquileres', 'historial', desde, hasta, activeSedeId],
@@ -196,12 +198,13 @@ export default function Historial() {
               <Th className="text-right">Total</Th>
               <Th>Método</Th>
               <Th>Estado</Th>
+              <Th>{''}</Th>
             </tr>
           </thead>
           <tbody>
             {query.isLoading && (
               <tr>
-                <td colSpan={10} className="px-6 py-12 text-center text-slate-400">
+                <td colSpan={11} className="px-6 py-12 text-center text-slate-400">
                   Cargando...
                 </td>
               </tr>
@@ -275,12 +278,24 @@ export default function Historial() {
                     <Td>
                       <EstadoBadge estado={a.estado} />
                     </Td>
+                    <Td className="text-right">
+                      {a.estado !== 'ANULADO' && (
+                        <button
+                          onClick={() => setBoleta(a)}
+                          className="inline-flex items-center gap-1 text-xs bg-violet-100 hover:bg-violet-200 text-violet-700 px-2.5 py-1.5 rounded-lg font-medium btn-press"
+                          title="Ver e imprimir boleta"
+                        >
+                          <Printer size={12} />
+                          Boleta
+                        </button>
+                      )}
+                    </Td>
                   </tr>
                 );
               })}
             {!query.isLoading && query.data?.length === 0 && (
               <tr>
-                <td colSpan={10} className="px-6 py-16 text-center text-slate-400">
+                <td colSpan={11} className="px-6 py-16 text-center text-slate-400">
                   <Search size={40} className="mx-auto text-slate-300 mb-2" />
                   Sin alquileres en este rango
                 </td>
@@ -300,6 +315,13 @@ export default function Historial() {
           setSize={pag.setSize}
         />
       </div>
+
+      {boleta && (
+        <BoletaAlquiler
+          alquiler={boleta as any}
+          onClose={() => setBoleta(null)}
+        />
+      )}
     </div>
   );
 }

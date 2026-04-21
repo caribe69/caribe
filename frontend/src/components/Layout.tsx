@@ -149,6 +149,19 @@ export default function Layout() {
   const chatUnread =
     inboxQuery.data?.reduce((s, c) => s + (c.noLeidos || 0), 0) ?? 0;
 
+  // Badge de transferencias pendientes de recibir para mi sede
+  const transfQuery = useQuery<any[]>({
+    queryKey: ['transferencias', 'recibidas', 'ENVIADA'],
+    queryFn: async () =>
+      (
+        await api.get('/transferencias', {
+          params: { direccion: 'recibidas', estado: 'ENVIADA' },
+        })
+      ).data,
+    enabled: !!usuario,
+  });
+  const transfPendientes = transfQuery.data?.length ?? 0;
+
   return (
     <div className="flex h-screen overflow-hidden p-4 gap-4 bg-gradient-to-br from-slate-50 via-violet-50/30 to-emerald-50/20">
       {/* Sidebar FIJO */}
@@ -175,6 +188,8 @@ export default function Layout() {
           {visibles.map((it) => {
             const Icon = it.icon;
             const showChatBadge = it.to === '/chat' && chatUnread > 0;
+            const showTransfBadge =
+              it.to === '/transferencias' && transfPendientes > 0;
             return (
               <NavLink
                 key={it.to}
@@ -193,6 +208,11 @@ export default function Layout() {
                 {showChatBadge && (
                   <span className="bg-rose-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-[20px] text-center">
                     {chatUnread > 9 ? '9+' : chatUnread}
+                  </span>
+                )}
+                {showTransfBadge && (
+                  <span className="bg-amber-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-[20px] text-center animate-pulse">
+                    {transfPendientes > 9 ? '9+' : transfPendientes}
                   </span>
                 )}
               </NavLink>

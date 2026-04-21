@@ -65,6 +65,52 @@ export function useLiveEvents() {
     s.on('limpieza:fotos', onLimpFotos);
     s.on('limpieza:completada', onLimpCompletada);
 
+    // --- Transferencias entre sedes ---
+    const onTransfNueva = (p: any) => {
+      showRef.current({
+        type: 'info',
+        title: `📦 Productos en camino desde ${p.sedeOrigen}`,
+        description: `${p.items} producto${p.items === 1 ? '' : 's'} · ${p.unidades} unidades · envió ${p.creadoPor || 'sede principal'}`,
+      });
+      qcRef.current.invalidateQueries({ queryKey: ['transferencias'] });
+    };
+
+    const onTransfRecibida = (p: any) => {
+      showRef.current({
+        type: 'success',
+        title: `✅ Transferencia recibida en ${p.sedeDestino}`,
+        description: `${p.items} producto${p.items === 1 ? '' : 's'} · ${p.unidades} unidades confirmadas por ${p.recibidoPor || ''}`,
+      });
+      qcRef.current.invalidateQueries({ queryKey: ['transferencias'] });
+      qcRef.current.invalidateQueries({ queryKey: ['productos'] });
+    };
+
+    const onTransfRechazada = (p: any) => {
+      showRef.current({
+        type: 'error',
+        title: `❌ ${p.sedeDestino} rechazó la transferencia #${p.id}`,
+        description: p.motivo
+          ? `Motivo: ${p.motivo} · El stock volvió a tu sede`
+          : 'El stock volvió a tu sede',
+      });
+      qcRef.current.invalidateQueries({ queryKey: ['transferencias'] });
+      qcRef.current.invalidateQueries({ queryKey: ['productos'] });
+    };
+
+    const onTransfCancelada = (p: any) => {
+      showRef.current({
+        type: 'warning',
+        title: `⚠ Envío cancelado por ${p.sedeOrigen}`,
+        description: `La transferencia #${p.id} fue cancelada antes de recibirla`,
+      });
+      qcRef.current.invalidateQueries({ queryKey: ['transferencias'] });
+    };
+
+    s.on('transferencia:nueva', onTransfNueva);
+    s.on('transferencia:recibida', onTransfRecibida);
+    s.on('transferencia:rechazada', onTransfRechazada);
+    s.on('transferencia:cancelada', onTransfCancelada);
+
     // Presencia en vivo
     const { setList, addOnline, removeOnline } = usePresence.getState();
     const onList = (ids: number[]) => setList(ids);
@@ -78,6 +124,10 @@ export function useLiveEvents() {
       s.off('limpieza:iniciada', onLimpIniciada);
       s.off('limpieza:fotos', onLimpFotos);
       s.off('limpieza:completada', onLimpCompletada);
+      s.off('transferencia:nueva', onTransfNueva);
+      s.off('transferencia:recibida', onTransfRecibida);
+      s.off('transferencia:rechazada', onTransfRechazada);
+      s.off('transferencia:cancelada', onTransfCancelada);
       s.off('presence:list', onList);
       s.off('presence:online', onOnline);
       s.off('presence:offline', onOffline);

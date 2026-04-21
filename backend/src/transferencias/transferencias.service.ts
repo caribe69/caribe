@@ -123,7 +123,10 @@ export class TransferenciasService {
     this.events.emitToSede(dto.sedeDestinoId, 'transferencia:nueva', {
       id: creada.id,
       sedeOrigen: origen.nombre,
+      sedeDestino: destino.nombre,
       items: creada.items.length,
+      unidades: creada.items.reduce((s, i) => s + i.cantidad, 0),
+      creadoPor: creada.creadoPor?.nombre,
     });
 
     return creada;
@@ -277,7 +280,11 @@ export class TransferenciasService {
       // Notifica a la sede origen que se recibió
       this.events.emitToSede(t.sedeOrigenId, 'transferencia:recibida', {
         id: t.id,
+        sedeOrigen: t.sedeOrigen.nombre,
         sedeDestino: t.sedeDestino.nombre,
+        items: t.items.length,
+        unidades: t.items.reduce((s, i) => s + i.cantidad, 0),
+        recibidoPor: user.username,
       });
 
       return actualizada;
@@ -321,7 +328,7 @@ export class TransferenciasService {
         });
       }
 
-      return tx.transferenciaSede.update({
+      const actualizada = await tx.transferenciaSede.update({
         where: { id: t.id },
         data: {
           estado: EstadoTransferencia.RECHAZADA,
@@ -330,6 +337,15 @@ export class TransferenciasService {
           recibidoEn: new Date(),
         },
       });
+
+      // Notifica a sede origen que se rechazó
+      this.events.emitToSede(t.sedeOrigenId, 'transferencia:rechazada', {
+        id: t.id,
+        sedeDestino: t.sedeDestino.nombre,
+        motivo: dto.motivo,
+      });
+
+      return actualizada;
     });
   }
 
@@ -364,10 +380,18 @@ export class TransferenciasService {
           },
         });
       }
-      return tx.transferenciaSede.update({
+      const actualizada = await tx.transferenciaSede.update({
         where: { id: t.id },
         data: { estado: EstadoTransferencia.CANCELADA },
       });
+
+      // Notifica a sede destino que se canceló
+      this.events.emitToSede(t.sedeDestinoId, 'transferencia:cancelada', {
+        id: t.id,
+        sedeOrigen: t.sedeOrigen.nombre,
+      });
+
+      return actualizada;
     });
   }
 }

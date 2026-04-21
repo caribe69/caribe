@@ -63,12 +63,14 @@ export default function Login() {
         <div className="relative z-10 flex flex-col justify-between p-12 xl:p-16 text-white w-full">
           {/* Branding top */}
           <div className="flex items-center gap-3">
-            <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-amber-300 to-amber-500 flex items-center justify-center shadow-lg shadow-amber-500/30">
-              <BedDouble size={22} className="text-slate-900" strokeWidth={2.5} />
-            </div>
+            <img
+              src="/logo.png"
+              alt="Sol Caribe"
+              className="w-12 h-12 rounded-full shadow-lg shadow-black/40 ring-2 ring-amber-400/50"
+            />
             <div>
               <div className="font-hotel text-xl font-bold tracking-tight">
-                Caribe Hotel
+                Sol Caribe
               </div>
               <div className="text-[10px] uppercase tracking-[0.25em] text-slate-300">
                 Management Suite
@@ -126,12 +128,14 @@ export default function Login() {
           {/* Brand mobile */}
           <div className="lg:hidden text-center mb-8">
             <div className="inline-flex items-center gap-2 bg-white/10 backdrop-blur px-4 py-2 rounded-2xl">
-              <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-amber-300 to-amber-500 flex items-center justify-center">
-                <BedDouble size={18} className="text-slate-900" strokeWidth={2.5} />
-              </div>
+              <img
+                src="/logo.png"
+                alt="Sol Caribe"
+                className="w-10 h-10 rounded-full ring-2 ring-amber-400/40"
+              />
               <div className="text-left">
                 <div className="font-hotel text-base font-bold text-white">
-                  Caribe Hotel
+                  Sol Caribe
                 </div>
                 <div className="text-[9px] uppercase tracking-widest text-slate-300">
                   Management Suite
@@ -232,7 +236,7 @@ export default function Login() {
           </div>
 
           <div className="text-center mt-6 text-[11px] text-slate-500 lg:text-slate-400">
-            © {new Date().getFullYear()} Caribe Hotel · Todos los derechos
+            © {new Date().getFullYear()} Hotel Sol Caribe · Todos los derechos
             reservados
           </div>
         </div>

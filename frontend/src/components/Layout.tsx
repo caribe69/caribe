@@ -12,7 +12,6 @@ import {
   LogOut,
   ShoppingCart,
   LayoutDashboard,
-  Hotel,
   Crown,
   FileBarChart,
   Settings,
@@ -149,14 +148,16 @@ export default function Layout() {
       <aside className="w-60 shrink-0 bg-white rounded-3xl shadow-sm flex flex-col h-full overflow-hidden">
         {/* Logo */}
         <div className="px-6 pt-6 pb-5 flex items-center gap-3 shrink-0">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-500 to-violet-700 flex items-center justify-center shadow-md">
-            <Hotel size={20} className="text-white" />
-          </div>
+          <img
+            src="/logo.png"
+            alt="Sol Caribe"
+            className="w-11 h-11 rounded-full shadow-md ring-2 ring-amber-400/30"
+          />
           <div>
             <div className="font-hotel text-xl font-bold text-slate-900 leading-none">
-              Caribe
+              Sol Caribe
             </div>
-            <div className="text-[10px] uppercase tracking-widest text-slate-400 mt-0.5">
+            <div className="text-[10px] uppercase tracking-widest text-slate-400 mt-1">
               Hotel
             </div>
           </div>

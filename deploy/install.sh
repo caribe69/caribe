@@ -193,10 +193,14 @@ server {
     }
 
     # Uploads servidos por el backend
-    location /uploads/ {
+    # ^~ evita que la regex de cache-estáticos abajo intercepte las fotos
+    location ^~ /uploads/ {
         proxy_pass http://127.0.0.1:3001/uploads/;
         proxy_http_version 1.1;
         proxy_set_header Host $host;
+        proxy_read_timeout 60s;
+        expires 7d;
+        add_header Cache-Control "public";
     }
 
     # Socket.IO (WebSocket + long-polling) para notificaciones en vivo

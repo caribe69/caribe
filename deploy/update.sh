@@ -83,10 +83,15 @@ server {
         proxy_read_timeout 300s;
     }
 
-    location /uploads/ {
+    # ^~ evita que la regex de cache-estáticos abajo intercepte las fotos
+    location ^~ /uploads/ {
         proxy_pass http://127.0.0.1:3001/uploads/;
         proxy_http_version 1.1;
         proxy_set_header Host $host;
+        proxy_read_timeout 60s;
+        # Cache razonable, las fotos no cambian
+        expires 7d;
+        add_header Cache-Control "public";
     }
 
     location /socket.io/ {

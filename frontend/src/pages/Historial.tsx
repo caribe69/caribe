@@ -21,6 +21,11 @@ interface AlquilerHist {
   metodoPago: string;
   estado: string;
   motivoAnulacion?: string | null;
+  clienteFechaNacimiento?: string | null;
+  tipoComprobante?: string | null;
+  clienteRuc?: string | null;
+  clienteRazonSocial?: string | null;
+  clienteDireccionFiscal?: string | null;
   habitacion: { numero: string; piso: { numero: number } };
   sede?: { nombre: string };
   consumos: Array<{
@@ -244,18 +249,32 @@ export default function Historial() {
                       </div>
                     </Td>
                     <Td>
-                      <div className="font-medium text-slate-700">
+                      <div className="font-medium text-slate-700 flex items-center gap-1.5">
                         {a.clienteNombre}
+                        {a.tipoComprobante === 'FACTURA' && (
+                          <span className="text-[9px] bg-amber-100 text-amber-800 font-bold px-1.5 py-0.5 rounded">
+                            FACTURA
+                          </span>
+                        )}
                       </div>
-                      {a.consumos.length > 0 && (
-                        <div className="text-[10px] text-slate-400">
-                          {a.consumos.length} producto
-                          {a.consumos.length === 1 ? '' : 's'}
-                        </div>
-                      )}
+                      <div className="text-[10px] text-slate-400 flex items-center gap-1.5">
+                        {a.clienteFechaNacimiento && (
+                          <span>
+                            {calcularEdadHist(a.clienteFechaNacimiento)} años
+                          </span>
+                        )}
+                        {a.consumos.length > 0 && (
+                          <span>
+                            · {a.consumos.length} producto
+                            {a.consumos.length === 1 ? '' : 's'}
+                          </span>
+                        )}
+                      </div>
                     </Td>
                     <Td className="text-xs text-slate-600 font-mono">
-                      {a.clienteDni}
+                      {a.tipoComprobante === 'FACTURA' && a.clienteRuc
+                        ? a.clienteRuc
+                        : a.clienteDni}
                     </Td>
                     <Td>
                       <div className="flex items-center gap-1.5">
@@ -392,4 +411,15 @@ function EstadoBadge({ estado }: { estado: string }) {
       {estado}
     </span>
   );
+}
+
+function calcularEdadHist(fechaISO: string): number {
+  const nac = new Date(fechaISO);
+  const hoy = new Date();
+  let edad = hoy.getFullYear() - nac.getFullYear();
+  const antes =
+    hoy.getMonth() < nac.getMonth() ||
+    (hoy.getMonth() === nac.getMonth() && hoy.getDate() < nac.getDate());
+  if (antes) edad -= 1;
+  return edad;
 }

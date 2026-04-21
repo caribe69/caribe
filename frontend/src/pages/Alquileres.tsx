@@ -36,6 +36,7 @@ interface Habitacion {
     estado: string;
     clienteNombre: string;
     clienteDni: string;
+    clienteFechaNacimiento?: string | null;
     fechaIngreso: string;
     fechaSalida: string;
     fechaSalidaReal: string | null;
@@ -328,7 +329,10 @@ function MapaHabitaciones() {
           // Tooltip title completo
           let tooltip = '';
           if (h.estado === 'OCUPADA' && alquilerRef) {
-            tooltip = `${alquilerRef.clienteNombre} · DNI ${alquilerRef.clienteDni}\nIngreso: ${new Date(alquilerRef.creadoEn).toLocaleString('es-PE')}\nSalida prevista: ${new Date(alquilerRef.fechaSalida).toLocaleString('es-PE')}\nLleva: ${formatDuracion(minutosEn)}`;
+            const edadTxt = alquilerRef.clienteFechaNacimiento
+              ? ` · ${calcularEdad(alquilerRef.clienteFechaNacimiento)} años`
+              : '';
+            tooltip = `${alquilerRef.clienteNombre} · DNI ${alquilerRef.clienteDni}${edadTxt}\nIngreso: ${new Date(alquilerRef.creadoEn).toLocaleString('es-PE')}\nSalida prevista: ${new Date(alquilerRef.fechaSalida).toLocaleString('es-PE')}\nLleva: ${formatDuracion(minutosEn)}`;
           } else if (h.estado === 'ALISTANDO') {
             tooltip = tiempoBase
               ? `En limpieza desde: ${tiempoBase.toLocaleString('es-PE')}\nHace ${formatDuracion(minutosEn)}${alistandoAtrasada ? ' · ⚠ atrasado' : ''}`
@@ -541,7 +545,29 @@ function AlquilerActivoModal({
               <div className="font-semibold">{alquiler.clienteNombre}</div>
               <div className="text-xs text-slate-600">
                 DNI: {alquiler.clienteDni} · {alquiler.metodoPago}
+                {alquiler.clienteFechaNacimiento && (
+                  <>
+                    {' '}
+                    ·{' '}
+                    <b className="text-violet-700">
+                      {calcularEdad(alquiler.clienteFechaNacimiento)} años
+                    </b>
+                  </>
+                )}
               </div>
+              {alquiler.clienteFechaNacimiento && (
+                <div className="text-xs text-slate-500 mt-0.5">
+                  🎂 {new Date(alquiler.clienteFechaNacimiento).toLocaleDateString('es-PE')}
+                </div>
+              )}
+              {alquiler.tipoComprobante === 'FACTURA' && (
+                <div className="text-xs text-amber-700 mt-1 font-semibold">
+                  FACTURA · RUC {alquiler.clienteRuc}
+                  {alquiler.clienteRazonSocial && (
+                    <> · {alquiler.clienteRazonSocial}</>
+                  )}
+                </div>
+              )}
               <div className="text-xs text-slate-600 mt-1">
                 {new Date(alquiler.fechaIngreso).toLocaleString()} →{' '}
                 {new Date(alquiler.fechaSalida).toLocaleString()}
@@ -1053,9 +1079,12 @@ function NuevoAlquilerModal({
                     )}
                   </div>
                 </div>
-                {rucData?.encontrado && (
+                {rucData?.fuente === 'local' && (
                   <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-2.5 text-xs">
-                    <div className="font-bold text-emerald-900 uppercase">
+                    <div className="font-bold text-emerald-900 flex items-center gap-1.5">
+                      <UserCheck size={12} /> Empresa recurrente
+                    </div>
+                    <div className="text-emerald-900 mt-1 uppercase font-semibold">
                       {rucData.razonSocial}
                     </div>
                     {rucData.direccion && (
@@ -1063,17 +1092,39 @@ function NuevoAlquilerModal({
                         {rucData.direccion}
                       </div>
                     )}
-                    <div className="text-emerald-600 mt-1 text-[10px] uppercase tracking-wider">
+                    <div className="text-emerald-600 mt-1 text-[10px]">
+                      {rucData.visitas} visita{rucData.visitas === 1 ? '' : 's'} · última:{' '}
+                      {new Date(rucData.ultimaVisita).toLocaleDateString('es-PE')}
+                    </div>
+                  </div>
+                )}
+                {rucData?.fuente === 'sunat' && (
+                  <div className="bg-violet-50 border border-violet-200 rounded-lg p-2.5 text-xs">
+                    <div className="font-bold text-violet-900 flex items-center gap-1.5">
+                      <Search size={12} /> Encontrado en SUNAT
+                    </div>
+                    <div className="text-violet-900 mt-1 uppercase font-semibold">
+                      {rucData.razonSocial}
+                    </div>
+                    {rucData.direccion && (
+                      <div className="text-violet-700 mt-0.5">
+                        {rucData.direccion}
+                      </div>
+                    )}
+                    <div className="text-violet-600 mt-1 text-[10px] uppercase tracking-wider">
                       {rucData.estado} · {rucData.condicion}
                     </div>
                   </div>
                 )}
-                {rucData && !rucData.encontrado && ruc.length === 11 && !buscandoRuc && (
-                  <div className="bg-amber-50 border border-amber-200 rounded-lg p-2 text-xs text-amber-800">
-                    RUC no encontrado en SUNAT. Completa razón social
-                    manualmente al finalizar el alquiler.
-                  </div>
-                )}
+                {rucData &&
+                  !rucData.encontrado &&
+                  ruc.length === 11 &&
+                  !buscandoRuc && (
+                    <div className="bg-amber-50 border border-amber-200 rounded-lg p-2.5 text-xs text-amber-800">
+                      <b>No encontrado</b> · no está en el sistema ni en SUNAT.
+                      Completa la razón social manualmente.
+                    </div>
+                  )}
               </div>
             )}
           </div>
@@ -1687,6 +1738,17 @@ function formatDuracion(mins: number): string {
   return hr ? `${d}d ${hr}h` : `${d}d`;
 }
 
+function calcularEdad(fechaISO: string): number {
+  const nac = new Date(fechaISO);
+  const hoy = new Date();
+  let edad = hoy.getFullYear() - nac.getFullYear();
+  const antesDeBirthday =
+    hoy.getMonth() < nac.getMonth() ||
+    (hoy.getMonth() === nac.getMonth() && hoy.getDate() < nac.getDate());
+  if (antesDeBirthday) edad -= 1;
+  return edad;
+}
+
 function DatosFiscalesModal({
   alquiler,
   onClose,
@@ -1843,16 +1905,37 @@ function DatosFiscalesModal({
                   </div>
                 </div>
               </div>
-              {rucData?.encontrado && (
+              {rucData?.fuente === 'local' && (
                 <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3 text-xs">
-                  <div className="font-bold text-emerald-900 uppercase">
-                    ✓ Encontrado en SUNAT
+                  <div className="font-bold text-emerald-900 flex items-center gap-1.5">
+                    <UserCheck size={12} /> Empresa recurrente
                   </div>
                   <div className="text-emerald-700 mt-0.5">
+                    {rucData.visitas} visita
+                    {rucData.visitas === 1 ? '' : 's'} · última:{' '}
+                    {new Date(rucData.ultimaVisita).toLocaleDateString('es-PE')}
+                  </div>
+                </div>
+              )}
+              {rucData?.fuente === 'sunat' && (
+                <div className="bg-violet-50 border border-violet-200 rounded-xl p-3 text-xs">
+                  <div className="font-bold text-violet-900 flex items-center gap-1.5">
+                    <Search size={12} /> Encontrado en SUNAT
+                  </div>
+                  <div className="text-violet-700 mt-0.5">
                     {rucData.estado} · {rucData.condicion}
                   </div>
                 </div>
               )}
+              {rucData &&
+                !rucData.encontrado &&
+                ruc.length === 11 &&
+                !buscando && (
+                  <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 text-xs text-amber-800">
+                    <b>No encontrado</b> · no está en el sistema ni en SUNAT.
+                    Rellena la razón social manualmente abajo.
+                  </div>
+                )}
               <div>
                 <label className="text-[10px] font-semibold text-slate-500 uppercase tracking-widest">
                   Razón social

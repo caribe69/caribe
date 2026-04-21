@@ -113,12 +113,46 @@ export class AlquileresService {
     }
   }
 
-  /** Busca datos de empresa por RUC usando apisperu (misma logica que DNI) */
-  async buscarRuc(_user: JwtPayload, ruc: string) {
+  /**
+   * Busca datos de empresa por RUC. Primero revisa si hay alquileres
+   * previos con ese RUC (empresa recurrente); si no, consulta apisperu (SUNAT).
+   */
+  async buscarRuc(user: JwtPayload, ruc: string) {
     if (!ruc || !/^(10|15|17|20)\d{9}$/.test(ruc))
       throw new BadRequestException(
         'RUC inválido (11 dígitos, debe empezar con 10/15/17/20)',
       );
+
+    const sedeId = resolveSedeId(user);
+
+    // 1. Empresa recurrente: busca en historial local
+    const previos = await this.prisma.alquiler.findMany({
+      where: { sedeId, clienteRuc: ruc, tipoComprobante: 'FACTURA' },
+      orderBy: { creadoEn: 'desc' },
+      select: {
+        clienteRazonSocial: true,
+        clienteDireccionFiscal: true,
+        creadoEn: true,
+      },
+      take: 20,
+    });
+    if (previos.length > 0) {
+      const u = previos[0];
+      return {
+        fuente: 'local',
+        encontrado: true,
+        recurrente: true,
+        ruc,
+        razonSocial: u.clienteRazonSocial || '',
+        direccion: u.clienteDireccionFiscal || '',
+        estado: 'ACTIVO',
+        condicion: 'HABIDO',
+        visitas: previos.length,
+        ultimaVisita: u.creadoEn,
+      };
+    }
+
+    // 2. Consulta SUNAT via apisperu
     const cfg = await this.settings.getRucConfig();
     if (!cfg.token)
       return {
@@ -141,6 +175,7 @@ export class AlquileresService {
       return {
         fuente: 'sunat',
         encontrado: true,
+        recurrente: false,
         ruc,
         razonSocial: razonSocial.trim().toUpperCase(),
         nombreComercial: data.nombreComercial || null,

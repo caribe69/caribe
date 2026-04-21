@@ -18,6 +18,7 @@ export class CreateAlquilerDto {
   @IsString() @MinLength(2) clienteNombre: string;
   @IsString() @MinLength(6) clienteDni: string;
   @IsOptional() @IsString() clienteTelefono?: string;
+  @IsOptional() @IsDateString() clienteFechaNacimiento?: string;
 
   @IsDateString() fechaIngreso: string;
   @IsDateString() fechaSalida: string;
@@ -25,6 +26,22 @@ export class CreateAlquilerDto {
   @Type(() => Number) @IsNumber() precioHabitacion: number;
   @IsEnum(MetodoPago) metodoPago: MetodoPago;
   @IsOptional() @IsString() notas?: string;
+
+  // Datos fiscales opcionales al crear (si ya viene como factura)
+  @IsOptional() @IsEnum({ BOLETA: 'BOLETA', FACTURA: 'FACTURA' } as const)
+  tipoComprobante?: 'BOLETA' | 'FACTURA';
+  @IsOptional() @IsString() clienteRuc?: string;
+  @IsOptional() @IsString() clienteRazonSocial?: string;
+  @IsOptional() @IsString() clienteDireccionFiscal?: string;
+}
+
+export class DatosFiscalesDto {
+  @IsEnum({ BOLETA: 'BOLETA', FACTURA: 'FACTURA' } as const)
+  tipoComprobante: 'BOLETA' | 'FACTURA';
+
+  @IsOptional() @IsString() ruc?: string;
+  @IsOptional() @IsString() razonSocial?: string;
+  @IsOptional() @IsString() direccionFiscal?: string;
 }
 
 export class AgregarConsumoDto {

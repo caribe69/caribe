@@ -49,6 +49,11 @@ interface Alquiler {
   creadoEn: string;
   clienteNombre: string;
   clienteDni: string;
+  clienteFechaNacimiento?: string | null;
+  tipoComprobante?: string | null;
+  clienteRuc?: string | null;
+  clienteRazonSocial?: string | null;
+  clienteDireccionFiscal?: string | null;
   fechaIngreso: string;
   fechaSalida: string;
   total: string;
@@ -478,6 +483,7 @@ function AlquilerActivoModal({
   const [addProdOpen, setAddProdOpen] = useState(false);
   const [extenderOpen, setExtenderOpen] = useState(false);
   const [boletaOpen, setBoletaOpen] = useState(false);
+  const [fiscalesOpen, setFiscalesOpen] = useState(false);
 
   // Busca alquiler ACTIVO de esta habitación
   const { data: alquileres } = useQuery({
@@ -585,10 +591,22 @@ function AlquilerActivoModal({
                 <CalendarPlus size={16} /> Extender estadía
               </button>
               <button
+                onClick={() => setFiscalesOpen(true)}
+                className="flex items-center justify-center gap-2 bg-slate-700 hover:bg-slate-800 text-white py-2.5 rounded-lg btn-press"
+              >
+                <UserCheck size={16} />
+                {alquiler.tipoComprobante === 'FACTURA'
+                  ? `Factura · RUC ${alquiler.clienteRuc}`
+                  : 'Cambiar a factura con RUC'}
+              </button>
+              <button
                 onClick={() => setBoletaOpen(true)}
                 className="flex items-center justify-center gap-2 bg-violet-600 hover:bg-violet-700 text-white py-2.5 rounded-lg btn-press"
               >
-                <Printer size={16} /> Imprimir boleta
+                <Printer size={16} />
+                {alquiler.tipoComprobante === 'FACTURA'
+                  ? 'Imprimir factura'
+                  : 'Imprimir boleta'}
               </button>
               <button
                 onClick={async () => {
@@ -682,6 +700,12 @@ function AlquilerActivoModal({
                 onClose={() => setBoletaOpen(false)}
               />
             )}
+            {fiscalesOpen && (
+              <DatosFiscalesModal
+                alquiler={alquiler}
+                onClose={() => setFiscalesOpen(false)}
+              />
+            )}
           </>
         )}
       </div>
@@ -705,6 +729,7 @@ function NuevoAlquilerModal({
     clienteNombre: '',
     clienteDni: '',
     clienteTelefono: '',
+    clienteFechaNacimiento: '' as string | '',
     fechaIngreso: new Date().toISOString().slice(0, 16),
     fechaSalida: new Date(Date.now() + 3600 * 1000).toISOString().slice(0, 16),
     precioHabitacion: habitacion.precioHora,
@@ -714,6 +739,33 @@ function NuevoAlquilerModal({
   const [error, setError] = useState<string | null>(null);
   const [buscando, setBuscando] = useState(false);
   const [lookup, setLookup] = useState<any | null>(null);
+  // RUC opcional (convertir boleta → factura antes o durante el alquiler)
+  const [conRuc, setConRuc] = useState(false);
+  const [ruc, setRuc] = useState('');
+  const [rucData, setRucData] = useState<any | null>(null);
+  const [buscandoRuc, setBuscandoRuc] = useState(false);
+
+  // Debounced lookup de RUC
+  useEffect(() => {
+    if (!conRuc || !/^(10|15|17|20)\d{9}$/.test(ruc)) {
+      setRucData(null);
+      return;
+    }
+    const t = setTimeout(async () => {
+      setBuscandoRuc(true);
+      try {
+        const { data } = await api.get('/alquileres/ruc/buscar', {
+          params: { ruc },
+        });
+        setRucData(data);
+      } catch {
+        setRucData(null);
+      } finally {
+        setBuscandoRuc(false);
+      }
+    }, 500);
+    return () => clearTimeout(t);
+  }, [ruc, conRuc]);
 
   // Debounced lookup cuando el DNI tiene 8 dígitos
   useEffect(() => {
@@ -734,6 +786,8 @@ function NuevoAlquilerModal({
             ...f,
             clienteNombre: data.nombre || f.clienteNombre,
             clienteTelefono: data.telefono || f.clienteTelefono,
+            clienteFechaNacimiento:
+              data.fechaNacimiento?.slice(0, 10) || f.clienteFechaNacimiento,
           }));
         }
       } catch {
@@ -747,17 +801,26 @@ function NuevoAlquilerModal({
 
   const crear = useMutation({
     mutationFn: async () => {
-      const payload = {
+      const payload: any = {
         habitacionId: habitacion.id,
         clienteNombre: form.clienteNombre,
         clienteDni: form.clienteDni,
         clienteTelefono: form.clienteTelefono || undefined,
+        clienteFechaNacimiento: form.clienteFechaNacimiento
+          ? new Date(form.clienteFechaNacimiento).toISOString()
+          : undefined,
         fechaIngreso: new Date(form.fechaIngreso).toISOString(),
         fechaSalida: new Date(form.fechaSalida).toISOString(),
         precioHabitacion: Number(form.precioHabitacion),
         metodoPago: form.metodoPago,
         notas: form.notas || undefined,
       };
+      if (conRuc && rucData?.encontrado) {
+        payload.tipoComprobante = 'FACTURA';
+        payload.clienteRuc = ruc;
+        payload.clienteRazonSocial = rucData.razonSocial;
+        payload.clienteDireccionFiscal = rucData.direccion || undefined;
+      }
       return (await api.post('/alquileres', payload)).data;
     },
     onSuccess: () => {
@@ -827,7 +890,26 @@ function NuevoAlquilerModal({
                 <Search size={14} />
                 <span>
                   <b>Encontrado en RENIEC</b> · {lookup.nombre}
+                  {lookup.edad != null && (
+                    <>
+                      {' '}
+                      · <b>{lookup.edad} años</b>
+                    </>
+                  )}
                 </span>
+              </div>
+            )}
+            {(lookup?.fechaNacimiento || form.clienteFechaNacimiento) && (
+              <div className="mt-2 text-[11px] text-slate-500 flex items-center gap-2">
+                <span>🎂 Fecha nacimiento:</span>
+                <input
+                  type="date"
+                  value={form.clienteFechaNacimiento || ''}
+                  onChange={(e) =>
+                    setForm({ ...form, clienteFechaNacimiento: e.target.value })
+                  }
+                  className="border border-slate-200 rounded px-2 py-0.5 text-xs"
+                />
               </div>
             )}
             {lookup &&
@@ -938,6 +1020,63 @@ function NuevoAlquilerModal({
             value={form.notas}
             onChange={(e) => setForm({ ...form, notas: e.target.value })}
           />
+
+          {/* Datos fiscales: BOLETA (default) ↔ FACTURA con RUC */}
+          <div className="border border-slate-200 rounded-xl p-3 bg-slate-50">
+            <label className="flex items-center gap-2 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={conRuc}
+                onChange={(e) => setConRuc(e.target.checked)}
+                className="w-4 h-4 accent-violet-600"
+              />
+              <span className="text-sm font-medium text-slate-700">
+                Emitir factura con RUC (en vez de boleta)
+              </span>
+            </label>
+            {conRuc && (
+              <div className="mt-3 space-y-2">
+                <div className="relative">
+                  <input
+                    value={ruc}
+                    onChange={(e) => setRuc(e.target.value.replace(/\D/g, '').slice(0, 11))}
+                    placeholder="RUC (11 dígitos)"
+                    inputMode="numeric"
+                    maxLength={11}
+                    className="w-full border border-slate-200 rounded-lg px-3 py-2 pr-8 text-sm font-mono focus:outline-none focus:border-violet-400 focus:ring-2 focus:ring-violet-100"
+                  />
+                  <div className="absolute right-2 top-1/2 -translate-y-1/2">
+                    {buscandoRuc ? (
+                      <Loader2 size={14} className="text-violet-500 animate-spin" />
+                    ) : (
+                      <Search size={13} className="text-slate-400" />
+                    )}
+                  </div>
+                </div>
+                {rucData?.encontrado && (
+                  <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-2.5 text-xs">
+                    <div className="font-bold text-emerald-900 uppercase">
+                      {rucData.razonSocial}
+                    </div>
+                    {rucData.direccion && (
+                      <div className="text-emerald-700 mt-0.5">
+                        {rucData.direccion}
+                      </div>
+                    )}
+                    <div className="text-emerald-600 mt-1 text-[10px] uppercase tracking-wider">
+                      {rucData.estado} · {rucData.condicion}
+                    </div>
+                  </div>
+                )}
+                {rucData && !rucData.encontrado && ruc.length === 11 && !buscandoRuc && (
+                  <div className="bg-amber-50 border border-amber-200 rounded-lg p-2 text-xs text-amber-800">
+                    RUC no encontrado en SUNAT. Completa razón social
+                    manualmente al finalizar el alquiler.
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
 
           {error && (
             <div className="text-sm text-red-600 bg-red-50 p-2 rounded">
@@ -1546,4 +1685,221 @@ function formatDuracion(mins: number): string {
   const d = Math.floor(h / 24);
   const hr = h % 24;
   return hr ? `${d}d ${hr}h` : `${d}d`;
+}
+
+function DatosFiscalesModal({
+  alquiler,
+  onClose,
+}: {
+  alquiler: Alquiler;
+  onClose: () => void;
+}) {
+  const qc = useQueryClient();
+  const { show: toast } = useToast();
+  const [tipo, setTipo] = useState<'BOLETA' | 'FACTURA'>(
+    (alquiler.tipoComprobante as any) || 'BOLETA',
+  );
+  const [ruc, setRuc] = useState(alquiler.clienteRuc || '');
+  const [razonSocial, setRazonSocial] = useState(
+    alquiler.clienteRazonSocial || '',
+  );
+  const [direccion, setDireccion] = useState(
+    alquiler.clienteDireccionFiscal || '',
+  );
+  const [rucData, setRucData] = useState<any | null>(null);
+  const [buscando, setBuscando] = useState(false);
+
+  useEffect(() => {
+    if (tipo !== 'FACTURA' || !/^(10|15|17|20)\d{9}$/.test(ruc)) {
+      setRucData(null);
+      return;
+    }
+    const t = setTimeout(async () => {
+      setBuscando(true);
+      try {
+        const { data } = await api.get('/alquileres/ruc/buscar', {
+          params: { ruc },
+        });
+        setRucData(data);
+        if (data?.encontrado) {
+          if (!razonSocial) setRazonSocial(data.razonSocial);
+          if (!direccion && data.direccion) setDireccion(data.direccion);
+        }
+      } catch {
+        setRucData(null);
+      } finally {
+        setBuscando(false);
+      }
+    }, 500);
+    return () => clearTimeout(t);
+  }, [ruc, tipo]);
+
+  const guardar = useMutation({
+    mutationFn: async () =>
+      (
+        await api.patch(`/alquileres/${alquiler.id}/datos-fiscales`, {
+          tipoComprobante: tipo,
+          ruc: tipo === 'FACTURA' ? ruc : undefined,
+          razonSocial: tipo === 'FACTURA' ? razonSocial : undefined,
+          direccionFiscal: tipo === 'FACTURA' ? direccion : undefined,
+        })
+      ).data,
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['alquileres'] });
+      qc.invalidateQueries({ queryKey: ['habitaciones'] });
+      toast({
+        type: 'success',
+        title:
+          tipo === 'FACTURA'
+            ? 'Factura configurada'
+            : 'Cambiado a boleta',
+        description:
+          tipo === 'FACTURA' ? `RUC ${ruc} · ${razonSocial}` : undefined,
+      });
+      onClose();
+    },
+    onError: (err: any) =>
+      toast({
+        type: 'error',
+        title: 'Error',
+        description: err.response?.data?.message || err.message,
+      }),
+  });
+
+  const valido =
+    tipo === 'BOLETA' ||
+    (/^(10|15|17|20)\d{9}$/.test(ruc) && razonSocial.length >= 3);
+
+  return (
+    <div className="fixed inset-0 bg-slate-950/60 backdrop-blur-sm flex items-center justify-center p-4 z-[60] animate-fade-in">
+      <div className="bg-white rounded-3xl w-full max-w-md shadow-2xl animate-scale-in">
+        <div className="flex justify-between items-center p-5 border-b border-slate-100">
+          <div>
+            <h2 className="font-hotel text-lg font-bold text-slate-900">
+              Datos de facturación
+            </h2>
+            <div className="text-xs text-slate-500 mt-0.5">
+              Hab. {alquiler.habitacion.numero} · {alquiler.clienteNombre}
+            </div>
+          </div>
+          <button
+            onClick={onClose}
+            className="w-8 h-8 rounded-lg hover:bg-slate-100 flex items-center justify-center"
+          >
+            <X size={18} className="text-slate-500" />
+          </button>
+        </div>
+
+        <div className="p-5 space-y-4">
+          <div className="flex bg-slate-100 rounded-xl p-1">
+            <button
+              onClick={() => setTipo('BOLETA')}
+              className={`flex-1 py-2.5 rounded-lg text-sm font-medium transition ${
+                tipo === 'BOLETA'
+                  ? 'bg-white shadow-sm text-violet-700'
+                  : 'text-slate-600'
+              }`}
+            >
+              Boleta (DNI)
+            </button>
+            <button
+              onClick={() => setTipo('FACTURA')}
+              className={`flex-1 py-2.5 rounded-lg text-sm font-medium transition ${
+                tipo === 'FACTURA'
+                  ? 'bg-white shadow-sm text-violet-700'
+                  : 'text-slate-600'
+              }`}
+            >
+              Factura (RUC)
+            </button>
+          </div>
+
+          {tipo === 'FACTURA' ? (
+            <div className="space-y-3">
+              <div>
+                <label className="text-[10px] font-semibold text-slate-500 uppercase tracking-widest">
+                  RUC (11 dígitos)
+                </label>
+                <div className="relative mt-1">
+                  <input
+                    value={ruc}
+                    onChange={(e) =>
+                      setRuc(e.target.value.replace(/\D/g, '').slice(0, 11))
+                    }
+                    inputMode="numeric"
+                    maxLength={11}
+                    placeholder="20123456789"
+                    className="w-full border border-slate-200 rounded-xl px-3 py-2.5 pr-9 text-sm font-mono focus:outline-none focus:border-violet-400 focus:ring-2 focus:ring-violet-100"
+                  />
+                  <div className="absolute right-2.5 top-1/2 -translate-y-1/2">
+                    {buscando ? (
+                      <Loader2
+                        size={14}
+                        className="text-violet-500 animate-spin"
+                      />
+                    ) : (
+                      <Search size={13} className="text-slate-400" />
+                    )}
+                  </div>
+                </div>
+              </div>
+              {rucData?.encontrado && (
+                <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3 text-xs">
+                  <div className="font-bold text-emerald-900 uppercase">
+                    ✓ Encontrado en SUNAT
+                  </div>
+                  <div className="text-emerald-700 mt-0.5">
+                    {rucData.estado} · {rucData.condicion}
+                  </div>
+                </div>
+              )}
+              <div>
+                <label className="text-[10px] font-semibold text-slate-500 uppercase tracking-widest">
+                  Razón social
+                </label>
+                <input
+                  value={razonSocial}
+                  onChange={(e) => setRazonSocial(e.target.value.toUpperCase())}
+                  placeholder="INVERSIONES ABC S.A.C."
+                  className="mt-1 w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-violet-400 focus:ring-2 focus:ring-violet-100"
+                />
+              </div>
+              <div>
+                <label className="text-[10px] font-semibold text-slate-500 uppercase tracking-widest">
+                  Dirección fiscal (opcional)
+                </label>
+                <input
+                  value={direccion}
+                  onChange={(e) => setDireccion(e.target.value)}
+                  placeholder="Av. ..."
+                  className="mt-1 w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-violet-400 focus:ring-2 focus:ring-violet-100"
+                />
+              </div>
+            </div>
+          ) : (
+            <div className="text-sm text-slate-600 bg-slate-50 rounded-xl p-4">
+              Se emitirá <b>boleta de venta</b> a nombre de{' '}
+              <b>{alquiler.clienteNombre}</b> (DNI {alquiler.clienteDni}).
+            </div>
+          )}
+
+          <div className="flex gap-2 pt-1">
+            <button
+              onClick={onClose}
+              className="flex-1 bg-slate-100 hover:bg-slate-200 py-2.5 rounded-xl font-medium text-slate-700"
+            >
+              Cancelar
+            </button>
+            <button
+              onClick={() => guardar.mutate()}
+              disabled={guardar.isPending || !valido}
+              className="flex-1 bg-gradient-to-r from-violet-600 to-violet-500 text-white py-2.5 rounded-xl font-semibold shadow-md shadow-violet-500/30 disabled:opacity-40"
+            >
+              {guardar.isPending ? 'Guardando...' : 'Guardar'}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
 }

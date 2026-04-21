@@ -78,6 +78,25 @@ export class AlquileresService {
         .join(' ')
         .trim();
       if (!nombre) return { fuente: 'api_vacio', encontrado: false, dni };
+
+      // Intentar extraer fecha de nacimiento y calcular edad si viene
+      let fechaNacimiento: string | null = null;
+      let edad: number | null = null;
+      const rawFecha =
+        data.fechaNacimiento || data.fecha_nacimiento || data.fecNacimiento;
+      if (rawFecha) {
+        const d = new Date(rawFecha);
+        if (!isNaN(d.getTime())) {
+          fechaNacimiento = d.toISOString();
+          const hoy = new Date();
+          edad = hoy.getFullYear() - d.getFullYear();
+          const antes =
+            hoy.getMonth() < d.getMonth() ||
+            (hoy.getMonth() === d.getMonth() && hoy.getDate() < d.getDate());
+          if (antes) edad -= 1;
+        }
+      }
+
       return {
         fuente: 'reniec',
         encontrado: true,
@@ -86,10 +105,94 @@ export class AlquileresService {
         nombre,
         telefono: null,
         visitas: 0,
+        fechaNacimiento,
+        edad,
       };
     } catch {
       return { fuente: 'api_error', encontrado: false, dni };
     }
+  }
+
+  /** Busca datos de empresa por RUC usando apisperu (misma logica que DNI) */
+  async buscarRuc(_user: JwtPayload, ruc: string) {
+    if (!ruc || !/^(10|15|17|20)\d{9}$/.test(ruc))
+      throw new BadRequestException(
+        'RUC inválido (11 dígitos, debe empezar con 10/15/17/20)',
+      );
+    const cfg = await this.settings.getRucConfig();
+    if (!cfg.token)
+      return {
+        fuente: 'ninguna',
+        encontrado: false,
+        ruc,
+        mensaje:
+          'No hay token de API RUC configurado (Configuración → APIs).',
+      };
+
+    try {
+      const url = `${cfg.url}/${ruc}?token=${encodeURIComponent(cfg.token)}`;
+      const resp = await fetch(url, { signal: AbortSignal.timeout(8000) });
+      if (!resp.ok) return { fuente: 'api_error', encontrado: false, ruc };
+      const data: any = await resp.json();
+      const razonSocial =
+        data.razonSocial || data.razon_social || data.nombreComercial;
+      if (!razonSocial)
+        return { fuente: 'api_vacio', encontrado: false, ruc };
+      return {
+        fuente: 'sunat',
+        encontrado: true,
+        ruc,
+        razonSocial: razonSocial.trim().toUpperCase(),
+        nombreComercial: data.nombreComercial || null,
+        direccion: (data.direccion || data.direccionCompleta || '').trim(),
+        estado: data.estado || null, // ACTIVO / BAJA / SUSPENSION
+        condicion: data.condicion || null, // HABIDO / NO HABIDO
+      };
+    } catch {
+      return { fuente: 'api_error', encontrado: false, ruc };
+    }
+  }
+
+  /** Actualiza los datos fiscales de un alquiler (boleta ↔ factura con RUC) */
+  async actualizarDatosFiscales(
+    id: number,
+    dto: {
+      tipoComprobante: 'BOLETA' | 'FACTURA';
+      ruc?: string | null;
+      razonSocial?: string | null;
+      direccionFiscal?: string | null;
+    },
+    user: JwtPayload,
+  ) {
+    const alquiler = await this.findOne(id, user);
+    if (alquiler.estado === EstadoAlquiler.ANULADO)
+      throw new BadRequestException('Alquiler anulado');
+
+    if (dto.tipoComprobante === 'FACTURA') {
+      if (!dto.ruc || !/^(10|15|17|20)\d{9}$/.test(dto.ruc))
+        throw new BadRequestException('RUC inválido para factura');
+      if (!dto.razonSocial || dto.razonSocial.length < 3)
+        throw new BadRequestException('Razón social requerida');
+    }
+
+    return this.prisma.alquiler.update({
+      where: { id: alquiler.id },
+      data: {
+        tipoComprobante: dto.tipoComprobante,
+        clienteRuc: dto.tipoComprobante === 'FACTURA' ? dto.ruc : null,
+        clienteRazonSocial:
+          dto.tipoComprobante === 'FACTURA' ? dto.razonSocial : null,
+        clienteDireccionFiscal:
+          dto.tipoComprobante === 'FACTURA'
+            ? dto.direccionFiscal || null
+            : null,
+      },
+      include: {
+        habitacion: { include: { piso: true } },
+        consumos: { include: { producto: true } },
+        creadoPor: { select: { id: true, nombre: true, username: true } },
+      },
+    });
   }
 
   findAll(
@@ -194,12 +297,19 @@ export class AlquileresService {
           clienteNombre: dto.clienteNombre,
           clienteDni: dto.clienteDni,
           clienteTelefono: dto.clienteTelefono,
+          clienteFechaNacimiento: dto.clienteFechaNacimiento
+            ? new Date(dto.clienteFechaNacimiento)
+            : null,
           fechaIngreso: new Date(dto.fechaIngreso),
           fechaSalida: new Date(dto.fechaSalida),
           precioHabitacion: dto.precioHabitacion,
           total: dto.precioHabitacion,
           metodoPago: dto.metodoPago,
           notas: dto.notas,
+          tipoComprobante: dto.tipoComprobante || 'BOLETA',
+          clienteRuc: dto.clienteRuc || null,
+          clienteRazonSocial: dto.clienteRazonSocial || null,
+          clienteDireccionFiscal: dto.clienteDireccionFiscal || null,
           creadoPorId: user.sub,
         },
       });

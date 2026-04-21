@@ -185,6 +185,13 @@ model Alquiler {
   clienteNombre   String
   clienteDni      String
   clienteTelefono String?
+  clienteFechaNacimiento DateTime?
+
+  // Datos fiscales (para FACTURA con RUC)
+  tipoComprobante         String?  // 'BOLETA' (default) o 'FACTURA'
+  clienteRuc              String?
+  clienteRazonSocial      String?
+  clienteDireccionFiscal  String?
 
   fechaIngreso    DateTime
   fechaSalida     DateTime

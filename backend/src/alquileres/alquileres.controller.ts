@@ -23,6 +23,7 @@ import {
   AgregarConsumoDto,
   AnularAlquilerDto,
   CreateAlquilerDto,
+  DatosFiscalesDto,
   ExtenderAlquilerDto,
   FinalizarAlquilerDto,
 } from './alquiler.dto';
@@ -43,6 +44,24 @@ export class AlquileresController {
       sedeId ? Number(sedeId) : undefined,
       estado,
     );
+  }
+
+  @Get('ruc/buscar')
+  buscarRuc(
+    @CurrentUser() user: JwtPayload,
+    @Query('ruc') ruc: string,
+  ) {
+    return this.service.buscarRuc(user, ruc);
+  }
+
+  @Roles(Rol.SUPERADMIN, Rol.ADMIN_SEDE, Rol.HOTELERO, Rol.CAJERO)
+  @Patch(':id/datos-fiscales')
+  actualizarDatosFiscales(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: DatosFiscalesDto,
+    @CurrentUser() user: JwtPayload,
+  ) {
+    return this.service.actualizarDatosFiscales(id, dto, user);
   }
 
   @Get('clientes/buscar')

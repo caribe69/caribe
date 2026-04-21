@@ -21,6 +21,10 @@ interface Alquiler {
   metodoPago: string;
   fechaIngreso?: string;
   fechaSalida?: string;
+  tipoComprobante?: string | null;
+  clienteRuc?: string | null;
+  clienteRazonSocial?: string | null;
+  clienteDireccionFiscal?: string | null;
   habitacion: {
     numero: string;
     descripcion?: string | null;
@@ -57,7 +61,8 @@ export default function BoletaAlquiler({
         <div className="bg-white rounded-2xl w-full max-w-sm max-h-[90vh] overflow-y-auto scroll-premium animate-scale-in shadow-2xl">
           <div className="flex justify-between items-center p-3 border-b border-slate-100 sticky top-0 bg-white z-10">
             <h2 className="font-semibold text-slate-900 text-sm">
-              Boleta · #{String(alquiler.id).padStart(7, '0')}
+              {alquiler.tipoComprobante === 'FACTURA' ? 'Factura' : 'Boleta'} · #
+              {String(alquiler.id).padStart(7, '0')}
             </h2>
             <div className="flex gap-2">
               <button
@@ -129,7 +134,8 @@ function BoletaContenido({
   }
 
   // Correlativo simple basado en ID (no es SUNAT real, es visual)
-  const serie = 'B001';
+  const esFactura = alquiler.tipoComprobante === 'FACTURA';
+  const serie = esFactura ? 'F001' : 'B001';
   const correlativo = String(alquiler.id).padStart(7, '0');
 
   return (
@@ -158,7 +164,9 @@ function BoletaContenido({
       <Divider />
 
       <div className="text-center mb-1">
-        <div className="font-bold text-[12px]">BOLETA DE VENTA</div>
+        <div className="font-bold text-[12px]">
+          {esFactura ? 'FACTURA ELECTRÓNICA' : 'BOLETA DE VENTA'}
+        </div>
         <div>
           {serie}-{correlativo}
         </div>
@@ -170,11 +178,28 @@ function BoletaContenido({
       <div className="space-y-0.5 mb-1">
         <Row label="Fecha" value={`${fechaStr}  ${horaStr}`} />
         <Row label="Atendido" value={alquiler.creadoPor?.nombre || '—'} />
-        <Row
-          label="Cliente"
-          value={alquiler.clienteNombre || 'CONSUMIDOR FINAL'}
-        />
-        <Row label="DNI" value={alquiler.clienteDni || '00000000'} />
+        {esFactura ? (
+          <>
+            <Row label="RUC" value={alquiler.clienteRuc || '—'} />
+            <Row
+              label="Razón Social"
+              value={
+                (alquiler.clienteRazonSocial || '').toUpperCase() || '—'
+              }
+            />
+            {alquiler.clienteDireccionFiscal && (
+              <Row label="Dirección" value={alquiler.clienteDireccionFiscal} />
+            )}
+          </>
+        ) : (
+          <>
+            <Row
+              label="Cliente"
+              value={alquiler.clienteNombre || 'CONSUMIDOR FINAL'}
+            />
+            <Row label="DNI" value={alquiler.clienteDni || '00000000'} />
+          </>
+        )}
         {alquiler.sede?.nombre && (
           <Row label="Sede" value={alquiler.sede.nombre} />
         )}

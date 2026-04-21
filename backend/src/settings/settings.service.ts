@@ -57,4 +57,12 @@ export class SettingsService {
       url: cfg.apiDniUrl,
     };
   }
+
+  async getRucConfig() {
+    const cfg = await this.ensureRow();
+    return {
+      token: cfg.apiRucToken,
+      url: cfg.apiRucUrl,
+    };
+  }
 }

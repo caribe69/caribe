@@ -925,19 +925,26 @@ function NuevoAlquilerModal({
                 </span>
               </div>
             )}
-            {(lookup?.fechaNacimiento || form.clienteFechaNacimiento) && (
-              <div className="mt-2 text-[11px] text-slate-500 flex items-center gap-2">
-                <span>🎂 Fecha nacimiento:</span>
-                <input
-                  type="date"
-                  value={form.clienteFechaNacimiento || ''}
-                  onChange={(e) =>
-                    setForm({ ...form, clienteFechaNacimiento: e.target.value })
-                  }
-                  className="border border-slate-200 rounded px-2 py-0.5 text-xs"
-                />
-              </div>
-            )}
+            {/* Fecha de nacimiento · siempre visible para captura manual si
+                 apisperu no la devolvió en su respuesta */}
+            <div className="mt-2 flex items-center gap-2 flex-wrap">
+              <span className="text-[10px] font-semibold text-slate-500 uppercase tracking-widest">
+                🎂 Nacimiento:
+              </span>
+              <input
+                type="date"
+                value={form.clienteFechaNacimiento || ''}
+                onChange={(e) =>
+                  setForm({ ...form, clienteFechaNacimiento: e.target.value })
+                }
+                className="border border-slate-200 rounded-lg px-2.5 py-1 text-xs focus:outline-none focus:border-violet-400"
+              />
+              {form.clienteFechaNacimiento && (
+                <span className="text-xs font-bold text-violet-700 bg-violet-50 px-2 py-0.5 rounded-full">
+                  {calcularEdad(form.clienteFechaNacimiento)} años
+                </span>
+              )}
+            </div>
             {lookup &&
               !lookup.encontrado &&
               form.clienteDni.length === 8 &&

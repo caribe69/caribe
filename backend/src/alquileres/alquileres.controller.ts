@@ -167,7 +167,12 @@ export class AlquileresController {
       { header: 'Piso', key: 'piso', width: 7 },
       { header: 'Cliente', key: 'cliente', width: 28 },
       { header: 'DNI', key: 'dni', width: 12 },
+      { header: 'Fecha nacimiento', key: 'fechaNac', width: 14 },
+      { header: 'Edad', key: 'edad', width: 7 },
       { header: 'Teléfono', key: 'telefono', width: 14 },
+      { header: 'Tipo comp.', key: 'tipoComp', width: 11 },
+      { header: 'RUC', key: 'ruc', width: 14 },
+      { header: 'Razón social', key: 'razonSocial', width: 28 },
       { header: 'Ingreso', key: 'ingreso', width: 18 },
       { header: 'Salida', key: 'salida', width: 18 },
       { header: 'Salida real', key: 'salidaReal', width: 18 },
@@ -210,6 +215,21 @@ export class AlquileresController {
         .map((c: any) => `${c.producto.nombre} ×${c.cantidad}`)
         .join(' · ');
       const row = sheet.getRow(rowIdx);
+      // Calcular edad si hay fecha de nacimiento
+      let edad: number | '' = '';
+      let fechaNacStr = '';
+      if ((a as any).clienteFechaNacimiento) {
+        const nac = new Date((a as any).clienteFechaNacimiento);
+        fechaNacStr = nac.toLocaleDateString('es-PE');
+        const hoy = new Date();
+        let e = hoy.getFullYear() - nac.getFullYear();
+        const antes =
+          hoy.getMonth() < nac.getMonth() ||
+          (hoy.getMonth() === nac.getMonth() && hoy.getDate() < nac.getDate());
+        if (antes) e -= 1;
+        edad = e;
+      }
+
       row.values = [
         a.id,
         fechaCreado.toLocaleDateString('es-PE'),
@@ -222,7 +242,12 @@ export class AlquileresController {
         a.habitacion?.piso?.numero || '',
         a.clienteNombre,
         a.clienteDni,
+        fechaNacStr,
+        edad,
         a.clienteTelefono || '',
+        (a as any).tipoComprobante || 'BOLETA',
+        (a as any).clienteRuc || '',
+        (a as any).clienteRazonSocial || '',
         new Date(a.fechaIngreso).toLocaleString('es-PE'),
         new Date(a.fechaSalida).toLocaleString('es-PE'),
         a.fechaSalidaReal
@@ -252,20 +277,26 @@ export class AlquileresController {
         };
       });
 
-      // Formato de moneda en columnas 13-15 (precioHab, totalProd, total)
-      [13, 14, 15].forEach((col) => {
+      // Formato de moneda en columnas precio/productos/total
+      // (tras agregar fechaNac, edad, tipoComp, RUC, razonSocial, se corrieron)
+      const COL_PRECIO = 18;
+      const COL_TOTALPROD = 19;
+      const COL_TOTAL = 20;
+      const COL_ESTADO = 22;
+      const COL_EDAD = 10;
+      [COL_PRECIO, COL_TOTALPROD, COL_TOTAL].forEach((col) => {
         const c = row.getCell(col);
         c.numFmt = '"S/ "#,##0.00';
         c.alignment = { vertical: 'middle', horizontal: 'right' };
-        c.font = { ...c.font, bold: col === 15 };
+        c.font = { ...c.font, bold: col === COL_TOTAL };
       });
-      // Centrar id, piso, habitacion
-      [1, 5, 6].forEach((col) => {
+      // Centrar id, piso, habitacion, edad
+      [1, 5, 6, COL_EDAD].forEach((col) => {
         row.getCell(col).alignment = { vertical: 'middle', horizontal: 'center' };
       });
 
       // Colorear estado
-      const estadoCell = row.getCell(17);
+      const estadoCell = row.getCell(COL_ESTADO);
       const estadoStyle: Record<string, { bg: string; fg: string }> = {
         ACTIVO: { bg: 'FFD1FAE5', fg: 'FF065F46' },
         FINALIZADO: { bg: 'FFE2E8F0', fg: 'FF334155' },
@@ -288,18 +319,18 @@ export class AlquileresController {
 
     // ---------- Fila de totales ----------
     const totalRow = sheet.getRow(rowIdx);
-    totalRow.getCell(12).value = 'TOTAL';
-    totalRow.getCell(12).alignment = { vertical: 'middle', horizontal: 'right' };
+    totalRow.getCell(17).value = 'TOTAL';
+    totalRow.getCell(17).alignment = { vertical: 'middle', horizontal: 'right' };
     const sumPrecio = items
       .filter((a) => a.estado !== 'ANULADO')
       .reduce((s, a) => s + Number(a.precioHabitacion), 0);
     const sumProd = items
       .filter((a) => a.estado !== 'ANULADO')
       .reduce((s, a) => s + Number(a.totalProductos), 0);
-    totalRow.getCell(13).value = sumPrecio;
-    totalRow.getCell(14).value = sumProd;
-    totalRow.getCell(15).value = totalIngresos;
-    [13, 14, 15].forEach((col) => {
+    totalRow.getCell(18).value = sumPrecio;
+    totalRow.getCell(19).value = sumProd;
+    totalRow.getCell(20).value = totalIngresos;
+    [18, 19, 20].forEach((col) => {
       const c = totalRow.getCell(col);
       c.numFmt = '"S/ "#,##0.00';
       c.alignment = { vertical: 'middle', horizontal: 'right' };

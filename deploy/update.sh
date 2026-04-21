@@ -7,6 +7,7 @@ set -euo pipefail
 
 APP_DIR="/opt/hotel"
 WEB_ROOT="/var/www/hotel"
+LANDING_ROOT="/var/www/landing"
 
 log() { echo -e "\033[1;36m==>\033[0m $*"; }
 ok() { echo -e "\033[1;32m[✔]\033[0m $*"; }
@@ -52,19 +53,55 @@ cd "${APP_DIR}/frontend"
 log "Compilando frontend..."
 npm run build
 
-log "Publicando nuevos archivos estáticos..."
+log "Publicando nuevos archivos estáticos del sistema..."
 rsync -a --delete "${APP_DIR}/frontend/dist/" "${WEB_ROOT}/"
 chown -R www-data:www-data "${WEB_ROOT}"
 
-# ---------- Refrescar config de Nginx (siempre la reescribimos idempotente) ----------
+log "Publicando landing page pública..."
+mkdir -p "${LANDING_ROOT}"
+rsync -a --delete "${APP_DIR}/landing/" "${LANDING_ROOT}/"
+chown -R www-data:www-data "${LANDING_ROOT}"
+
+# ---------- Refrescar config de Nginx ----------
 NGINX_SITE="/etc/nginx/sites-available/hotel"
-log "Reescribiendo config de nginx (WebSocket + API + uploads)..."
+log "Reescribiendo config de nginx (landing + sistema + fallback IP)..."
 cat > "${NGINX_SITE}" <<'NGINX'
+# ==========================================================================
+# LANDING PÚBLICA · caribeperu.com + www.caribeperu.com
+# ==========================================================================
+server {
+    listen 80;
+    listen [::]:80;
+    server_name caribeperu.com www.caribeperu.com;
+
+    root /var/www/landing;
+    index index.html;
+
+    client_max_body_size 5M;
+
+    # Redirige www → dominio raíz
+    if ($host = www.caribeperu.com) {
+        return 301 $scheme://caribeperu.com$request_uri;
+    }
+
+    location / {
+        try_files $uri $uri/ /index.html;
+    }
+
+    location ~* \.(js|css|png|jpg|jpeg|gif|ico|svg|webp|woff2?)$ {
+        expires 30d;
+        add_header Cache-Control "public, immutable";
+    }
+}
+
+# ==========================================================================
+# SISTEMA PRIVADO · sistema.caribeperu.com
+# (También accesible por IP como fallback → default_server)
+# ==========================================================================
 server {
     listen 80 default_server;
     listen [::]:80 default_server;
-
-    server_name _;
+    server_name sistema.caribeperu.com _;
 
     root /var/www/hotel;
     index index.html;
@@ -89,7 +126,6 @@ server {
         proxy_http_version 1.1;
         proxy_set_header Host $host;
         proxy_read_timeout 60s;
-        # Cache razonable, las fotos no cambian
         expires 7d;
         add_header Cache-Control "public";
     }
@@ -117,6 +153,7 @@ server {
 }
 NGINX
 ln -sf "${NGINX_SITE}" /etc/nginx/sites-enabled/hotel
+rm -f /etc/nginx/sites-enabled/default
 
 # ---------- Recargar servicios ----------
 log "Recargando PM2 (sin downtime)..."

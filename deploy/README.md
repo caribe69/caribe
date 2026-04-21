@@ -53,4 +53,45 @@ sudo -u postgres psql hotel_db       # Acceso a la BD
 | `/root/.hotel_jwt_secret`        | Secret JWT (generado)                      |
 | `/etc/nginx/sites-available/hotel` | Config Nginx                             |
 | `/var/www/hotel/`                | Frontend compilado (SPA)                   |
+| `/var/www/landing/`              | Landing pública (caribeperu.com)           |
 | `/var/log/hotel-backend.*.log`   | Logs del backend                           |
+
+## Configurar dominios
+
+El `update.sh` ya configura dos server blocks en nginx:
+
+| URL                          | Sirve                                     |
+|------------------------------|-------------------------------------------|
+| `caribeperu.com`             | Landing pública (hotel, servicios, contacto) |
+| `www.caribeperu.com`         | Redirige → caribeperu.com                 |
+| `sistema.caribeperu.com`     | Sistema de gestión (login → dashboard)    |
+| `http://2.24.217.18`         | También sirve el sistema (fallback)       |
+
+## Activar HTTPS (SSL gratis con Let's Encrypt)
+
+Una sola vez, después de que el DNS haya propagado:
+
+```bash
+apt install -y certbot python3-certbot-nginx
+certbot --nginx \
+  -d caribeperu.com \
+  -d www.caribeperu.com \
+  -d sistema.caribeperu.com \
+  --agree-tos \
+  -m tu-email@ejemplo.com \
+  --redirect \
+  --non-interactive
+```
+
+Esto:
+- Obtiene certificado SSL gratis para los 3 dominios
+- Modifica nginx para escuchar en 443 (HTTPS)
+- Redirige HTTP → HTTPS automáticamente
+- Programa renovación automática (cada 60 días)
+
+Verificar renovación:
+
+```bash
+certbot renew --dry-run
+systemctl list-timers certbot.timer
+```

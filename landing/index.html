@@ -1,0 +1,782 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Caribe Hotel · Hospedaje en Lima, Perú</title>
+    <meta
+      name="description"
+      content="Hospedaje premium con 4 sedes en Lima. Habitaciones matrimoniales, simples y suites. Reserva por WhatsApp."
+    />
+    <meta property="og:title" content="Caribe Hotel · Lima, Perú" />
+    <meta
+      property="og:description"
+      content="Hospedaje premium con 4 sedes en Lima. Reserva fácil y rápida."
+    />
+    <meta property="og:image" content="/hero.jpg" />
+    <meta name="theme-color" content="#5b21b6" />
+
+    <link rel="icon" type="image/png" href="/hero.jpg" />
+    <link
+      rel="preconnect"
+      href="https://fonts.googleapis.com"
+    />
+    <link
+      rel="preconnect"
+      href="https://fonts.gstatic.com"
+      crossorigin
+    />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Playfair+Display:wght@600;700;900&display=swap"
+      rel="stylesheet"
+    />
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            fontFamily: {
+              sans: ['Inter', 'system-ui', 'sans-serif'],
+              serif: ['"Playfair Display"', 'Georgia', 'serif'],
+            },
+          },
+        },
+      };
+    </script>
+    <style>
+      html {
+        scroll-behavior: smooth;
+      }
+      body {
+        font-family: 'Inter', system-ui, sans-serif;
+        color: #0f172a;
+      }
+      .font-hotel {
+        font-family: 'Playfair Display', Georgia, serif;
+      }
+      .text-gradient-gold {
+        background: linear-gradient(90deg, #fcd34d, #f59e0b, #fbbf24);
+        -webkit-background-clip: text;
+        background-clip: text;
+        color: transparent;
+      }
+      .fade-in {
+        opacity: 0;
+        transform: translateY(20px);
+        transition: opacity 0.8s, transform 0.8s;
+      }
+      .fade-in.visible {
+        opacity: 1;
+        transform: none;
+      }
+      .hero-gradient {
+        background: linear-gradient(
+          180deg,
+          rgba(2, 6, 23, 0.35) 0%,
+          rgba(2, 6, 23, 0.55) 60%,
+          rgba(2, 6, 23, 0.9) 100%
+        );
+      }
+    </style>
+  </head>
+  <body class="bg-slate-50">
+    <!-- Nav -->
+    <nav
+      id="nav"
+      class="fixed top-0 inset-x-0 z-50 transition-all duration-300 px-6 py-4"
+    >
+      <div
+        class="max-w-6xl mx-auto flex items-center justify-between text-white"
+      >
+        <a href="#top" class="flex items-center gap-2">
+          <div
+            class="w-9 h-9 rounded-xl bg-gradient-to-br from-amber-300 to-amber-500 flex items-center justify-center shadow-lg shadow-amber-500/30"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="18"
+              height="18"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="#0f172a"
+              stroke-width="2.5"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <path d="M2 20v-8a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v8"></path>
+              <path d="M4 10V6a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v4"></path>
+              <path d="M12 4v6"></path>
+              <path d="M2 18h20"></path>
+            </svg>
+          </div>
+          <div>
+            <div class="font-hotel text-lg font-bold leading-none">
+              Caribe Hotel
+            </div>
+            <div
+              class="text-[9px] uppercase tracking-[0.25em] opacity-80"
+            >
+              Lima · Perú
+            </div>
+          </div>
+        </a>
+        <div class="hidden md:flex items-center gap-7 text-sm font-medium">
+          <a href="#servicios" class="hover:text-amber-300 transition"
+            >Servicios</a
+          >
+          <a href="#habitaciones" class="hover:text-amber-300 transition"
+            >Habitaciones</a
+          >
+          <a href="#ubicacion" class="hover:text-amber-300 transition"
+            >Ubicación</a
+          >
+          <a href="#contacto" class="hover:text-amber-300 transition"
+            >Contacto</a
+          >
+        </div>
+        <div class="flex gap-2">
+          <a
+            href="https://sistema.caribeperu.com"
+            class="hidden sm:inline-flex items-center gap-1.5 text-xs font-semibold bg-white/10 backdrop-blur border border-white/20 hover:bg-white/20 text-white px-3 py-2 rounded-xl transition"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="14"
+              height="14"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2.5"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <rect width="18" height="11" x="3" y="11" rx="2" ry="2"></rect>
+              <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+            </svg>
+            Acceso staff
+          </a>
+          <a
+            href="#contacto"
+            class="inline-flex items-center gap-1.5 text-xs font-semibold bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-500 hover:to-amber-600 text-slate-900 px-4 py-2 rounded-xl shadow-lg shadow-amber-500/30 transition"
+          >
+            Reservar
+          </a>
+        </div>
+      </div>
+    </nav>
+
+    <!-- HERO -->
+    <header
+      id="top"
+      class="relative min-h-screen flex items-center"
+      style="
+        background-image: url('/hero.jpg');
+        background-size: cover;
+        background-position: center;
+      "
+    >
+      <div class="absolute inset-0 hero-gradient"></div>
+      <!-- Glows decorativos -->
+      <div
+        class="absolute -left-24 top-1/3 w-[32rem] h-[32rem] bg-violet-600/15 blur-3xl rounded-full pointer-events-none"
+      ></div>
+      <div
+        class="absolute right-10 top-20 w-80 h-80 bg-amber-400/10 blur-3xl rounded-full pointer-events-none"
+      ></div>
+
+      <div
+        class="relative z-10 w-full max-w-6xl mx-auto px-6 pt-32 pb-16 text-white"
+      >
+        <div
+          class="inline-flex items-center gap-2 bg-white/10 backdrop-blur-md border border-white/20 text-[11px] uppercase tracking-[0.25em] px-4 py-1.5 rounded-full mb-8 fade-in"
+        >
+          <span class="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse"></span>
+          Con 4 sedes en Lima
+        </div>
+        <h1
+          class="font-hotel text-5xl md:text-7xl lg:text-8xl font-bold leading-[1.02] tracking-tight max-w-4xl fade-in"
+        >
+          Tu estadía,
+          <span class="text-gradient-gold">a otro nivel.</span>
+        </h1>
+        <p
+          class="mt-6 text-lg md:text-xl text-slate-200 max-w-xl leading-relaxed fade-in"
+        >
+          Hospedaje confortable y seguro en el corazón de Lima. Habitaciones
+          modernas, atención 24/7 y precios justos.
+        </p>
+
+        <div class="mt-10 flex flex-wrap gap-3 fade-in">
+          <a
+            href="https://wa.me/51900000000?text=Hola,%20quisiera%20reservar%20una%20habitaci%C3%B3n%20en%20Caribe%20Hotel"
+            target="_blank"
+            rel="noopener"
+            class="group inline-flex items-center gap-2 bg-gradient-to-r from-emerald-500 to-emerald-400 hover:from-emerald-600 hover:to-emerald-500 text-white px-6 py-3.5 rounded-2xl font-semibold shadow-xl shadow-emerald-500/30 transition-all hover:scale-105"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="20"
+              height="20"
+              viewBox="0 0 24 24"
+              fill="currentColor"
+            >
+              <path
+                d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.67-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372s-1.04 1.016-1.04 2.479 1.065 2.876 1.213 3.074c.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"
+              />
+            </svg>
+            Reservar por WhatsApp
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="18"
+              height="18"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2.5"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              class="group-hover:translate-x-1 transition-transform"
+            >
+              <path d="M5 12h14"></path>
+              <path d="m12 5 7 7-7 7"></path>
+            </svg>
+          </a>
+          <a
+            href="#habitaciones"
+            class="inline-flex items-center gap-2 bg-white/10 backdrop-blur-md hover:bg-white/20 border border-white/20 text-white px-6 py-3.5 rounded-2xl font-semibold transition"
+          >
+            Ver habitaciones
+          </a>
+        </div>
+
+        <!-- Stats -->
+        <div
+          class="mt-16 pt-8 border-t border-white/20 grid grid-cols-3 gap-6 max-w-xl fade-in"
+        >
+          <div>
+            <div class="text-gradient-gold font-hotel text-4xl font-bold">
+              4+
+            </div>
+            <div class="text-[11px] uppercase tracking-widest text-slate-300">
+              Sedes en Lima
+            </div>
+          </div>
+          <div>
+            <div class="text-gradient-gold font-hotel text-4xl font-bold">
+              24/7
+            </div>
+            <div class="text-[11px] uppercase tracking-widest text-slate-300">
+              Recepción
+            </div>
+          </div>
+          <div>
+            <div class="text-gradient-gold font-hotel text-4xl font-bold">
+              ★★★★★
+            </div>
+            <div class="text-[11px] uppercase tracking-widest text-slate-300">
+              Reseñas
+            </div>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <!-- SERVICIOS -->
+    <section id="servicios" class="py-24 px-6">
+      <div class="max-w-6xl mx-auto">
+        <div class="text-center mb-16 fade-in">
+          <div
+            class="text-[11px] uppercase tracking-[0.3em] text-violet-600 font-semibold mb-3"
+          >
+            Lo que te ofrecemos
+          </div>
+          <h2 class="font-hotel text-4xl md:text-5xl font-bold text-slate-900">
+            Comodidad sin compromisos
+          </h2>
+        </div>
+
+        <div class="grid md:grid-cols-2 lg:grid-cols-4 gap-5">
+          <!-- Card -->
+          <div
+            class="bg-white rounded-3xl p-7 shadow-sm hover:shadow-xl transition-all hover:-translate-y-1 border border-slate-100 fade-in"
+          >
+            <div
+              class="w-12 h-12 rounded-2xl bg-violet-100 text-violet-700 flex items-center justify-center mb-4"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="22"
+                height="22"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+              >
+                <path d="M5 12.55a11 11 0 0 1 14.08 0"></path>
+                <path d="M1.42 9a16 16 0 0 1 21.16 0"></path>
+                <path d="M8.53 16.11a6 6 0 0 1 6.95 0"></path>
+                <line x1="12" y1="20" x2="12.01" y2="20"></line>
+              </svg>
+            </div>
+            <h3 class="font-bold text-slate-900 text-lg mb-1">
+              WiFi alta velocidad
+            </h3>
+            <p class="text-sm text-slate-600 leading-relaxed">
+              Conexión por fibra óptica en todas las habitaciones y áreas
+              comunes.
+            </p>
+          </div>
+
+          <div
+            class="bg-white rounded-3xl p-7 shadow-sm hover:shadow-xl transition-all hover:-translate-y-1 border border-slate-100 fade-in"
+          >
+            <div
+              class="w-12 h-12 rounded-2xl bg-emerald-100 text-emerald-700 flex items-center justify-center mb-4"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="22"
+                height="22"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+              >
+                <circle cx="12" cy="12" r="10"></circle>
+                <polyline points="12 6 12 12 16 14"></polyline>
+              </svg>
+            </div>
+            <h3 class="font-bold text-slate-900 text-lg mb-1">
+              Recepción 24/7
+            </h3>
+            <p class="text-sm text-slate-600 leading-relaxed">
+              Check-in a cualquier hora del día o de la noche, todos los días.
+            </p>
+          </div>
+
+          <div
+            class="bg-white rounded-3xl p-7 shadow-sm hover:shadow-xl transition-all hover:-translate-y-1 border border-slate-100 fade-in"
+          >
+            <div
+              class="w-12 h-12 rounded-2xl bg-amber-100 text-amber-700 flex items-center justify-center mb-4"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="22"
+                height="22"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+              >
+                <path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"></path>
+              </svg>
+            </div>
+            <h3 class="font-bold text-slate-900 text-lg mb-1">
+              Limpieza premium
+            </h3>
+            <p class="text-sm text-slate-600 leading-relaxed">
+              Sábanas nuevas, toallas, amenities y desinfección en cada
+              estadía.
+            </p>
+          </div>
+
+          <div
+            class="bg-white rounded-3xl p-7 shadow-sm hover:shadow-xl transition-all hover:-translate-y-1 border border-slate-100 fade-in"
+          >
+            <div
+              class="w-12 h-12 rounded-2xl bg-rose-100 text-rose-700 flex items-center justify-center mb-4"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="22"
+                height="22"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+              >
+                <rect width="18" height="11" x="3" y="11" rx="2" ry="2"></rect>
+                <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+              </svg>
+            </div>
+            <h3 class="font-bold text-slate-900 text-lg mb-1">
+              100% seguro
+            </h3>
+            <p class="text-sm text-slate-600 leading-relaxed">
+              Videovigilancia, acceso con tarjeta y personal de seguridad todo el
+              tiempo.
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- HABITACIONES -->
+    <section
+      id="habitaciones"
+      class="py-24 px-6 bg-gradient-to-b from-slate-50 to-white"
+    >
+      <div class="max-w-6xl mx-auto">
+        <div class="text-center mb-16 fade-in">
+          <div
+            class="text-[11px] uppercase tracking-[0.3em] text-violet-600 font-semibold mb-3"
+          >
+            Habitaciones
+          </div>
+          <h2 class="font-hotel text-4xl md:text-5xl font-bold text-slate-900">
+            Elige tu descanso
+          </h2>
+          <p class="mt-4 text-slate-600 max-w-2xl mx-auto">
+            Contamos con habitaciones simples, matrimoniales y suites en
+            nuestras 4 sedes de Lima.
+          </p>
+        </div>
+
+        <div class="grid md:grid-cols-3 gap-6">
+          <!-- Simple -->
+          <div
+            class="bg-white rounded-3xl overflow-hidden shadow-sm hover:shadow-2xl transition-all hover:-translate-y-1 border border-slate-100 fade-in"
+          >
+            <div
+              class="aspect-[4/3] bg-gradient-to-br from-slate-200 to-slate-300 relative"
+              style="
+                background-image: url('/hero.jpg');
+                background-size: cover;
+                background-position: center;
+              "
+            >
+              <div
+                class="absolute top-3 right-3 bg-white/90 backdrop-blur text-[10px] font-bold uppercase tracking-widest px-2 py-1 rounded-full"
+              >
+                Desde S/ 25 / h
+              </div>
+            </div>
+            <div class="p-6">
+              <h3 class="font-hotel text-2xl font-bold text-slate-900">
+                Simple
+              </h3>
+              <p class="text-sm text-slate-500 mt-1">
+                Ideal para una persona.
+              </p>
+              <ul class="mt-4 space-y-1.5 text-sm text-slate-700">
+                <li class="flex items-center gap-2">
+                  <span class="w-1 h-1 rounded-full bg-violet-500"></span>
+                  Cama de 1 plaza
+                </li>
+                <li class="flex items-center gap-2">
+                  <span class="w-1 h-1 rounded-full bg-violet-500"></span>
+                  Baño privado
+                </li>
+                <li class="flex items-center gap-2">
+                  <span class="w-1 h-1 rounded-full bg-violet-500"></span>
+                  WiFi + TV cable
+                </li>
+              </ul>
+            </div>
+          </div>
+
+          <!-- Matrimonial -->
+          <div
+            class="bg-white rounded-3xl overflow-hidden shadow-sm hover:shadow-2xl transition-all hover:-translate-y-1 border-2 border-violet-500 relative fade-in"
+          >
+            <div
+              class="absolute -top-3 left-1/2 -translate-x-1/2 bg-gradient-to-r from-violet-600 to-violet-500 text-white text-[10px] font-bold uppercase tracking-widest px-3 py-1 rounded-full shadow-lg z-10"
+            >
+              Más popular
+            </div>
+            <div
+              class="aspect-[4/3] bg-gradient-to-br from-violet-200 to-violet-300 relative"
+              style="
+                background-image: url('/hero.jpg');
+                background-size: cover;
+                background-position: center;
+              "
+            >
+              <div
+                class="absolute top-3 right-3 bg-gradient-to-r from-violet-600 to-violet-500 text-white text-[10px] font-bold uppercase tracking-widest px-2 py-1 rounded-full"
+              >
+                Desde S/ 40 / h
+              </div>
+            </div>
+            <div class="p-6">
+              <h3 class="font-hotel text-2xl font-bold text-slate-900">
+                Matrimonial
+              </h3>
+              <p class="text-sm text-slate-500 mt-1">
+                Para parejas o 2 personas.
+              </p>
+              <ul class="mt-4 space-y-1.5 text-sm text-slate-700">
+                <li class="flex items-center gap-2">
+                  <span class="w-1 h-1 rounded-full bg-violet-500"></span>
+                  Cama de 2 plazas
+                </li>
+                <li class="flex items-center gap-2">
+                  <span class="w-1 h-1 rounded-full bg-violet-500"></span>
+                  Baño privado con ducha
+                </li>
+                <li class="flex items-center gap-2">
+                  <span class="w-1 h-1 rounded-full bg-violet-500"></span>
+                  Aire acondicionado
+                </li>
+                <li class="flex items-center gap-2">
+                  <span class="w-1 h-1 rounded-full bg-violet-500"></span>
+                  Frigobar
+                </li>
+              </ul>
+            </div>
+          </div>
+
+          <!-- Suite -->
+          <div
+            class="bg-white rounded-3xl overflow-hidden shadow-sm hover:shadow-2xl transition-all hover:-translate-y-1 border border-slate-100 fade-in"
+          >
+            <div
+              class="aspect-[4/3] bg-gradient-to-br from-amber-200 to-amber-300 relative"
+              style="
+                background-image: url('/hero.jpg');
+                background-size: cover;
+                background-position: center;
+              "
+            >
+              <div
+                class="absolute top-3 right-3 bg-gradient-to-r from-amber-500 to-amber-400 text-white text-[10px] font-bold uppercase tracking-widest px-2 py-1 rounded-full"
+              >
+                Desde S/ 80 / h
+              </div>
+            </div>
+            <div class="p-6">
+              <h3 class="font-hotel text-2xl font-bold text-slate-900">
+                Suite
+              </h3>
+              <p class="text-sm text-slate-500 mt-1">
+                Máximo confort y privacidad.
+              </p>
+              <ul class="mt-4 space-y-1.5 text-sm text-slate-700">
+                <li class="flex items-center gap-2">
+                  <span class="w-1 h-1 rounded-full bg-amber-500"></span>
+                  Cama king size
+                </li>
+                <li class="flex items-center gap-2">
+                  <span class="w-1 h-1 rounded-full bg-amber-500"></span>
+                  Jacuzzi en suite
+                </li>
+                <li class="flex items-center gap-2">
+                  <span class="w-1 h-1 rounded-full bg-amber-500"></span>
+                  Smart TV 55"
+                </li>
+                <li class="flex items-center gap-2">
+                  <span class="w-1 h-1 rounded-full bg-amber-500"></span>
+                  Desayuno incluido
+                </li>
+              </ul>
+            </div>
+          </div>
+        </div>
+
+        <div class="mt-10 text-center">
+          <a
+            href="#contacto"
+            class="inline-flex items-center gap-2 text-violet-700 font-semibold hover:gap-3 transition-all"
+          >
+            Consulta disponibilidad
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2.5"
+            >
+              <path d="M5 12h14"></path>
+              <path d="m12 5 7 7-7 7"></path>
+            </svg>
+          </a>
+        </div>
+      </div>
+    </section>
+
+    <!-- UBICACION -->
+    <section id="ubicacion" class="py-24 px-6">
+      <div class="max-w-6xl mx-auto">
+        <div class="text-center mb-12 fade-in">
+          <div
+            class="text-[11px] uppercase tracking-[0.3em] text-violet-600 font-semibold mb-3"
+          >
+            Nuestras sedes
+          </div>
+          <h2 class="font-hotel text-4xl md:text-5xl font-bold text-slate-900">
+            4 ubicaciones en Lima
+          </h2>
+        </div>
+
+        <div class="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div
+            class="bg-white rounded-2xl p-5 shadow-sm border border-slate-100 fade-in"
+          >
+            <div class="text-xs uppercase tracking-widest text-violet-600 font-bold">
+              Sede Central
+            </div>
+            <h3 class="font-hotel text-xl font-bold mt-1">Cercado de Lima</h3>
+            <p class="text-sm text-slate-500 mt-2">
+              Av. Principal 123, Lima
+            </p>
+          </div>
+          <div
+            class="bg-white rounded-2xl p-5 shadow-sm border border-slate-100 fade-in"
+          >
+            <div class="text-xs uppercase tracking-widest text-emerald-600 font-bold">
+              Sede Norte
+            </div>
+            <h3 class="font-hotel text-xl font-bold mt-1">Los Olivos</h3>
+            <p class="text-sm text-slate-500 mt-2">
+              Av. Universitaria 456
+            </p>
+          </div>
+          <div
+            class="bg-white rounded-2xl p-5 shadow-sm border border-slate-100 fade-in"
+          >
+            <div class="text-xs uppercase tracking-widest text-amber-600 font-bold">
+              Sede Sur
+            </div>
+            <h3 class="font-hotel text-xl font-bold mt-1">San Juan de Miraflores</h3>
+            <p class="text-sm text-slate-500 mt-2">
+              Av. Los Héroes 789
+            </p>
+          </div>
+          <div
+            class="bg-white rounded-2xl p-5 shadow-sm border border-slate-100 fade-in"
+          >
+            <div class="text-xs uppercase tracking-widest text-rose-600 font-bold">
+              Sede Este
+            </div>
+            <h3 class="font-hotel text-xl font-bold mt-1">Ate - Lurigancho</h3>
+            <p class="text-sm text-slate-500 mt-2">
+              Av. Nicolás Ayllón 321
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- CTA / CONTACTO -->
+    <section
+      id="contacto"
+      class="py-24 px-6 bg-slate-950 relative overflow-hidden"
+    >
+      <div
+        class="absolute -left-32 top-1/3 w-96 h-96 bg-violet-600/20 blur-3xl rounded-full pointer-events-none"
+      ></div>
+      <div
+        class="absolute right-10 top-10 w-64 h-64 bg-amber-400/10 blur-3xl rounded-full pointer-events-none"
+      ></div>
+
+      <div class="relative z-10 max-w-4xl mx-auto text-center text-white">
+        <h2
+          class="font-hotel text-4xl md:text-6xl font-bold mb-6 fade-in"
+        >
+          ¿Listo para
+          <span class="text-gradient-gold">reservar?</span>
+        </h2>
+        <p class="text-slate-300 text-lg mb-10 max-w-xl mx-auto fade-in">
+          Escríbenos por WhatsApp y confirmamos tu habitación en minutos.
+        </p>
+
+        <div class="flex flex-wrap justify-center gap-3 fade-in">
+          <a
+            href="https://wa.me/51900000000?text=Hola,%20quisiera%20reservar%20en%20Caribe%20Hotel"
+            target="_blank"
+            rel="noopener"
+            class="inline-flex items-center gap-2 bg-gradient-to-r from-emerald-500 to-emerald-400 hover:from-emerald-600 hover:to-emerald-500 text-white px-8 py-4 rounded-2xl font-semibold shadow-xl shadow-emerald-500/30 hover:scale-105 transition-all"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="22"
+              height="22"
+              viewBox="0 0 24 24"
+              fill="currentColor"
+            >
+              <path
+                d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.67-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372s-1.04 1.016-1.04 2.479 1.065 2.876 1.213 3.074c.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347M12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893 0-3.18-1.234-6.168-3.484-8.413A11.821 11.821 0 0012.05 0z"
+              />
+            </svg>
+            WhatsApp: +51 900 000 000
+          </a>
+          <a
+            href="mailto:reservas@caribeperu.com"
+            class="inline-flex items-center gap-2 bg-white/10 backdrop-blur border border-white/20 hover:bg-white/20 text-white px-8 py-4 rounded-2xl font-semibold transition-all"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="20"
+              height="20"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+            >
+              <rect width="20" height="16" x="2" y="4" rx="2"></rect>
+              <path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"></path>
+            </svg>
+            reservas@caribeperu.com
+          </a>
+        </div>
+      </div>
+    </section>
+
+    <!-- FOOTER -->
+    <footer class="bg-slate-900 text-slate-400 py-10 px-6">
+      <div
+        class="max-w-6xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4"
+      >
+        <div class="flex items-center gap-2">
+          <div
+            class="w-8 h-8 rounded-lg bg-gradient-to-br from-amber-300 to-amber-500"
+          ></div>
+          <div>
+            <div class="font-hotel text-lg font-bold text-white">
+              Caribe Hotel
+            </div>
+            <div class="text-[10px] uppercase tracking-widest">
+              © 2026 Todos los derechos reservados
+            </div>
+          </div>
+        </div>
+        <div class="text-xs">
+          <a
+            href="https://sistema.caribeperu.com"
+            class="hover:text-amber-400 transition"
+          >
+            Acceso staff
+          </a>
+        </div>
+      </div>
+    </footer>
+
+    <script>
+      // Nav fondo al scrollear
+      const nav = document.getElementById('nav');
+      window.addEventListener('scroll', () => {
+        if (window.scrollY > 40) {
+          nav.classList.add('bg-slate-950/80', 'backdrop-blur-md', 'shadow-lg');
+        } else {
+          nav.classList.remove('bg-slate-950/80', 'backdrop-blur-md', 'shadow-lg');
+        }
+      });
+
+      // Fade-in al hacer scroll
+      const observer = new IntersectionObserver(
+        (entries) => {
+          entries.forEach((e) => {
+            if (e.isIntersecting) e.target.classList.add('visible');
+          });
+        },
+        { threshold: 0.12 },
+      );
+      document
+        .querySelectorAll('.fade-in')
+        .forEach((el) => observer.observe(el));
+    </script>
+  </body>
+</html>

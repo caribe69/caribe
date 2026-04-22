@@ -345,8 +345,15 @@ function MapaHabitaciones() {
           const minutosEn = tiempoBase
             ? Math.floor((tick - tiempoBase.getTime()) / 60000)
             : 0;
+          // Umbral dinámico: 30 min × cantidad de habitaciones en ALISTANDO.
+          // Si hay 3 pendientes, el tope es 1h 30m antes de marcar atrasado.
+          const countAlistando = Math.max(
+            1,
+            data?.filter((x) => x.estado === 'ALISTANDO').length || 1,
+          );
+          const umbralAlistando = 30 * countAlistando;
           const alistandoAtrasada =
-            h.estado === 'ALISTANDO' && minutosEn >= 30;
+            h.estado === 'ALISTANDO' && minutosEn >= umbralAlistando;
 
           // Tooltip title completo
           let tooltip = '';
@@ -357,7 +364,7 @@ function MapaHabitaciones() {
             tooltip = `${alquilerRef.clienteNombre} · DNI ${alquilerRef.clienteDni}${edadTxt}\nIngreso: ${new Date(alquilerRef.creadoEn).toLocaleString('es-PE')}\nSalida prevista: ${new Date(alquilerRef.fechaSalida).toLocaleString('es-PE')}\nLleva: ${formatDuracion(minutosEn)}`;
           } else if (h.estado === 'ALISTANDO') {
             tooltip = tiempoBase
-              ? `En limpieza desde: ${tiempoBase.toLocaleString('es-PE')}\nHace ${formatDuracion(minutosEn)}${alistandoAtrasada ? ' · ⚠ atrasado' : ''}`
+              ? `En limpieza desde: ${tiempoBase.toLocaleString('es-PE')}\nHace ${formatDuracion(minutosEn)}\nTolerancia: ${formatDuracion(umbralAlistando)} (${countAlistando} hab. en cola × 30 min)${alistandoAtrasada ? '\n⚠ ATRASADO' : ''}`
               : 'En limpieza';
           }
 

@@ -57,6 +57,7 @@ model Usuario {
 
   alquileresCreados    Alquiler[]        @relation("AlquilerCreadoPor")
   alquileresAnulados   Alquiler[]        @relation("AlquilerAnuladoPor")
+  alquileresCobrados   Alquiler[]        @relation("AlquilerCobradoPor")
   tareasAsignadas      TareaLimpieza[]   @relation("TareaAsignadaA")
   turnosCaja           TurnoCaja[]
   movimientosStock     MovimientoStock[]
@@ -221,6 +222,17 @@ model Alquiler {
   anuladoEn       DateTime?
   anuladoPorId    Int?
   anuladoPor      Usuario?        @relation("AlquilerAnuladoPor", fields: [anuladoPorId], references: [id])
+
+  // Flags de operación diaria
+  pagado          Boolean         @default(true)  // si ya fue cobrado
+  pagadoEn        DateTime?
+  turnoPagoId     Int?                            // turno donde se cobró (puede diferir del turno de creación)
+  turnoPago       TurnoCaja?      @relation("AlquilerTurnoPago", fields: [turnoPagoId], references: [id])
+  cobradoPorId    Int?
+  cobradoPor      Usuario?        @relation("AlquilerCobradoPor", fields: [cobradoPorId], references: [id])
+
+  amenitiesEntregados Boolean     @default(false) // chocolates/bienvenida
+  amenitiesNotas      String?
 
   creadoPorId     Int
   creadoPor       Usuario         @relation("AlquilerCreadoPor", fields: [creadoPorId], references: [id])
@@ -444,6 +456,7 @@ model TurnoCaja {
   notas          String?
 
   alquileres     Alquiler[]
+  alquileresCobrados Alquiler[] @relation("AlquilerTurnoPago")
   ventas         Venta[]
   reservasGrupales ReservaGrupal[]
 

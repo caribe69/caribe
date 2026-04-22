@@ -354,12 +354,13 @@ export class AlquileresService {
         'No tienes turno de caja abierto. Abre caja primero.',
       );
 
+    const pagadoNow = dto.pagado !== false; // default true
     return this.prisma.$transaction(async (tx) => {
       const alquiler = await tx.alquiler.create({
         data: {
           sedeId,
           habitacionId: hab.id,
-          turnoCajaId: turno.id,
+          turnoCajaId: turno.id, // ← INGRESO pertenece a ESTE turno (politica: turno de apertura)
           clienteNombre: dto.clienteNombre,
           clienteDni: dto.clienteDni,
           clienteTelefono: dto.clienteTelefono,
@@ -372,6 +373,11 @@ export class AlquileresService {
           total: dto.precioHabitacion,
           metodoPago: dto.metodoPago,
           notas: dto.notas,
+          pagado: pagadoNow,
+          pagadoEn: pagadoNow ? new Date() : null,
+          turnoPagoId: pagadoNow ? turno.id : null,
+          cobradoPorId: pagadoNow ? user.sub : null,
+          amenitiesEntregados: dto.amenitiesEntregados ?? false,
           tipoComprobante: dto.tipoComprobante || 'BOLETA',
           clienteRuc: dto.clienteRuc || null,
           clienteRazonSocial: dto.clienteRazonSocial || null,
@@ -588,6 +594,67 @@ export class AlquileresService {
         habitacion: { include: { piso: true } },
         consumos: { include: { producto: true } },
         creadoPor: { select: { id: true, nombre: true, username: true } },
+      },
+    });
+  }
+
+  /**
+   * Marca un alquiler como pagado. Se registra:
+   * - quién cobró (cobradoPorId = usuario actual)
+   * - cuándo (pagadoEn = ahora)
+   * - en qué turno se hizo el cobro físico (turnoPagoId = turno actual)
+   *
+   * NOTA: el ingreso contable NO se mueve de turno. El alquiler sigue
+   * perteneciendo al `turnoCajaId` original (política: el turno de apertura
+   * se queda con el ingreso aunque el cobro físico se haga después).
+   * turnoPagoId es solo informativo/auditoría.
+   */
+  async marcarPagado(id: number, user: JwtPayload) {
+    const alquiler = await this.findOne(id, user);
+    if (alquiler.estado === EstadoAlquiler.ANULADO)
+      throw new BadRequestException('Alquiler anulado');
+    if (alquiler.pagado)
+      throw new BadRequestException('Ya está marcado como pagado');
+
+    // Turno actual (solo informativo)
+    const turnoActual = await this.prisma.turnoCaja.findFirst({
+      where: {
+        sedeId: alquiler.sedeId,
+        usuarioId: user.sub,
+        estado: EstadoTurno.ABIERTO,
+      },
+    });
+
+    return this.prisma.alquiler.update({
+      where: { id: alquiler.id },
+      data: {
+        pagado: true,
+        pagadoEn: new Date(),
+        cobradoPorId: user.sub,
+        turnoPagoId: turnoActual?.id ?? null,
+      },
+      include: {
+        habitacion: { include: { piso: true } },
+        creadoPor: { select: { id: true, nombre: true, username: true } },
+        cobradoPor: { select: { id: true, nombre: true, username: true } },
+      },
+    });
+  }
+
+  async actualizarAmenities(
+    id: number,
+    dto: { entregados: boolean; notas?: string },
+    user: JwtPayload,
+  ) {
+    const alquiler = await this.findOne(id, user);
+    if (alquiler.estado === EstadoAlquiler.ANULADO)
+      throw new BadRequestException('Alquiler anulado');
+
+    return this.prisma.alquiler.update({
+      where: { id: alquiler.id },
+      data: {
+        amenitiesEntregados: dto.entregados,
+        amenitiesNotas: dto.notas ?? alquiler.amenitiesNotas,
       },
     });
   }

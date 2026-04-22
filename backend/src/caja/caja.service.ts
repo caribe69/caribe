@@ -44,10 +44,6 @@ export class CajaService {
     const turno = await this.prisma.turnoCaja.findUnique({
       where: { id },
       include: {
-        alquileres: {
-          where: { estado: { not: EstadoAlquiler.ANULADO } },
-          include: { consumos: true },
-        },
         ventas: {
           where: { estado: { not: EstadoVenta.ANULADA } },
         },
@@ -60,6 +56,16 @@ export class CajaService {
     if (turno.estado === EstadoTurno.CERRADO)
       throw new BadRequestException('Turno ya cerrado');
 
+    // Alquileres cobrados EN este turno (sin importar dónde se abrieron)
+    const alquileresCobrados = await this.prisma.alquiler.findMany({
+      where: {
+        turnoPagoId: id,
+        pagado: true,
+        estado: { not: EstadoAlquiler.ANULADO },
+      },
+      include: { consumos: true },
+    });
+
     const totales = {
       EFECTIVO: 0,
       VISA: 0,
@@ -69,7 +75,7 @@ export class CajaService {
       OTRO: 0,
     };
     let total = 0;
-    for (const a of turno.alquileres) {
+    for (const a of alquileresCobrados) {
       const t = Number(a.total);
       totales[a.metodoPago] += t;
       total += t;
@@ -103,13 +109,6 @@ export class CajaService {
       include: {
         usuario: { select: { id: true, nombre: true, username: true } },
         sede: { select: { id: true, nombre: true } },
-        alquileres: {
-          include: {
-            habitacion: true,
-            consumos: { include: { producto: true } },
-          },
-          orderBy: { creadoEn: 'asc' },
-        },
         ventas: {
           include: {
             items: { include: { producto: true } },
@@ -121,13 +120,40 @@ export class CajaService {
     if (!turno) throw new NotFoundException('Turno no encontrado');
     enforceSede(user, turno.sedeId);
 
+    // Alquileres COBRADOS en este turno (cuentan para ingresos)
+    const alquileresCobrados = await this.prisma.alquiler.findMany({
+      where: {
+        turnoPagoId: id,
+        pagado: true,
+        estado: { not: EstadoAlquiler.ANULADO },
+      },
+      include: {
+        habitacion: true,
+        consumos: { include: { producto: true } },
+        creadoPor: { select: { id: true, nombre: true, username: true } },
+        cobradoPor: { select: { id: true, nombre: true, username: true } },
+      },
+      orderBy: { pagadoEn: 'asc' },
+    });
+
+    // Alquileres ABIERTOS en este turno pero aún sin cobrar (informativo)
+    const alquileresPendientes = await this.prisma.alquiler.findMany({
+      where: {
+        turnoCajaId: id,
+        pagado: false,
+        estado: { not: EstadoAlquiler.ANULADO },
+      },
+      include: {
+        habitacion: true,
+      },
+    });
+
     const productosVendidos: Record<
       number,
       { nombre: string; cantidad: number; total: number }
     > = {};
 
-    for (const a of turno.alquileres) {
-      if (a.estado === EstadoAlquiler.ANULADO) continue;
+    for (const a of alquileresCobrados) {
       for (const c of a.consumos) {
         const k = c.productoId;
         if (!productosVendidos[k]) {
@@ -158,10 +184,8 @@ export class CajaService {
       }
     }
 
-    // Desglose tipo "cierre de caja físico": H (habitaciones), B (bebidas/productos), O (otros), G (gran total)
-    const alquileresValidos = turno.alquileres.filter(
-      (a) => a.estado !== EstadoAlquiler.ANULADO,
-    );
+    // Desglose: solo cobrados (ingreso real del turno)
+    const alquileresValidos = alquileresCobrados;
     const ventasValidas = turno.ventas.filter(
       (v) => v.estado !== EstadoVenta.ANULADA,
     );
@@ -215,6 +239,19 @@ export class CajaService {
       ventasDirectas: {
         cantidad: ventasValidas.length,
         total: ventasValidas.reduce((s, v) => s + Number(v.total), 0),
+      },
+      pendientesDeCobro: {
+        cantidad: alquileresPendientes.length,
+        monto: alquileresPendientes.reduce(
+          (s, a) => s + Number(a.total),
+          0,
+        ),
+        lista: alquileresPendientes.map((a) => ({
+          id: a.id,
+          habitacion: a.habitacion.numero,
+          cliente: a.clienteNombre,
+          total: Number(a.total),
+        })),
       },
     };
   }

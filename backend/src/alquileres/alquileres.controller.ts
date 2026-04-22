@@ -21,6 +21,7 @@ import { JwtPayload } from '../auth/auth.service';
 import { AlquileresService } from './alquileres.service';
 import {
   AgregarConsumoDto,
+  AmenitiesDto,
   AnularAlquilerDto,
   CreateAlquilerDto,
   DatosFiscalesDto,
@@ -428,6 +429,25 @@ export class AlquileresController {
     @CurrentUser() user: JwtPayload,
   ) {
     return this.service.extender(id, dto, user);
+  }
+
+  @Roles(Rol.SUPERADMIN, Rol.ADMIN_SEDE, Rol.HOTELERO, Rol.CAJERO)
+  @Patch(':id/cobrar')
+  cobrar(
+    @Param('id', ParseIntPipe) id: number,
+    @CurrentUser() user: JwtPayload,
+  ) {
+    return this.service.marcarPagado(id, user);
+  }
+
+  @Roles(Rol.SUPERADMIN, Rol.ADMIN_SEDE, Rol.HOTELERO, Rol.CAJERO)
+  @Patch(':id/amenities')
+  amenities(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: AmenitiesDto,
+    @CurrentUser() user: JwtPayload,
+  ) {
+    return this.service.actualizarAmenities(id, dto, user);
   }
 
   @Roles(Rol.SUPERADMIN, Rol.ADMIN_SEDE, Rol.HOTELERO, Rol.CAJERO)

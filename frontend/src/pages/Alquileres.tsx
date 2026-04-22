@@ -44,6 +44,8 @@ interface Habitacion {
     fechaSalidaReal: string | null;
     total: string;
     creadoEn: string;
+    pagado?: boolean;
+    amenitiesEntregados?: boolean;
   }>;
 }
 
@@ -57,6 +59,13 @@ interface Alquiler {
   clienteRuc?: string | null;
   clienteRazonSocial?: string | null;
   clienteDireccionFiscal?: string | null;
+  pagado?: boolean;
+  pagadoEn?: string | null;
+  turnoCajaId?: number | null;
+  turnoPagoId?: number | null;
+  cobradoPor?: { id?: number; nombre: string } | null;
+  amenitiesEntregados?: boolean;
+  amenitiesNotas?: string | null;
   fechaIngreso: string;
   fechaSalida: string;
   total: string;
@@ -414,11 +423,27 @@ function MapaHabitaciones() {
               {/* Info del huésped (solo OCUPADA) */}
               {h.estado === 'OCUPADA' && alquilerRef && (
                 <div className="mt-3 bg-white/70 backdrop-blur-sm border border-white rounded-xl px-2.5 py-1.5">
-                  <div className="text-[10px] text-slate-500 uppercase tracking-widest font-semibold">
-                    Huésped
-                  </div>
-                  <div className="text-xs font-bold text-slate-800 truncate">
-                    {alquilerRef.clienteNombre}
+                  <div className="flex items-start justify-between gap-1.5">
+                    <div className="min-w-0 flex-1">
+                      <div className="text-[10px] text-slate-500 uppercase tracking-widest font-semibold">
+                        Huésped
+                      </div>
+                      <div className="text-xs font-bold text-slate-800 truncate">
+                        {alquilerRef.clienteNombre}
+                      </div>
+                    </div>
+                    <div className="flex flex-col gap-0.5 items-end shrink-0">
+                      {alquilerRef.pagado === false && (
+                        <span className="text-[9px] bg-rose-500 text-white font-bold px-1.5 py-0.5 rounded-full animate-pulse">
+                          POR COBRAR
+                        </span>
+                      )}
+                      {alquilerRef.amenitiesEntregados && (
+                        <span title="Chocolates entregados" className="text-[10px]">
+                          🍫
+                        </span>
+                      )}
+                    </div>
                   </div>
                   <div className="flex items-center gap-1 text-[10px] text-slate-500 mt-0.5 font-medium">
                     <Clock3 size={10} />
@@ -531,6 +556,34 @@ function AlquilerActivoModal({
     },
   });
 
+  const cobrar = useMutation({
+    mutationFn: async (id: number) =>
+      (await api.patch(`/alquileres/${id}/cobrar`)).data,
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['alquileres'] });
+      qc.invalidateQueries({ queryKey: ['habitaciones'] });
+      toast.show({
+        type: 'success',
+        title: '💰 Pago registrado',
+        description: 'Alquiler marcado como pagado',
+      });
+    },
+  });
+
+  const amenities = useMutation({
+    mutationFn: async ({
+      id,
+      entregados,
+    }: {
+      id: number;
+      entregados: boolean;
+    }) =>
+      (await api.patch(`/alquileres/${id}/amenities`, { entregados })).data,
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['alquileres'] });
+    },
+  });
+
   return (
     <div className="fixed inset-0 bg-violet-950/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-fade-in">
       <div className="bg-white rounded-2xl w-full max-w-md p-6 max-h-[90vh] overflow-y-auto animate-scale-in shadow-2xl">
@@ -555,7 +608,18 @@ function AlquilerActivoModal({
         {alquiler && (
           <>
             <div className="bg-red-50 border border-red-200 rounded-lg p-3 mb-3">
-              <div className="font-semibold">{alquiler.clienteNombre}</div>
+              <div className="flex items-center justify-between gap-2">
+                <div className="font-semibold">{alquiler.clienteNombre}</div>
+                {alquiler.pagado ? (
+                  <span className="text-[10px] uppercase tracking-wider bg-emerald-100 text-emerald-800 font-bold px-2 py-0.5 rounded-full">
+                    ✓ Pagado
+                  </span>
+                ) : (
+                  <span className="text-[10px] uppercase tracking-wider bg-rose-100 text-rose-800 font-bold px-2 py-0.5 rounded-full animate-pulse">
+                    ⚠ Por cobrar
+                  </span>
+                )}
+              </div>
               <div className="text-xs text-slate-600">
                 DNI: {alquiler.clienteDni} · {alquiler.metodoPago}
                 {alquiler.clienteFechaNacimiento && (
@@ -568,6 +632,53 @@ function AlquilerActivoModal({
                   </>
                 )}
               </div>
+              {alquiler.pagado && alquiler.cobradoPor && (
+                <div className="text-[10px] text-emerald-700 mt-0.5">
+                  Cobrado por {alquiler.cobradoPor.nombre}
+                  {alquiler.pagadoEn &&
+                    ` · ${new Date(alquiler.pagadoEn).toLocaleString('es-PE', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}`}
+                </div>
+              )}
+              {/* Aviso del turno: si no está pagado y el turno de apertura
+                   es distinto al actual (o el cajero cambió) */}
+              {!alquiler.pagado && (
+                <div className="mt-2 bg-amber-50 border border-amber-300 rounded-lg p-2 text-[11px] text-amber-900">
+                  <div className="font-semibold">
+                    📋 Abierto en turno #{alquiler.turnoCajaId}
+                  </div>
+                  <div>
+                    por{' '}
+                    <b>{(alquiler as any).creadoPor?.nombre || 'N/A'}</b> el{' '}
+                    {new Date(alquiler.creadoEn).toLocaleString('es-PE', {
+                      day: '2-digit',
+                      month: 'short',
+                      hour: '2-digit',
+                      minute: '2-digit',
+                    })}
+                  </div>
+                  <div className="mt-1 text-[10px] text-amber-700">
+                    Al cobrar ahora, el ingreso se registrará en <b>tu turno
+                    actual</b>.
+                  </div>
+                </div>
+              )}
+              {/* Checkbox chocolates de bienvenida */}
+              <label className="mt-2 flex items-center gap-2 cursor-pointer select-none bg-white/60 rounded-lg px-2 py-1">
+                <input
+                  type="checkbox"
+                  checked={!!alquiler.amenitiesEntregados}
+                  onChange={(e) =>
+                    amenities.mutate({
+                      id: alquiler.id,
+                      entregados: e.target.checked,
+                    })
+                  }
+                  className="w-4 h-4 accent-amber-500"
+                />
+                <span className="text-xs font-medium text-slate-700">
+                  🍫 Chocolates de bienvenida entregados
+                </span>
+              </label>
               {alquiler.clienteFechaNacimiento && (
                 <div className="text-xs text-slate-500 mt-0.5">
                   🎂 {new Date(alquiler.clienteFechaNacimiento).toLocaleDateString('es-PE')}
@@ -617,6 +728,15 @@ function AlquilerActivoModal({
             )}
 
             <div className="flex flex-col gap-2">
+              {!alquiler.pagado && (
+                <button
+                  onClick={() => cobrar.mutate(alquiler.id)}
+                  disabled={cobrar.isPending}
+                  className="flex items-center justify-center gap-2 bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-700 hover:to-emerald-600 text-white py-2.5 rounded-lg btn-press font-semibold shadow-md shadow-emerald-500/30"
+                >
+                  💰 {cobrar.isPending ? 'Registrando...' : `Cobrar ahora (S/ ${alquiler.total})`}
+                </button>
+              )}
               <button
                 onClick={() => setAddProdOpen(true)}
                 className="flex items-center justify-center gap-2 bg-blue-500 hover:bg-blue-600 text-white py-2.5 rounded-lg btn-press"
@@ -774,6 +894,8 @@ function NuevoAlquilerModal({
     precioHabitacion: habitacion.precioHora,
     metodoPago: 'EFECTIVO',
     notas: '',
+    pagado: true,
+    amenitiesEntregados: false,
   });
   const [error, setError] = useState<string | null>(null);
   const [buscando, setBuscando] = useState(false);
@@ -853,6 +975,8 @@ function NuevoAlquilerModal({
         precioHabitacion: Number(form.precioHabitacion),
         metodoPago: form.metodoPago,
         notas: form.notas || undefined,
+        pagado: form.pagado,
+        amenitiesEntregados: form.amenitiesEntregados,
       };
       if (conRuc && rucData?.encontrado) {
         payload.tipoComprobante = 'FACTURA';
@@ -1066,6 +1190,42 @@ function NuevoAlquilerModal({
             value={form.notas}
             onChange={(e) => setForm({ ...form, notas: e.target.value })}
           />
+
+          {/* Operación: pago + amenities */}
+          <div className="border border-slate-200 rounded-xl p-3 bg-slate-50 space-y-2">
+            <label className="flex items-center gap-2 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={form.pagado}
+                onChange={(e) =>
+                  setForm({ ...form, pagado: e.target.checked })
+                }
+                className="w-4 h-4 accent-emerald-600"
+              />
+              <span className="text-sm font-medium text-slate-700">
+                💰 Pago recibido ahora
+              </span>
+              <span className="text-[10px] text-slate-500">
+                (desmarcar si queda pendiente)
+              </span>
+            </label>
+            <label className="flex items-center gap-2 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={form.amenitiesEntregados}
+                onChange={(e) =>
+                  setForm({
+                    ...form,
+                    amenitiesEntregados: e.target.checked,
+                  })
+                }
+                className="w-4 h-4 accent-amber-500"
+              />
+              <span className="text-sm font-medium text-slate-700">
+                🍫 Chocolates de bienvenida entregados
+              </span>
+            </label>
+          </div>
 
           {/* Datos fiscales: BOLETA (default) ↔ FACTURA con RUC */}
           <div className="border border-slate-200 rounded-xl p-3 bg-slate-50">

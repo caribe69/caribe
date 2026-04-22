@@ -1,6 +1,7 @@
 import { MetodoPago } from '@prisma/client';
 import { Type } from 'class-transformer';
 import {
+  IsBoolean,
   IsDateString,
   IsEnum,
   IsInt,
@@ -27,12 +28,21 @@ export class CreateAlquilerDto {
   @IsEnum(MetodoPago) metodoPago: MetodoPago;
   @IsOptional() @IsString() notas?: string;
 
+  // Si false → alquiler a crédito/pendiente. Default true (pago inmediato).
+  @IsOptional() @IsBoolean() pagado?: boolean;
+  @IsOptional() @IsBoolean() amenitiesEntregados?: boolean;
+
   // Datos fiscales opcionales al crear (si ya viene como factura)
   @IsOptional() @IsEnum({ BOLETA: 'BOLETA', FACTURA: 'FACTURA' } as const)
   tipoComprobante?: 'BOLETA' | 'FACTURA';
   @IsOptional() @IsString() clienteRuc?: string;
   @IsOptional() @IsString() clienteRazonSocial?: string;
   @IsOptional() @IsString() clienteDireccionFiscal?: string;
+}
+
+export class AmenitiesDto {
+  @IsBoolean() entregados: boolean;
+  @IsOptional() @IsString() notas?: string;
 }
 
 export class DatosFiscalesDto {

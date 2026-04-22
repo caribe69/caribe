@@ -45,6 +45,15 @@ export class AmenitiesDto {
   @IsOptional() @IsString() notas?: string;
 }
 
+export class CobrarDto {
+  /** Monto a cobrar ahora. Si no viene, cobra el saldo completo pendiente. */
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(0.01)
+  monto?: number;
+}
+
 export class DatosFiscalesDto {
   @IsEnum({ BOLETA: 'BOLETA', FACTURA: 'FACTURA' } as const)
   tipoComprobante: 'BOLETA' | 'FACTURA';

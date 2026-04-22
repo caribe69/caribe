@@ -56,14 +56,9 @@ export class CajaService {
     if (turno.estado === EstadoTurno.CERRADO)
       throw new BadRequestException('Turno ya cerrado');
 
-    // Alquileres cobrados EN este turno (sin importar dónde se abrieron)
-    const alquileresCobrados = await this.prisma.alquiler.findMany({
-      where: {
-        turnoPagoId: id,
-        pagado: true,
-        estado: { not: EstadoAlquiler.ANULADO },
-      },
-      include: { consumos: true },
+    // Pagos individuales registrados EN este turno (soporta parciales)
+    const pagos = await this.prisma.pagoAlquiler.findMany({
+      where: { turnoCajaId: id },
     });
 
     const totales = {
@@ -75,9 +70,9 @@ export class CajaService {
       OTRO: 0,
     };
     let total = 0;
-    for (const a of alquileresCobrados) {
-      const t = Number(a.total);
-      totales[a.metodoPago] += t;
+    for (const p of pagos) {
+      const t = Number(p.monto);
+      totales[p.metodoPago] += t;
       total += t;
     }
     for (const v of turno.ventas) {
@@ -120,21 +115,26 @@ export class CajaService {
     if (!turno) throw new NotFoundException('Turno no encontrado');
     enforceSede(user, turno.sedeId);
 
-    // Alquileres COBRADOS en este turno (cuentan para ingresos)
-    const alquileresCobrados = await this.prisma.alquiler.findMany({
-      where: {
-        turnoPagoId: id,
-        pagado: true,
-        estado: { not: EstadoAlquiler.ANULADO },
-      },
+    // Pagos registrados en este turno (soporta pagos parciales)
+    const pagosTurno = await this.prisma.pagoAlquiler.findMany({
+      where: { turnoCajaId: id },
       include: {
-        habitacion: true,
-        consumos: { include: { producto: true } },
-        creadoPor: { select: { id: true, nombre: true, username: true } },
-        cobradoPor: { select: { id: true, nombre: true, username: true } },
+        alquiler: {
+          include: {
+            habitacion: true,
+            consumos: { include: { producto: true } },
+            creadoPor: { select: { id: true, nombre: true, username: true } },
+          },
+        },
       },
-      orderBy: { pagadoEn: 'asc' },
+      orderBy: { fecha: 'asc' },
     });
+    // Alquileres únicos detrás de esos pagos (para desglose H/B)
+    const alquileresMap = new Map<number, any>();
+    for (const p of pagosTurno) {
+      alquileresMap.set(p.alquiler.id, p.alquiler);
+    }
+    const alquileresCobrados = Array.from(alquileresMap.values());
 
     // Alquileres ABIERTOS en este turno pero aún sin cobrar (informativo)
     const alquileresPendientes = await this.prisma.alquiler.findMany({
@@ -190,11 +190,20 @@ export class CajaService {
       (v) => v.estado !== EstadoVenta.ANULADA,
     );
 
-    let H = 0; // Habitaciones (solo precio de la habitación)
+    let H = 0; // Habitaciones (solo precio de la habitación, proporcional al cobro)
     let B = 0; // Bebidas / productos (consumos + ventas directas)
-    for (const a of alquileresValidos) {
-      H += Number(a.precioHabitacion);
-      B += Number(a.totalProductos);
+    // Para pagos parciales: distribuimos cada pago proporcionalmente
+    // entre habitación y productos según la composición del alquiler.
+    for (const p of pagosTurno) {
+      const a = p.alquiler;
+      const aTotal = Number(a.total);
+      const aHab = Number(a.precioHabitacion);
+      const aProd = Number(a.totalProductos);
+      const pagoMonto = Number(p.monto);
+      if (aTotal > 0) {
+        H += pagoMonto * (aHab / aTotal);
+        B += pagoMonto * (aProd / aTotal);
+      }
     }
     for (const v of ventasValidas) {
       B += Number(v.total);
@@ -202,11 +211,11 @@ export class CajaService {
     const O = 0; // Otros — reservado para ajustes futuros
     const G = H + B + O;
 
-    // Totales por método de pago (desde alquileres + ventas)
+    // Totales por método de pago (desde pagos + ventas)
     const porMetodo: Record<string, number> = {
       EFECTIVO: 0, VISA: 0, MASTERCARD: 0, YAPE: 0, PLIN: 0, OTRO: 0,
     };
-    for (const a of alquileresValidos) porMetodo[a.metodoPago] += Number(a.total);
+    for (const p of pagosTurno) porMetodo[p.metodoPago] += Number(p.monto);
     for (const v of ventasValidas) porMetodo[v.metodoPago] += Number(v.total);
 
     const totalDigital =

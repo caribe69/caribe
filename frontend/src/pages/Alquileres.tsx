@@ -45,6 +45,7 @@ interface Habitacion {
     total: string;
     creadoEn: string;
     pagado?: boolean;
+    montoPagado?: string;
     amenitiesEntregados?: boolean;
   }>;
 }
@@ -60,6 +61,7 @@ interface Alquiler {
   clienteRazonSocial?: string | null;
   clienteDireccionFiscal?: string | null;
   pagado?: boolean;
+  montoPagado?: string;
   pagadoEn?: string | null;
   turnoCajaId?: number | null;
   turnoPagoId?: number | null;
@@ -440,11 +442,32 @@ function MapaHabitaciones() {
                       </div>
                     </div>
                     <div className="flex flex-col gap-0.5 items-end shrink-0">
-                      {alquilerRef.pagado === false && (
-                        <span className="text-[9px] bg-rose-500 text-white font-bold px-1.5 py-0.5 rounded-full animate-pulse">
-                          POR COBRAR
-                        </span>
-                      )}
+                      {(() => {
+                        const totalA = Number(alquilerRef.total);
+                        const pagadoA = Number(
+                          alquilerRef.montoPagado ??
+                            (alquilerRef.pagado ? totalA : 0),
+                        );
+                        const saldoA = totalA - pagadoA;
+                        if (saldoA > 0.01 && pagadoA > 0) {
+                          return (
+                            <span
+                              className="text-[9px] bg-amber-500 text-white font-bold px-1.5 py-0.5 rounded-full"
+                              title={`Pagado S/ ${pagadoA.toFixed(2)} de ${totalA.toFixed(2)} · saldo S/ ${saldoA.toFixed(2)}`}
+                            >
+                              PARCIAL
+                            </span>
+                          );
+                        }
+                        if (saldoA > 0.01) {
+                          return (
+                            <span className="text-[9px] bg-rose-500 text-white font-bold px-1.5 py-0.5 rounded-full animate-pulse">
+                              POR COBRAR
+                            </span>
+                          );
+                        }
+                        return null;
+                      })()}
                       {alquilerRef.amenitiesEntregados && (
                         <span title="Chocolates entregados" className="text-[10px]">
                           🍫
@@ -533,6 +556,7 @@ function AlquilerActivoModal({
   const [extenderOpen, setExtenderOpen] = useState(false);
   const [boletaOpen, setBoletaOpen] = useState(false);
   const [fiscalesOpen, setFiscalesOpen] = useState(false);
+  const [cobrarOpen, setCobrarOpen] = useState(false);
 
   // Busca alquiler ACTIVO de esta habitación
   const { data: alquileres } = useQuery({
@@ -564,17 +588,33 @@ function AlquilerActivoModal({
   });
 
   const cobrar = useMutation({
-    mutationFn: async (id: number) =>
-      (await api.patch(`/alquileres/${id}/cobrar`)).data,
-    onSuccess: () => {
+    mutationFn: async ({ id, monto }: { id: number; monto?: number }) =>
+      (
+        await api.patch(
+          `/alquileres/${id}/cobrar`,
+          monto !== undefined ? { monto } : {},
+        )
+      ).data,
+    onSuccess: (data: any) => {
       qc.invalidateQueries({ queryKey: ['alquileres'] });
       qc.invalidateQueries({ queryKey: ['habitaciones'] });
+      const saldo =
+        Number(data.total) - Number(data.montoPagado);
       toast.show({
         type: 'success',
-        title: '💰 Pago registrado',
-        description: 'Alquiler marcado como pagado',
+        title: data.pagado ? '💰 Pago completado' : '💵 Pago parcial registrado',
+        description: data.pagado
+          ? 'Alquiler totalmente pagado'
+          : `Saldo pendiente: S/ ${saldo.toFixed(2)}`,
       });
+      setCobrarOpen(false);
     },
+    onError: (err: any) =>
+      toast.show({
+        type: 'error',
+        title: 'Error',
+        description: err.response?.data?.message || err.message,
+      }),
   });
 
   const amenities = useMutation({
@@ -617,15 +657,30 @@ function AlquilerActivoModal({
             <div className="bg-red-50 border border-red-200 rounded-lg p-3 mb-3">
               <div className="flex items-center justify-between gap-2">
                 <div className="font-semibold">{alquiler.clienteNombre}</div>
-                {alquiler.pagado ? (
-                  <span className="text-[10px] uppercase tracking-wider bg-emerald-100 text-emerald-800 font-bold px-2 py-0.5 rounded-full">
-                    ✓ Pagado
-                  </span>
-                ) : (
-                  <span className="text-[10px] uppercase tracking-wider bg-rose-100 text-rose-800 font-bold px-2 py-0.5 rounded-full animate-pulse">
-                    ⚠ Por cobrar
-                  </span>
-                )}
+                {(() => {
+                  const total = Number(alquiler.total);
+                  const pagado = Number(alquiler.montoPagado ?? (alquiler.pagado ? total : 0));
+                  const saldo = total - pagado;
+                  if (pagado >= total - 0.01) {
+                    return (
+                      <span className="text-[10px] uppercase tracking-wider bg-emerald-100 text-emerald-800 font-bold px-2 py-0.5 rounded-full">
+                        ✓ Pagado
+                      </span>
+                    );
+                  }
+                  if (pagado > 0) {
+                    return (
+                      <span className="text-[10px] uppercase tracking-wider bg-amber-100 text-amber-800 font-bold px-2 py-0.5 rounded-full animate-pulse">
+                        ⚠ Parcial S/ {saldo.toFixed(2)}
+                      </span>
+                    );
+                  }
+                  return (
+                    <span className="text-[10px] uppercase tracking-wider bg-rose-100 text-rose-800 font-bold px-2 py-0.5 rounded-full animate-pulse">
+                      ⚠ Por cobrar
+                    </span>
+                  );
+                })()}
               </div>
               <div className="text-xs text-slate-600">
                 DNI: {alquiler.clienteDni} · {alquiler.metodoPago}
@@ -718,6 +773,33 @@ function AlquilerActivoModal({
                 <span>Total</span>
                 <span>S/ {alquiler.total}</span>
               </div>
+              {/* Progreso de pago */}
+              {(() => {
+                const total = Number(alquiler.total);
+                const pagado = Number(
+                  alquiler.montoPagado ?? (alquiler.pagado ? total : 0),
+                );
+                const saldo = total - pagado;
+                const pct = total > 0 ? Math.min(100, (pagado / total) * 100) : 0;
+                return (
+                  <div className="pt-2">
+                    <div className="flex justify-between text-xs">
+                      <span className="text-emerald-700 font-semibold">
+                        Pagado S/ {pagado.toFixed(2)}
+                      </span>
+                      <span className={saldo > 0 ? 'text-rose-700 font-semibold' : 'text-slate-400'}>
+                        Saldo S/ {saldo.toFixed(2)}
+                      </span>
+                    </div>
+                    <div className="mt-1 h-1.5 bg-slate-200 rounded-full overflow-hidden">
+                      <div
+                        className="h-full bg-gradient-to-r from-emerald-500 to-emerald-400 transition-all"
+                        style={{ width: `${pct}%` }}
+                      />
+                    </div>
+                  </div>
+                );
+              })()}
             </div>
 
             {alquiler.consumos.length > 0 && (
@@ -735,15 +817,24 @@ function AlquilerActivoModal({
             )}
 
             <div className="flex flex-col gap-2">
-              {!alquiler.pagado && (
-                <button
-                  onClick={() => cobrar.mutate(alquiler.id)}
-                  disabled={cobrar.isPending}
-                  className="flex items-center justify-center gap-2 bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-700 hover:to-emerald-600 text-white py-2.5 rounded-lg btn-press font-semibold shadow-md shadow-emerald-500/30"
-                >
-                  💰 {cobrar.isPending ? 'Registrando...' : `Cobrar ahora (S/ ${alquiler.total})`}
-                </button>
-              )}
+              {(() => {
+                const total = Number(alquiler.total);
+                const pagado = Number(
+                  alquiler.montoPagado ?? (alquiler.pagado ? total : 0),
+                );
+                const saldo = total - pagado;
+                if (saldo > 0.01) {
+                  return (
+                    <button
+                      onClick={() => setCobrarOpen(true)}
+                      className="flex items-center justify-center gap-2 bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-700 hover:to-emerald-600 text-white py-2.5 rounded-lg btn-press font-semibold shadow-md shadow-emerald-500/30"
+                    >
+                      💰 Cobrar (saldo S/ {saldo.toFixed(2)})
+                    </button>
+                  );
+                }
+                return null;
+              })()}
               <button
                 onClick={() => setAddProdOpen(true)}
                 className="flex items-center justify-center gap-2 bg-blue-500 hover:bg-blue-600 text-white py-2.5 rounded-lg btn-press"
@@ -870,6 +961,14 @@ function AlquilerActivoModal({
               <DatosFiscalesModal
                 alquiler={alquiler}
                 onClose={() => setFiscalesOpen(false)}
+              />
+            )}
+            {cobrarOpen && (
+              <CobrarAlquilerModal
+                alquiler={alquiler}
+                onClose={() => setCobrarOpen(false)}
+                onCobrar={(monto) => cobrar.mutate({ id: alquiler.id, monto })}
+                loading={cobrar.isPending}
               />
             )}
           </>
@@ -1923,6 +2022,173 @@ function formatDuracion(mins: number): string {
   const d = Math.floor(h / 24);
   const hr = h % 24;
   return hr ? `${d}d ${hr}h` : `${d}d`;
+}
+
+function CobrarAlquilerModal({
+  alquiler,
+  onClose,
+  onCobrar,
+  loading,
+}: {
+  alquiler: Alquiler;
+  onClose: () => void;
+  onCobrar: (monto?: number) => void;
+  loading: boolean;
+}) {
+  const total = Number(alquiler.total);
+  const pagado = Number(
+    alquiler.montoPagado ?? (alquiler.pagado ? total : 0),
+  );
+  const saldo = total - pagado;
+  const [monto, setMonto] = useState<string>(saldo.toFixed(2));
+  const [modo, setModo] = useState<'completo' | 'parcial'>('completo');
+
+  const montoNum = Number(monto) || 0;
+  const valido = montoNum > 0 && montoNum <= saldo + 0.001;
+  const saldoRestante = saldo - montoNum;
+
+  return (
+    <div className="fixed inset-0 bg-slate-950/60 backdrop-blur-sm flex items-center justify-center p-4 z-[60] animate-fade-in">
+      <div className="bg-white rounded-3xl w-full max-w-md shadow-2xl animate-scale-in">
+        <div className="flex justify-between items-center p-5 border-b border-slate-100">
+          <div>
+            <h2 className="font-hotel text-lg font-bold">Registrar cobro</h2>
+            <div className="text-xs text-slate-500">
+              Hab. {alquiler.habitacion.numero} · {alquiler.clienteNombre}
+            </div>
+          </div>
+          <button
+            onClick={onClose}
+            className="w-8 h-8 rounded-lg hover:bg-slate-100 flex items-center justify-center"
+          >
+            <X size={18} />
+          </button>
+        </div>
+
+        <div className="p-5 space-y-4">
+          {/* Resumen */}
+          <div className="bg-gradient-to-br from-slate-50 to-slate-100 border border-slate-200 rounded-2xl p-4 space-y-1.5 text-sm">
+            <div className="flex justify-between">
+              <span className="text-slate-600">Total del alquiler</span>
+              <span className="font-semibold tabular-nums">
+                S/ {total.toFixed(2)}
+              </span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-emerald-700">Ya pagado</span>
+              <span className="font-semibold text-emerald-700 tabular-nums">
+                S/ {pagado.toFixed(2)}
+              </span>
+            </div>
+            <div className="h-px bg-slate-200" />
+            <div className="flex justify-between items-baseline">
+              <span className="text-rose-700 font-semibold">Saldo</span>
+              <span className="text-2xl font-hotel font-bold text-rose-700 tabular-nums">
+                S/ {saldo.toFixed(2)}
+              </span>
+            </div>
+          </div>
+
+          {/* Tabs */}
+          <div className="flex bg-slate-100 rounded-xl p-1">
+            <button
+              onClick={() => {
+                setModo('completo');
+                setMonto(saldo.toFixed(2));
+              }}
+              className={`flex-1 py-2 rounded-lg text-sm font-medium transition ${
+                modo === 'completo'
+                  ? 'bg-white shadow-sm text-emerald-700'
+                  : 'text-slate-600'
+              }`}
+            >
+              Cobrar todo
+            </button>
+            <button
+              onClick={() => {
+                setModo('parcial');
+                setMonto((saldo / 2).toFixed(2));
+              }}
+              className={`flex-1 py-2 rounded-lg text-sm font-medium transition ${
+                modo === 'parcial'
+                  ? 'bg-white shadow-sm text-amber-700'
+                  : 'text-slate-600'
+              }`}
+            >
+              Pago parcial
+            </button>
+          </div>
+
+          {modo === 'parcial' && (
+            <div>
+              <label className="text-[10px] font-semibold text-slate-500 uppercase tracking-widest">
+                Monto a cobrar ahora
+              </label>
+              <div className="flex items-center gap-2 mt-1">
+                <span className="text-xl font-bold text-slate-700">S/</span>
+                <input
+                  type="number"
+                  step="0.01"
+                  min="0.01"
+                  max={saldo}
+                  value={monto}
+                  onChange={(e) => setMonto(e.target.value)}
+                  className="flex-1 border border-slate-200 rounded-xl px-3 py-2.5 text-2xl font-bold tabular-nums text-center focus:outline-none focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100"
+                  autoFocus
+                />
+              </div>
+              {/* Atajos: 50%, saldo total */}
+              <div className="flex gap-1.5 mt-2 flex-wrap">
+                {[0.25, 0.5, 0.75, 1].map((f) => (
+                  <button
+                    key={f}
+                    onClick={() => setMonto((saldo * f).toFixed(2))}
+                    className="px-2.5 py-1 rounded-lg text-xs font-medium bg-slate-100 hover:bg-emerald-100 hover:text-emerald-700"
+                  >
+                    {f === 1 ? 'Todo' : `${f * 100}% (S/ ${(saldo * f).toFixed(2)})`}
+                  </button>
+                ))}
+              </div>
+              {valido && (
+                <div className="mt-3 text-xs text-slate-600">
+                  Quedará{' '}
+                  <b className={saldoRestante > 0 ? 'text-rose-700' : 'text-emerald-700'}>
+                    S/ {saldoRestante.toFixed(2)}
+                  </b>{' '}
+                  {saldoRestante > 0 ? 'pendiente por cobrar' : '✓ saldado'}
+                </div>
+              )}
+              {!valido && montoNum > saldo && (
+                <div className="mt-2 text-xs text-rose-700 bg-rose-50 border border-rose-200 rounded p-2">
+                  El monto excede el saldo pendiente
+                </div>
+              )}
+            </div>
+          )}
+
+          <div className="flex gap-2 pt-1">
+            <button
+              onClick={onClose}
+              className="flex-1 bg-slate-100 hover:bg-slate-200 py-2.5 rounded-xl font-medium text-slate-700"
+            >
+              Cancelar
+            </button>
+            <button
+              onClick={() =>
+                onCobrar(modo === 'parcial' ? montoNum : undefined)
+              }
+              disabled={loading || (modo === 'parcial' && !valido)}
+              className="flex-1 bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-700 hover:to-emerald-600 text-white py-2.5 rounded-xl font-semibold shadow-md shadow-emerald-500/30 disabled:opacity-40"
+            >
+              {loading
+                ? 'Registrando...'
+                : `Confirmar S/ ${modo === 'parcial' ? montoNum.toFixed(2) : saldo.toFixed(2)}`}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
 }
 
 function calcularEdad(fechaISO: string): number {

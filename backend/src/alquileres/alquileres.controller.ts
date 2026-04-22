@@ -23,6 +23,7 @@ import {
   AgregarConsumoDto,
   AmenitiesDto,
   AnularAlquilerDto,
+  CobrarDto,
   CreateAlquilerDto,
   DatosFiscalesDto,
   ExtenderAlquilerDto,
@@ -435,9 +436,10 @@ export class AlquileresController {
   @Patch(':id/cobrar')
   cobrar(
     @Param('id', ParseIntPipe) id: number,
+    @Body() dto: CobrarDto,
     @CurrentUser() user: JwtPayload,
   ) {
-    return this.service.marcarPagado(id, user);
+    return this.service.marcarPagado(id, user, dto?.monto);
   }
 
   @Roles(Rol.SUPERADMIN, Rol.ADMIN_SEDE, Rol.HOTELERO, Rol.CAJERO)

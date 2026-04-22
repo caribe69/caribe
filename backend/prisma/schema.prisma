@@ -58,6 +58,7 @@ model Usuario {
   alquileresCreados    Alquiler[]        @relation("AlquilerCreadoPor")
   alquileresAnulados   Alquiler[]        @relation("AlquilerAnuladoPor")
   alquileresCobrados   Alquiler[]        @relation("AlquilerCobradoPor")
+  pagosAlquilerCreados PagoAlquiler[]    @relation("PagoCreadoPor")
   tareasAsignadas      TareaLimpieza[]   @relation("TareaAsignadaA")
   turnosCaja           TurnoCaja[]
   movimientosStock     MovimientoStock[]
@@ -224,9 +225,10 @@ model Alquiler {
   anuladoPor      Usuario?        @relation("AlquilerAnuladoPor", fields: [anuladoPorId], references: [id])
 
   // Flags de operación diaria
-  pagado          Boolean         @default(true)  // si ya fue cobrado
+  pagado          Boolean         @default(true)  // true = totalmente pagado
+  montoPagado     Decimal         @db.Decimal(10, 2) @default(0)  // acumulado (puede ser parcial)
   pagadoEn        DateTime?
-  turnoPagoId     Int?                            // turno donde se cobró (puede diferir del turno de creación)
+  turnoPagoId     Int?                            // turno del último cobro
   turnoPago       TurnoCaja?      @relation("AlquilerTurnoPago", fields: [turnoPagoId], references: [id])
   cobradoPorId    Int?
   cobradoPor      Usuario?        @relation("AlquilerCobradoPor", fields: [cobradoPorId], references: [id])
@@ -240,6 +242,7 @@ model Alquiler {
 
   consumos        ConsumoProducto[]
   anulacionRequests AnulacionRequest[]
+  pagos           PagoAlquiler[]
 
   @@index([sedeId, estado])
   @@index([habitacionId])
@@ -358,6 +361,26 @@ model TransferenciaItem {
   @@index([transferenciaId])
 }
 
+// Historial de cobros individuales de un alquiler.
+// Soporta pagos parciales: un mismo alquiler puede tener múltiples PagoAlquiler
+// (ej. 20 en turno1 + 20 en turno2 = total 40). Cada cierre de caja suma los
+// PagoAlquiler con su propio turnoCajaId.
+model PagoAlquiler {
+  id           Int        @id @default(autoincrement())
+  alquilerId   Int
+  alquiler     Alquiler   @relation(fields: [alquilerId], references: [id], onDelete: Cascade)
+  turnoCajaId  Int
+  turnoCaja    TurnoCaja  @relation("PagoTurno", fields: [turnoCajaId], references: [id])
+  usuarioId    Int
+  usuario      Usuario    @relation("PagoCreadoPor", fields: [usuarioId], references: [id])
+  monto        Decimal    @db.Decimal(10, 2)
+  metodoPago   MetodoPago
+  fecha        DateTime   @default(now())
+
+  @@index([alquilerId])
+  @@index([turnoCajaId])
+}
+
 model MovimientoStock {
   id          Int              @id @default(autoincrement())
   productoId  Int?
@@ -459,6 +482,7 @@ model TurnoCaja {
   alquileresCobrados Alquiler[] @relation("AlquilerTurnoPago")
   ventas         Venta[]
   reservasGrupales ReservaGrupal[]
+  pagosAlquiler  PagoAlquiler[] @relation("PagoTurno")
 
   @@index([sedeId, estado])
   @@index([usuarioId])

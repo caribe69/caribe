@@ -356,7 +356,7 @@ export class AlquileresService {
 
     const pagadoNow = dto.pagado !== false; // default true
     return this.prisma.$transaction(async (tx) => {
-      const alquiler = await tx.alquiler.create({
+      const alquiler: any = await tx.alquiler.create({
         data: {
           sedeId,
           habitacionId: hab.id,
@@ -374,6 +374,7 @@ export class AlquileresService {
           metodoPago: dto.metodoPago,
           notas: dto.notas,
           pagado: pagadoNow,
+          montoPagado: pagadoNow ? dto.precioHabitacion : 0,
           pagadoEn: pagadoNow ? new Date() : null,
           turnoPagoId: pagadoNow ? turno.id : null,
           cobradoPorId: pagadoNow ? user.sub : null,
@@ -390,6 +391,19 @@ export class AlquileresService {
         where: { id: hab.id },
         data: { estado: EstadoHabitacion.OCUPADA },
       });
+
+      // Registrar pago si fue creado como pagado
+      if (pagadoNow) {
+        await tx.pagoAlquiler.create({
+          data: {
+            alquilerId: alquiler.id,
+            turnoCajaId: turno.id,
+            usuarioId: user.sub,
+            monto: dto.precioHabitacion,
+            metodoPago: dto.metodoPago,
+          },
+        });
+      }
 
       return alquiler;
     });
@@ -599,24 +613,37 @@ export class AlquileresService {
   }
 
   /**
-   * Marca un alquiler como pagado. Se registra:
-   * - quién cobró (cobradoPorId = usuario actual)
-   * - cuándo (pagadoEn = ahora)
-   * - en qué turno se hizo el cobro físico (turnoPagoId = turno actual)
+   * Registra un cobro (total o parcial). Si `monto` no se especifica,
+   * cobra el saldo completo pendiente. Acumula en montoPagado.
    *
-   * NOTA: el ingreso contable NO se mueve de turno. El alquiler sigue
-   * perteneciendo al `turnoCajaId` original (política: el turno de apertura
-   * se queda con el ingreso aunque el cobro físico se haga después).
-   * turnoPagoId es solo informativo/auditoría.
+   * pagado=true solo cuando montoPagado >= total del alquiler.
+   * El ingreso se registra en el turno ACTUAL del cajero (turnoPagoId).
    */
-  async marcarPagado(id: number, user: JwtPayload) {
+  async marcarPagado(id: number, user: JwtPayload, montoInput?: number) {
     const alquiler = await this.findOne(id, user);
     if (alquiler.estado === EstadoAlquiler.ANULADO)
       throw new BadRequestException('Alquiler anulado');
-    if (alquiler.pagado)
-      throw new BadRequestException('Ya está marcado como pagado');
 
-    // Turno actual (solo informativo)
+    const total = Number(alquiler.total);
+    const yaPagado = Number(alquiler.montoPagado);
+    const saldo = total - yaPagado;
+
+    if (saldo <= 0.001)
+      throw new BadRequestException('Ya está totalmente pagado');
+
+    // Si no se pasa monto, cobra el saldo completo
+    const monto = montoInput != null ? Number(montoInput) : saldo;
+    if (monto <= 0)
+      throw new BadRequestException('El monto debe ser mayor a 0');
+    if (monto > saldo + 0.001)
+      throw new BadRequestException(
+        `El monto (S/ ${monto.toFixed(2)}) excede el saldo pendiente (S/ ${saldo.toFixed(2)})`,
+      );
+
+    const nuevoPagado = yaPagado + monto;
+    const completo = nuevoPagado >= total - 0.001;
+
+    // Turno actual del cajero (donde se recibe el dinero)
     const turnoActual = await this.prisma.turnoCaja.findFirst({
       where: {
         sedeId: alquiler.sedeId,
@@ -624,20 +651,42 @@ export class AlquileresService {
         estado: EstadoTurno.ABIERTO,
       },
     });
+    if (!turnoActual)
+      throw new BadRequestException(
+        'No tienes turno de caja abierto. Abre caja primero.',
+      );
 
-    return this.prisma.alquiler.update({
-      where: { id: alquiler.id },
-      data: {
-        pagado: true,
-        pagadoEn: new Date(),
-        cobradoPorId: user.sub,
-        turnoPagoId: turnoActual?.id ?? null,
-      },
-      include: {
-        habitacion: { include: { piso: true } },
-        creadoPor: { select: { id: true, nombre: true, username: true } },
-        cobradoPor: { select: { id: true, nombre: true, username: true } },
-      },
+    return this.prisma.$transaction(async (tx) => {
+      // Registrar el pago individual en el historial
+      await tx.pagoAlquiler.create({
+        data: {
+          alquilerId: alquiler.id,
+          turnoCajaId: turnoActual.id,
+          usuarioId: user.sub,
+          monto,
+          metodoPago: alquiler.metodoPago,
+        },
+      });
+
+      return tx.alquiler.update({
+        where: { id: alquiler.id },
+        data: {
+          montoPagado: nuevoPagado,
+          pagado: completo,
+          pagadoEn: completo ? new Date() : alquiler.pagadoEn,
+          cobradoPorId: user.sub,
+          turnoPagoId: turnoActual.id,
+          notas: alquiler.notas
+            ? `${alquiler.notas}\n[Cobro S/ ${monto.toFixed(2)} · saldo S/ ${Math.max(0, total - nuevoPagado).toFixed(2)}]`
+            : `[Cobro S/ ${monto.toFixed(2)} · saldo S/ ${Math.max(0, total - nuevoPagado).toFixed(2)}]`,
+        },
+        include: {
+          habitacion: { include: { piso: true } },
+          creadoPor: { select: { id: true, nombre: true, username: true } },
+          cobradoPor: { select: { id: true, nombre: true, username: true } },
+          pagos: true,
+        },
+      });
     });
   }
 

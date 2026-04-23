@@ -1,0 +1,353 @@
+/* Hs Sol Caribe — estilo transaccional (Choice / Radisson) */
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap');
+
+:root {
+  /* Paleta transaccional */
+  --cream: #FFFFFF;
+  --cream-2: #F7F6F3;
+  --sand: #EEEAE0;
+  --sand-warm: #E4D3B5;
+
+  /* Navy oscuro del header (tipo Choice) */
+  --navy: #2B1B3D;       /* header principal */
+  --navy-2: #1E1229;     /* contraste */
+
+  /* CTA amarillo mostaza (tipo Radisson) */
+  --cta: #F5B91F;
+  --cta-hover: #DBA414;
+  --cta-dark: #1E1410;   /* texto sobre cta */
+
+  /* Acentos */
+  --terracotta: #C95A3D;
+  --terracotta-deep: #A84530;
+
+  /* Urgencia (badge rojo/rosa "X habitaciones restantes") */
+  --urgent-bg: #FDEEF1;
+  --urgent-fg: #C82850;
+  --urgent-border: #F4C2CE;
+
+  /* Beneficios (verde "Los socios ahorran") */
+  --benefit-bg: #E8F5E9;
+  --benefit-fg: #2E7D32;
+
+  /* Precio tachado / descuento */
+  --strike: #888;
+  --price: #1E1410;
+
+  /* Logo del hotel tipo Radisson — placeholder del logo del hotel individual */
+  --sol: #F2B441;
+  --palma: #5C8A3E;
+  --mar: #3E8FB8;
+
+  --brown: #3E2A1C;
+  --brown-soft: #6B5542;
+  --ink: #1E1410;
+  --text: #2B2118;
+  --text-soft: #5A4A3C;
+  --muted: #8A7F72;
+  --line: #E4E0D6;
+  --line-soft: #EEEAE0;
+
+  --f-display: 'Cormorant Garamond', 'Times New Roman', serif;
+  --f-sans: 'Inter', -apple-system, system-ui, sans-serif;
+  --f-mono: 'JetBrains Mono', 'SF Mono', monospace;
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+
+.ch-root {
+  font-family: var(--f-sans);
+  color: var(--text);
+  background: var(--cream);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+.ch-root .display { font-family: var(--f-display); font-weight: 500; letter-spacing: -0.01em; }
+.ch-root .mono { font-family: var(--f-mono); font-size: 11px; text-transform: uppercase; letter-spacing: 0.12em; }
+.ch-root .sans { font-family: var(--f-sans); }
+
+/* Scrollbars */
+.ch-root *::-webkit-scrollbar { width: 8px; height: 8px; }
+.ch-root *::-webkit-scrollbar-track { background: transparent; }
+.ch-root *::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.15); border-radius: 4px; }
+
+/* Botones */
+.ch-btn {
+  font-family: var(--f-sans);
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  padding: 13px 26px;
+  border: 1px solid var(--ink);
+  background: transparent;
+  color: var(--ink);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  border-radius: 4px;
+  text-transform: none;
+}
+.ch-btn:hover { background: var(--ink); color: #fff; }
+.ch-btn.primary { background: var(--ink); color: #fff; }
+.ch-btn.primary:hover { background: var(--navy); border-color: var(--navy); }
+
+/* CTA principal — amarillo mostaza estilo Radisson */
+.ch-root .ch-btn.cta,
+.ch-btn.cta {
+  background: var(--cta) !important;
+  color: var(--cta-dark) !important;
+  border: 1px solid var(--cta) !important;
+  font-weight: 700;
+  padding: 14px 28px;
+  letter-spacing: 0.01em;
+  text-transform: none;
+}
+.ch-root .ch-btn.cta:hover,
+.ch-btn.cta:hover {
+  background: var(--cta-hover) !important;
+  border-color: var(--cta-hover) !important;
+  color: var(--cta-dark) !important;
+}
+
+.ch-btn.terracotta { background: var(--terracotta); color: #fff; border-color: var(--terracotta); }
+.ch-btn.terracotta:hover { background: var(--terracotta-deep); border-color: var(--terracotta-deep); color: #fff; }
+
+.ch-btn.sol { background: var(--cta); color: var(--cta-dark); border-color: var(--cta); font-weight: 700; }
+.ch-btn.sol:hover { background: var(--cta-hover); border-color: var(--cta-hover); }
+
+.ch-btn.dark { background: var(--navy); color: #fff; border-color: var(--navy); }
+.ch-btn.dark:hover { background: var(--navy-2); border-color: var(--navy-2); }
+
+.ch-btn.outline {
+  background: transparent;
+  color: var(--text);
+  border: 1px solid var(--line);
+}
+.ch-btn.outline:hover { background: var(--cream-2); border-color: var(--ink); color: var(--ink); }
+
+/* Link hover underline */
+.ch-link {
+  position: relative;
+  text-decoration: none;
+  color: inherit;
+  display: inline-block;
+  cursor: pointer;
+}
+.ch-link:hover { text-decoration: underline; text-underline-offset: 3px; }
+
+/* Placeholder */
+.ch-ph {
+  background:
+    repeating-linear-gradient(45deg, var(--sand), var(--sand) 6px, var(--cream-2) 6px, var(--cream-2) 12px);
+  display: flex; align-items: center; justify-content: center;
+  color: var(--brown-soft);
+}
+
+/* Inputs */
+.ch-input {
+  font-family: var(--f-sans);
+  font-size: 14px;
+  color: var(--text);
+  background: #fff;
+  border: 1px solid var(--line);
+  padding: 12px 14px;
+  width: 100%;
+  outline: none;
+  border-radius: 4px;
+  transition: border-color .15s;
+}
+.ch-input:focus { border-color: var(--ink); }
+.ch-input::placeholder { color: var(--muted); }
+
+.ch-label {
+  font-family: var(--f-sans);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-soft);
+  font-weight: 600;
+  display: block;
+  margin-bottom: 6px;
+}
+
+/* Images */
+.ch-img-wrap { overflow: hidden; position: relative; background: var(--sand); border-radius: 4px; }
+.ch-img-wrap img, .ch-img-wrap .ch-img {
+  width: 100%; height: 100%; object-fit: cover;
+  transition: transform 0.8s cubic-bezier(.2,.7,.3,1);
+  display: block;
+}
+.ch-img-wrap:hover img, .ch-img-wrap:hover .ch-img { transform: scale(1.04); }
+
+.ch-rule { height: 1px; background: var(--line); border: none; margin: 0; }
+
+/* Badges */
+.ch-badge {
+  font-family: var(--f-sans);
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  padding: 5px 10px;
+  background: var(--cta);
+  color: var(--cta-dark);
+  display: inline-block;
+  border-radius: 3px;
+}
+
+/* Badge de urgencia estilo "X HABITACIONES RESTANTES A ESTE PRECIO" */
+.ch-badge-urgent {
+  font-family: var(--f-sans);
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  padding: 6px 10px;
+  background: var(--urgent-bg);
+  color: var(--urgent-fg);
+  border: 1px solid var(--urgent-border);
+  display: inline-block;
+  border-radius: 3px;
+}
+
+/* Badge de beneficio estilo "socios ahorran" */
+.ch-badge-benefit {
+  font-family: var(--f-sans);
+  font-size: 13px;
+  font-weight: 500;
+  padding: 8px 14px;
+  background: var(--benefit-bg);
+  color: var(--benefit-fg);
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border-radius: 3px;
+}
+
+.ch-badge-brand {
+  font-family: var(--f-sans);
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  padding: 6px 11px;
+  background: #F9DBE4;
+  color: #B22A5C;
+  display: inline-block;
+  border-radius: 3px;
+  border: 1px solid #F0B8C9;
+}
+
+/* Precio */
+.ch-price-strike {
+  color: var(--strike);
+  text-decoration: line-through;
+  font-size: 16px;
+  font-weight: 400;
+  margin-right: 6px;
+}
+.ch-price {
+  color: var(--price);
+  font-weight: 700;
+  font-size: 26px;
+}
+.ch-price-unit { color: var(--text-soft); font-size: 13px; font-weight: 400; }
+
+/* Tabs horizontales */
+.ch-tabs {
+  display: flex;
+  gap: 0;
+  border-bottom: 1px solid var(--line);
+  overflow-x: auto;
+}
+.ch-tab {
+  background: transparent;
+  border: none;
+  padding: 14px 20px;
+  font-family: var(--f-sans);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-soft);
+  cursor: pointer;
+  border-radius: 20px;
+  white-space: nowrap;
+  transition: all 0.15s;
+}
+.ch-tab:hover { background: var(--cream-2); color: var(--text); }
+.ch-tab.active { background: var(--navy); color: #fff; font-weight: 600; }
+
+/* Chip de filtro */
+.ch-chip {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 7px 14px;
+  border: 1px solid var(--line);
+  border-radius: 22px;
+  font-size: 13px;
+  color: var(--text);
+  background: #fff;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.ch-chip:hover { border-color: var(--ink); }
+.ch-chip.active { background: var(--navy); color: #fff; border-color: var(--navy); }
+
+/* Icono redondo con fondo suave (para amenidades) */
+.ch-amen {
+  display: inline-flex; align-items: center; gap: 8px;
+  font-size: 13px; color: var(--text);
+}
+.ch-amen svg { color: var(--text-soft); flex-shrink: 0; }
+
+/* Star rating verde-amarillo Choice */
+.ch-stars { display: inline-flex; gap: 2px; color: var(--cta); }
+
+/* Animaciones */
+@keyframes ch-fadeUp {
+  from { opacity: 0; transform: translateY(16px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.ch-reveal { opacity: 0; }
+.ch-reveal.is-visible { animation: ch-fadeUp .7s cubic-bezier(.2,.7,.3,1) forwards; }
+
+/* WhatsApp FAB pulse */
+@keyframes ch-wapulse {
+  0% { transform: scale(1); opacity: 0.6; }
+  100% { transform: scale(1.55); opacity: 0; }
+}
+@keyframes ch-wabump {
+  0%, 100% { transform: scale(1) rotate(0); }
+  20% { transform: scale(1.12) rotate(-8deg); }
+  40% { transform: scale(1.12) rotate(8deg); }
+  60% { transform: scale(1.12) rotate(-5deg); }
+  80% { transform: scale(1.05) rotate(3deg); }
+}
+
+/* Image hover zoom on cards */
+.ch-hover-zoom { overflow: hidden; }
+.ch-hover-zoom img { transition: transform .8s cubic-bezier(.2,.7,.3,1); }
+.ch-hover-zoom:hover img { transform: scale(1.06); }
+
+/* Card lift on hover */
+.ch-card-lift {
+  transition: transform .25s cubic-bezier(.2,.7,.3,1), box-shadow .25s;
+}
+.ch-card-lift:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 12px 28px rgba(30,20,16,0.12);
+}
+
+.ch-numeral {
+  font-family: var(--f-display);
+  font-style: italic;
+  font-weight: 500;
+  color: var(--terracotta);
+}

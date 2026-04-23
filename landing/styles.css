@@ -370,6 +370,10 @@
   .ch-booking-grid h2.display {
     font-size: 38px !important;
   }
+  .ch-room-grid {
+    grid-template-columns: 1fr !important;
+    gap: 24px !important;
+  }
 }
 
 /* Print — oculta nav/footer al imprimir confirmación */

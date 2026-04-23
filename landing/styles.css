@@ -374,6 +374,26 @@
     grid-template-columns: 1fr !important;
     gap: 24px !important;
   }
+  .ch-room-thumbs {
+    flex-direction: row !important;
+    overflow-x: auto !important;
+  }
+  .ch-room-thumbs > div {
+    flex: 0 0 70px !important;
+  }
+}
+
+/* Hover thumbs detalle habitación */
+.ch-room-thumbs > div:hover {
+  border-color: var(--terracotta) !important;
+  opacity: 1 !important;
+}
+
+/* Hover CTA compra */
+button[style*="border-radius: 32px"]:hover,
+a[style*="border-radius: 32px"]:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(0,0,0,0.15);
 }
 
 /* Print — oculta nav/footer al imprimir confirmación */

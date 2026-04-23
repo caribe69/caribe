@@ -225,86 +225,224 @@ function RoomDetailPage({ roomId, onBack, onBook, onSedeClick }) {
             </span>
           </div>
 
-          {/* MAIN GRID: galería | info reserva */}
-          <div className="ch-room-grid" style={{ display: 'grid', gridTemplateColumns: '1.6fr 1fr', gap: 32 }}>
-            {/* Galería compacta */}
-            <div>
-              <div className="ch-img-wrap" style={{ cursor: 'zoom-in', aspectRatio: '16/10', marginBottom: 10 }} onClick={() => setLightbox(true)}>
+          {/* LAYOUT ESTILO FALABELLA · thumbs | imagen grande | panel compra */}
+          <div className="ch-room-grid" style={{ display: 'grid', gridTemplateColumns: '90px 1fr 380px', gap: 20, alignItems: 'start' }}>
+            {/* COLUMNA 1 · THUMBNAILS VERTICALES */}
+            <div className="ch-room-thumbs" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {room.gallery.slice(0, 6).map((src, i) => (
+                <div
+                  key={i}
+                  onClick={() => setImgIdx(i)}
+                  className="ch-img-wrap"
+                  style={{
+                    cursor: 'pointer', aspectRatio: '1',
+                    border: '2px solid ' + (i === imgIdx ? 'var(--terracotta)' : 'transparent'),
+                    borderRadius: 4, transition: 'border-color 0.15s',
+                  }}
+                >
+                  <img src={src}/>
+                </div>
+              ))}
+            </div>
+
+            {/* COLUMNA 2 · IMAGEN GRANDE CON FLECHAS */}
+            <div style={{ position: 'relative', background: '#fff', borderRadius: 8, overflow: 'hidden', border: '1px solid var(--line)' }}>
+              {/* Badge "OFERTA" estilo promo */}
+              <div style={{
+                position: 'absolute', top: 14, left: 14, zIndex: 2,
+                background: '#1E8548', color: '#fff',
+                padding: '6px 14px', borderRadius: 4,
+                fontFamily: 'var(--f-mono)', fontSize: 11, fontWeight: 700, letterSpacing: 1,
+              }}>
+                OFERTA
+              </div>
+
+              {/* Imagen principal */}
+              <div
+                className="ch-img-wrap"
+                style={{ cursor: 'zoom-in', aspectRatio: '4/3', background: '#fafafa' }}
+                onClick={() => setLightbox(true)}
+              >
                 <img src={room.gallery[imgIdx] || room.img}/>
               </div>
-              {/* Thumbnails horizontales */}
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8 }}>
-                {room.gallery.slice(0, 4).map((src, i) => (
-                  <div key={i}
-                    onClick={() => setImgIdx(i)}
-                    className="ch-img-wrap"
-                    style={{
-                      cursor: 'pointer', aspectRatio: '4/3',
-                      outline: i === imgIdx ? '2px solid var(--terracotta)' : 'none',
-                      outlineOffset: 2, opacity: i === imgIdx ? 1 : 0.75,
-                      transition: 'opacity 0.2s, outline-offset 0.2s',
-                    }}
-                  >
-                    <img src={src}/>
+
+              {/* Flecha ← */}
+              <button
+                onClick={(e) => { e.stopPropagation(); setImgIdx((imgIdx - 1 + room.gallery.length) % room.gallery.length); }}
+                style={{
+                  position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)',
+                  width: 40, height: 40, borderRadius: '50%',
+                  background: 'rgba(255,255,255,0.95)', border: '1px solid var(--line)',
+                  cursor: 'pointer', fontSize: 20, color: 'var(--terracotta)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  boxShadow: '0 4px 12px rgba(0,0,0,0.08)',
+                }}
+              >‹</button>
+
+              {/* Flecha → */}
+              <button
+                onClick={(e) => { e.stopPropagation(); setImgIdx((imgIdx + 1) % room.gallery.length); }}
+                style={{
+                  position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)',
+                  width: 40, height: 40, borderRadius: '50%',
+                  background: 'rgba(255,255,255,0.95)', border: '1px solid var(--line)',
+                  cursor: 'pointer', fontSize: 20, color: 'var(--terracotta)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  boxShadow: '0 4px 12px rgba(0,0,0,0.08)',
+                }}
+              >›</button>
+
+              {/* Contador de foto */}
+              <div style={{
+                position: 'absolute', bottom: 14, right: 14,
+                background: 'rgba(30,20,16,0.75)', color: '#fff',
+                padding: '4px 10px', borderRadius: 12,
+                fontFamily: 'var(--f-mono)', fontSize: 11,
+              }}>
+                {imgIdx + 1} / {room.gallery.length}
+              </div>
+            </div>
+
+            {/* COLUMNA 3 · PANEL DE COMPRA */}
+            <aside style={{ position: 'sticky', top: 20 }}>
+              {/* Tier tag */}
+              <div className="mono" style={{ color: 'var(--brown-soft)', fontSize: 10, textTransform: 'uppercase', letterSpacing: 2, marginBottom: 6 }}>
+                {sede?.short || 'SOL CARIBE'} | {room.tier}
+              </div>
+
+              {/* Nombre de habitación */}
+              <h2 className="display" style={{ fontSize: 22, fontWeight: 500, margin: '0 0 10px', lineHeight: 1.2 }}>
+                {room.name}
+              </h2>
+
+              {/* Rating */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, marginBottom: 16 }}>
+                <span style={{ color: '#F2B441', fontSize: 14 }}>★★★★★</span>
+                <a className="ch-link" style={{ color: 'var(--brown)', fontSize: 12 }}>(287)</a>
+              </div>
+
+              {/* Sede selector (como el "Color: Gris" de Falabella) */}
+              {sede && (
+                <div style={{ marginBottom: 18 }}>
+                  <div style={{ fontSize: 13, marginBottom: 8 }}>
+                    <b>Sede:</b> {sede.city}
+                  </div>
+                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                    {SEDES.slice(0, 4).map(s => (
+                      <div key={s.id}
+                        onClick={() => s.id !== sede.id && onSedeClick && onSedeClick(s.id)}
+                        style={{
+                          width: 56, height: 40, borderRadius: 4, cursor: 'pointer',
+                          background: 'var(--cream-2)',
+                          border: '2px solid ' + (s.id === sede.id ? 'var(--terracotta)' : 'var(--line)'),
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          fontFamily: 'var(--f-mono)', fontSize: 10, fontWeight: 600,
+                          color: s.id === sede.id ? 'var(--terracotta)' : 'var(--brown-soft)',
+                        }}
+                        title={s.city}
+                      >
+                        {s.short?.slice(0, 4) || s.city.slice(0, 4)}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* PRECIOS estilo Falabella */}
+              <div style={{ background: '#fafafa', padding: 16, borderRadius: 6, marginBottom: 14 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 4 }}>
+                  <div className="display" style={{ fontSize: 30, color: 'var(--terracotta)', fontWeight: 700, lineHeight: 1 }}>
+                    {formatCOP(room.price)}
+                  </div>
+                  <span style={{ background: '#e53935', color: '#fff', padding: '2px 8px', borderRadius: 3, fontSize: 11, fontWeight: 700 }}>
+                    -{Math.round((1 - room.price / Math.round(room.price * 1.35)) * 100)}%
+                  </span>
+                </div>
+                <div style={{ fontSize: 15, color: 'var(--brown)', textDecoration: 'line-through', marginTop: 2 }}>
+                  {formatCOP(Math.round(room.price * 1.35))}
+                </div>
+                <div style={{ fontSize: 11, color: 'var(--brown-soft)', marginTop: 4 }}>por noche · IGV incluido</div>
+              </div>
+
+              {/* Hasta 3 cuotas */}
+              <div style={{ background: '#1E1229', color: '#fff', padding: '10px 14px', borderRadius: 4, fontSize: 12, fontWeight: 600, marginBottom: 16 }}>
+                Paga en 3 cuotas sin interés
+              </div>
+
+              {/* Specs compactas */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, fontSize: 12, marginBottom: 16, padding: 12, background: 'var(--cream-2)', borderRadius: 4 }}>
+                {[
+                  ['🛏', room.beds],
+                  ['📐', `${room.size} m²`],
+                  ['👥', `${room.capacity} pers.`],
+                  ['🌿', room.view],
+                ].map(([icon, v], i) => (
+                  <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <span style={{ fontSize: 14 }}>{icon}</span>
+                    <span style={{ fontSize: 12 }}>{v}</span>
                   </div>
                 ))}
               </div>
-              <button onClick={() => setLightbox(true)} style={{
-                marginTop: 10, background: 'transparent', border: 'none', cursor: 'pointer',
-                fontFamily: 'var(--f-mono)', fontSize: 10, textTransform: 'uppercase',
-                letterSpacing: '0.15em', color: 'var(--brown-soft)',
-              }}>
-                Ver {room.gallery.length} fotos →
+
+              {/* Cantidad de noches */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12 }}>
+                <div className="mono" style={{ fontSize: 10, color: 'var(--brown-soft)' }}>NOCHES</div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 0, border: '1px solid var(--line)', borderRadius: 4, overflow: 'hidden' }}>
+                  <button style={{ width: 32, height: 32, border: 'none', background: 'var(--cream-2)', cursor: 'pointer', fontSize: 16 }}>−</button>
+                  <div style={{ width: 44, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 600 }}>1</div>
+                  <button style={{ width: 32, height: 32, border: 'none', background: 'var(--cream-2)', cursor: 'pointer', fontSize: 16 }}>+</button>
+                </div>
+              </div>
+
+              {/* CTA Principal estilo "Agregar al Carro" */}
+              <button
+                onClick={() => onBook(room.id)}
+                style={{
+                  width: '100%', padding: '16px', background: 'var(--ink)', color: '#fff',
+                  border: 'none', borderRadius: 32, cursor: 'pointer',
+                  fontSize: 14, fontWeight: 700, letterSpacing: '0.04em',
+                  transition: 'transform 0.15s',
+                }}
+              >
+                Reservar ahora
               </button>
-            </div>
 
-            {/* Booking card */}
-            <aside>
-              <div style={{ background: 'var(--ink)', color: 'var(--cream)', padding: 24, borderRadius: 4 }}>
-                <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, flexWrap: 'wrap' }}>
-                  <div className="display" style={{ fontSize: 36, fontWeight: 500 }}>
-                    {formatCOP(room.price)}
-                  </div>
-                  <div style={{ fontSize: 12, opacity: 0.6 }}>/ noche</div>
+              {/* CTA WhatsApp secundario */}
+              <a
+                href={`https://wa.me/51900000000?text=${encodeURIComponent('Hola! Me interesa la ' + room.name + ' (' + (sede?.short || '') + ')')}`}
+                target="_blank" rel="noopener"
+                style={{
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                  marginTop: 10, background: '#25d366', color: '#fff',
+                  padding: '12px', borderRadius: 32, fontSize: 13, fontWeight: 600,
+                  textDecoration: 'none',
+                }}
+              >
+                💬 Consultar por WhatsApp
+              </a>
+
+              {/* Códigos (como "Código: 16550175" de Falabella) */}
+              <div style={{ marginTop: 18, padding: 12, background: 'var(--cream-2)', borderRadius: 4, display: 'flex', gap: 16, fontSize: 11, color: 'var(--brown-soft)', fontFamily: 'var(--f-mono)' }}>
+                <div>
+                  <div style={{ fontSize: 9 }}>Código</div>
+                  <div style={{ color: 'var(--ink)', fontWeight: 600 }}>HAB-{String(room.id).padStart(4, '0')}</div>
                 </div>
-                <div style={{ fontSize: 11, opacity: 0.7, marginTop: 4 }}>IGV incluido · Cancelación gratis 72h antes</div>
-
-                <hr style={{ border: 'none', height: 1, background: 'rgba(246,239,227,0.14)', margin: '18px 0' }}/>
-
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, fontSize: 12 }}>
-                  {[
-                    ['Tamaño', `${room.size} m²`],
-                    ['Huéspedes', `${room.capacity}`],
-                    ['Camas', room.beds],
-                    ['Vista', room.view],
-                  ].map(([k, v]) => (
-                    <div key={k}>
-                      <div className="mono" style={{ fontSize: 9, opacity: 0.55 }}>{k}</div>
-                      <div style={{ marginTop: 2 }}>{v}</div>
-                    </div>
-                  ))}
+                <div>
+                  <div style={{ fontSize: 9 }}>Sede</div>
+                  <div style={{ color: 'var(--ink)', fontWeight: 600 }}>{sede?.short || 'SC'}</div>
                 </div>
+              </div>
 
-                <button className="ch-btn sol" onClick={() => onBook(room.id)}
-                  style={{ width: '100%', marginTop: 20, padding: '14px', justifyContent: 'center' }}>
-                  Reservar →
-                </button>
-
-                <a
-                  href={`https://wa.me/51900000000?text=${encodeURIComponent('Hola! Me interesa la ' + room.name + ' (' + (sede?.short || '') + ')')}`}
-                  target="_blank" rel="noopener"
-                  style={{ display: 'block', textAlign: 'center', marginTop: 10,
-                    background: 'rgba(37,211,102,0.15)', color: '#25d366',
-                    padding: '10px', borderRadius: 4, fontSize: 12, textDecoration: 'none',
-                  }}
-                >
-                  💬 Consultar por WhatsApp
-                </a>
+              {/* Política */}
+              <div style={{ marginTop: 12, fontSize: 11, color: 'var(--brown-soft)', lineHeight: 1.6 }}>
+                ✓ Cancelación gratis hasta 72h antes<br/>
+                ✓ Sin cargo hasta confirmar<br/>
+                ✓ Pago en efectivo, Yape, tarjeta o transferencia
               </div>
             </aside>
           </div>
 
-          {/* Descripción + Features + Amenidades en 2 columnas bajo galería */}
+          {/* Descripción + características + amenidades DEBAJO (ancho completo) */}
           <div style={{ marginTop: 48, display: 'grid', gridTemplateColumns: '1.6fr 1fr', gap: 32 }} className="ch-room-grid">
             <div>
               <h2 className="display" style={{ fontSize: 24, fontStyle: 'italic', fontWeight: 500, marginTop: 0, marginBottom: 12 }}>
@@ -312,12 +450,9 @@ function RoomDetailPage({ roomId, onBack, onBook, onSedeClick }) {
               </h2>
               <p style={{ fontSize: 14, lineHeight: 1.7, color: 'var(--brown)', margin: 0 }}>{room.desc}</p>
 
-              {/* Características en lista densa */}
-              <div style={{ marginTop: 28 }}>
-                <div className="mono" style={{ marginBottom: 10, color: 'var(--brown-soft)', fontSize: 10 }}>
-                  CARACTERÍSTICAS
-                </div>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '8px 20px' }}>
+              <div style={{ marginTop: 24 }}>
+                <div className="mono" style={{ marginBottom: 10, color: 'var(--brown-soft)', fontSize: 10 }}>CARACTERÍSTICAS</div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '6px 20px' }}>
                   {room.features.map((f) => (
                     <div key={f} style={{ padding: '6px 0', fontSize: 13, display: 'flex', alignItems: 'center', gap: 8 }}>
                       <span style={{ color: 'var(--terracotta)', fontSize: 10 }}>◆</span>{f}
@@ -328,30 +463,13 @@ function RoomDetailPage({ roomId, onBack, onBook, onSedeClick }) {
             </div>
 
             <div>
-              <div className="mono" style={{ marginBottom: 10, color: 'var(--brown-soft)', fontSize: 10 }}>
-                AMENIDADES
-              </div>
+              <div className="mono" style={{ marginBottom: 10, color: 'var(--brown-soft)', fontSize: 10 }}>AMENIDADES</div>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
                 {room.amenities.map(a => (
                   <span key={a} style={{ padding: '6px 10px', border: '1px solid var(--line)', fontSize: 11, borderRadius: 4 }}>
                     {a}
                   </span>
                 ))}
-              </div>
-
-              {/* Contacto WhatsApp compacto */}
-              <div style={{ marginTop: 24, padding: 16, background: 'var(--cream-2)', borderRadius: 4 }}>
-                <div className="mono" style={{ marginBottom: 6, color: 'var(--brown-soft)', fontSize: 10 }}>
-                  ¿DUDAS?
-                </div>
-                <div style={{ fontSize: 13, lineHeight: 1.5 }}>
-                  Escríbenos por WhatsApp
-                </div>
-                <a href="https://wa.me/51900000000" target="_blank" rel="noopener"
-                  className="display" style={{ fontSize: 18, fontWeight: 500, marginTop: 4, color: 'var(--ink)', textDecoration: 'none', display: 'block' }}
-                >
-                  +51 900 · 000 · 000
-                </a>
               </div>
             </div>
           </div>

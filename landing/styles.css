@@ -351,3 +351,31 @@
   font-weight: 500;
   color: var(--terracotta);
 }
+
+/* Booking flow - Métodos de pago */
+.ch-pay-method:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(0,0,0,0.08);
+}
+
+/* Booking flow - Responsive mobile */
+@media (max-width: 860px) {
+  .ch-booking-grid {
+    grid-template-columns: 1fr !important;
+    gap: 32px !important;
+  }
+  .ch-booking-grid aside > div {
+    position: static !important;
+  }
+  .ch-booking-grid h2.display {
+    font-size: 38px !important;
+  }
+}
+
+/* Print — oculta nav/footer al imprimir confirmación */
+@media print {
+  nav, footer, .ch-btn, .wa-fab {
+    display: none !important;
+  }
+  body { background: white !important; }
+}

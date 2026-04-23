@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(rm -rf index.html hero.jpg assets uploads *.jsx *.css)",
+      "Read(//c/c/Users/ANTHONY/Downloads/hotel/**)",
+      "Bash(cp -r assets uploads *.jsx *.css /c/Users/ANTHONY/Downloads/hotel/landing/)",
+      "Bash(cp \"Hs Sol Caribe.html\" /c/Users/ANTHONY/Downloads/hotel/landing/index.html)",
+      "Bash(git reset *)"
+    ]
+  }
+}

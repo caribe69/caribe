@@ -231,22 +231,70 @@ function ContactPage() {
 }
 
 // ─────────────────────────────────────────────────────────────
-// BookingFlow — 4 pasos
+// BookingFlow — 4 pasos con validación, animaciones y multi-método de pago
 // ─────────────────────────────────────────────────────────────
 function BookingFlow({ preselectedRoom, onDone }) {
   const [step, setStep] = React.useState(1);
   const [dates, setDates] = React.useState({ start: new Date(2026, 5, 12), end: new Date(2026, 5, 18) });
   const [roomId, setRoomId] = React.useState(preselectedRoom || null);
-  const [guest, setGuest] = React.useState({ name: '', email: '', phone: '', notes: '' });
+  const [guest, setGuest] = React.useState({ name: '', dni: '', email: '', phone: '', notes: '' });
+  const [touched, setTouched] = React.useState({});
+  const [payMethod, setPayMethod] = React.useState('card'); // card | yape | plin | transferencia | efectivo
   const [payment, setPayment] = React.useState({ card: '', cvv: '', exp: '', name: '' });
+  const [stepAnim, setStepAnim] = React.useState('in');
 
   const room = ROOMS.find(r => r.id === roomId);
-  const nights = Math.round((dates.end - dates.start) / 86400000);
+  const nights = Math.max(1, Math.round((dates.end - dates.start) / 86400000));
   const subtotal = room ? room.price * nights : 0;
-  const taxes = Math.round(subtotal * 0.19);
-  const total = subtotal + taxes;
+  const igv = Math.round(subtotal * 0.18 * 100) / 100;
+  const total = subtotal + igv;
+  const depositoNoche = room ? room.price : 0; // solo primera noche al reservar
 
   const fmt = (d) => d.toLocaleDateString('es', { day: 'numeric', month: 'short', year: 'numeric' });
+
+  // Validaciones
+  const validEmail = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(guest.email);
+  const validPhone = /^[\d+\s()-]{7,}$/.test(guest.phone);
+  const validName = guest.name.trim().length >= 3;
+  const validDni = !guest.dni || /^\d{8,11}$/.test(guest.dni);
+  const cardDigits = payment.card.replace(/\D/g, '');
+  const cardBrand = detectCardBrand(cardDigits);
+  const validCard = luhn(cardDigits) && cardDigits.length >= 13;
+  const validExp = /^(0[1-9]|1[0-2])\s*\/\s*\d{2}$/.test(payment.exp) && !isCardExpired(payment.exp);
+  const validCvv = /^\d{3,4}$/.test(payment.cvv);
+  const validPayName = payment.name.trim().length >= 3;
+
+  const canAdvance = (s) => {
+    if (s === 1) return nights >= 1;
+    if (s === 2) return !!roomId;
+    if (s === 3) return validName && validEmail && validPhone && validDni;
+    if (s === 4) {
+      if (payMethod === 'card') return validCard && validExp && validCvv && validPayName;
+      return true; // otros métodos no requieren tarjeta
+    }
+    return false;
+  };
+
+  const goNext = () => {
+    if (!canAdvance(step)) {
+      setTouched({ ...touched, [step]: true });
+      return;
+    }
+    setStepAnim('out');
+    setTimeout(() => {
+      setStep((s) => Math.min(4, s + 1));
+      setStepAnim('in');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }, 180);
+  };
+  const goPrev = () => {
+    setStepAnim('out');
+    setTimeout(() => {
+      setStep((s) => Math.max(1, s - 1));
+      setStepAnim('in');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }, 180);
+  };
 
   const steps = [
     { n: 1, label: 'Fechas' },
@@ -285,8 +333,12 @@ function BookingFlow({ preselectedRoom, onDone }) {
       </div>
 
       <div style={{ padding: '60px 48px 120px' }}>
-        <div style={{ maxWidth: 1200, margin: '0 auto', display: 'grid', gridTemplateColumns: '1.6fr 1fr', gap: 60 }}>
-          <div>
+        <div className="ch-booking-grid" style={{ maxWidth: 1200, margin: '0 auto', display: 'grid', gridTemplateColumns: '1.6fr 1fr', gap: 60 }}>
+          <div style={{
+            opacity: stepAnim === 'out' ? 0 : 1,
+            transform: stepAnim === 'out' ? 'translateY(10px)' : 'translateY(0)',
+            transition: 'opacity 0.2s, transform 0.2s',
+          }}>
             {step === 1 && (
               <div>
                 <h2 className="display" style={{ fontSize: 56, fontWeight: 400, margin: 0 }}>
@@ -355,27 +407,60 @@ function BookingFlow({ preselectedRoom, onDone }) {
                 <h2 className="display" style={{ fontSize: 56, fontWeight: 400, margin: 0 }}>
                   Datos del <span style={{ fontStyle: 'italic', color: 'var(--terracotta)' }}>huésped.</span>
                 </h2>
+                <p style={{ fontSize: 14, color: 'var(--brown)', marginTop: 16 }}>
+                  Estos datos se usarán en la boleta o factura. Revísalos bien.
+                </p>
                 <div style={{ marginTop: 40, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 30 }}>
-                  <div>
-                    <label className="ch-label">Nombre completo</label>
-                    <input className="ch-input" value={guest.name} onChange={e => setGuest({...guest, name: e.target.value})} placeholder="Como aparece en tu cédula"/>
+                  <div style={{ gridColumn: '1 / -1' }}>
+                    <label className="ch-label">Nombre completo *</label>
+                    <input
+                      className="ch-input"
+                      value={guest.name}
+                      onChange={e => setGuest({...guest, name: e.target.value})}
+                      placeholder="Como aparece en tu DNI"
+                      style={invalidStyle(touched[3] && !validName)}
+                    />
+                    {touched[3] && !validName && <ErrText>Mínimo 3 caracteres</ErrText>}
                   </div>
                   <div>
-                    <label className="ch-label">Correo</label>
-                    <input className="ch-input" value={guest.email} onChange={e => setGuest({...guest, email: e.target.value})} placeholder="tu@correo.com"/>
+                    <label className="ch-label">DNI (opcional)</label>
+                    <input
+                      className="ch-input"
+                      value={guest.dni}
+                      onChange={e => setGuest({...guest, dni: e.target.value.replace(/\D/g, '').slice(0, 11)})}
+                      inputMode="numeric"
+                      placeholder="8 dígitos"
+                      style={invalidStyle(touched[3] && !validDni)}
+                    />
+                    {touched[3] && !validDni && <ErrText>Entre 8 y 11 dígitos</ErrText>}
                   </div>
                   <div>
-                    <label className="ch-label">Teléfono</label>
-                    <input className="ch-input" value={guest.phone} onChange={e => setGuest({...guest, phone: e.target.value})} placeholder="+57 ___ ___ ____"/>
+                    <label className="ch-label">Teléfono *</label>
+                    <input
+                      className="ch-input"
+                      value={guest.phone}
+                      onChange={e => setGuest({...guest, phone: e.target.value})}
+                      placeholder="+51 999 ___ ___"
+                      style={invalidStyle(touched[3] && !validPhone)}
+                    />
+                    {touched[3] && !validPhone && <ErrText>Teléfono inválido</ErrText>}
                   </div>
-                  <div>
-                    <label className="ch-label">País</label>
-                    <input className="ch-input" defaultValue="Colombia"/>
+                  <div style={{ gridColumn: '1 / -1' }}>
+                    <label className="ch-label">Correo *</label>
+                    <input
+                      type="email"
+                      className="ch-input"
+                      value={guest.email}
+                      onChange={e => setGuest({...guest, email: e.target.value})}
+                      placeholder="tu@correo.com"
+                      style={invalidStyle(touched[3] && !validEmail)}
+                    />
+                    {touched[3] && !validEmail && <ErrText>Correo electrónico inválido</ErrText>}
                   </div>
                   <div style={{ gridColumn: '1 / -1' }}>
                     <label className="ch-label">Solicitudes especiales (opcional)</label>
                     <textarea className="ch-input" rows="3" value={guest.notes} onChange={e => setGuest({...guest, notes: e.target.value})}
-                      placeholder="Cuna, piso alto, llegada tarde, etc." style={{ resize: 'none' }}/>
+                      placeholder="Cuna, piso alto, llegada tarde, chocolates de bienvenida, etc." style={{ resize: 'none' }}/>
                   </div>
                 </div>
               </div>
@@ -384,46 +469,198 @@ function BookingFlow({ preselectedRoom, onDone }) {
             {step === 4 && (
               <div>
                 <h2 className="display" style={{ fontSize: 56, fontWeight: 400, margin: 0 }}>
-                  Datos de <span style={{ fontStyle: 'italic', color: 'var(--terracotta)' }}>pago.</span>
+                  Elige tu <span style={{ fontStyle: 'italic', color: 'var(--terracotta)' }}>forma de pago.</span>
                 </h2>
-                <p style={{ fontSize: 14, color: 'var(--brown)', marginTop: 20 }}>
-                  Cancelación gratis hasta 72h antes del check-in. Solo se cobra la primera noche al reservar.
+                <p style={{ fontSize: 14, color: 'var(--brown)', marginTop: 16, lineHeight: 1.7 }}>
+                  Cancelación gratis hasta 72h antes del check-in. Solo se cobra <b>la primera noche (S/ {depositoNoche})</b> al reservar.
                 </p>
-                <div style={{ marginTop: 40, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 30 }}>
-                  <div style={{ gridColumn: '1 / -1' }}>
-                    <label className="ch-label">Número de tarjeta</label>
-                    <input className="ch-input" value={payment.card} onChange={e => setPayment({...payment, card: e.target.value})} placeholder="0000 0000 0000 0000"/>
-                  </div>
-                  <div>
-                    <label className="ch-label">Vencimiento</label>
-                    <input className="ch-input" value={payment.exp} onChange={e => setPayment({...payment, exp: e.target.value})} placeholder="MM / AA"/>
-                  </div>
-                  <div>
-                    <label className="ch-label">CVV</label>
-                    <input className="ch-input" value={payment.cvv} onChange={e => setPayment({...payment, cvv: e.target.value})} placeholder="•••"/>
-                  </div>
-                  <div style={{ gridColumn: '1 / -1' }}>
-                    <label className="ch-label">Nombre en la tarjeta</label>
-                    <input className="ch-input" value={payment.name} onChange={e => setPayment({...payment, name: e.target.value})}/>
-                  </div>
+
+                {/* Selector de métodos de pago */}
+                <div style={{ marginTop: 32, display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(140px,1fr))', gap: 10 }}>
+                  {[
+                    { id: 'card', label: 'Tarjeta', sub: 'Visa · Mastercard' },
+                    { id: 'yape', label: 'Yape', sub: 'QR al reservar' },
+                    { id: 'plin', label: 'Plin', sub: 'QR al reservar' },
+                    { id: 'transferencia', label: 'Transferencia', sub: 'BCP · BBVA · IBK' },
+                    { id: 'efectivo', label: 'Efectivo', sub: 'Al llegar al hotel' },
+                  ].map(m => (
+                    <button key={m.id} onClick={() => setPayMethod(m.id)} className="ch-pay-method"
+                      style={{
+                        padding: '14px 14px', textAlign: 'left', cursor: 'pointer',
+                        background: payMethod === m.id ? 'var(--terracotta)' : 'var(--cream-2)',
+                        color: payMethod === m.id ? 'var(--cream)' : 'var(--ink)',
+                        border: 'none', borderRadius: 4, transition: 'all 0.2s',
+                      }}>
+                      <div style={{ fontSize: 14, fontWeight: 600 }}>{m.label}</div>
+                      <div style={{ fontSize: 10, opacity: 0.7, marginTop: 2 }}>{m.sub}</div>
+                    </button>
+                  ))}
                 </div>
+
+                {/* Tarjeta */}
+                {payMethod === 'card' && (
+                  <div style={{ marginTop: 40, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 30 }}>
+                    {/* Mock card preview */}
+                    <div style={{ gridColumn: '1 / -1' }}>
+                      <div style={{
+                        padding: 24, borderRadius: 12, aspectRatio: '1.6',
+                        maxWidth: 380, margin: '0 auto 24px',
+                        background: 'linear-gradient(135deg, #1f2937 0%, #374151 100%)',
+                        color: '#fff', position: 'relative', overflow: 'hidden',
+                        boxShadow: '0 8px 24px rgba(0,0,0,0.25)',
+                      }}>
+                        <div style={{ position: 'absolute', top: 20, right: 20, fontSize: 12, fontWeight: 700, letterSpacing: 1, textTransform: 'uppercase' }}>
+                          {cardBrand || 'Card'}
+                        </div>
+                        <div style={{ marginTop: 48, fontFamily: 'var(--f-mono)', fontSize: 18, letterSpacing: 2 }}>
+                          {formatCardNumber(payment.card) || '0000  0000  0000  0000'}
+                        </div>
+                        <div style={{ marginTop: 20, display: 'flex', justifyContent: 'space-between', fontSize: 10, textTransform: 'uppercase', opacity: 0.8 }}>
+                          <div>
+                            <div style={{ fontSize: 8, opacity: 0.6 }}>Titular</div>
+                            <div style={{ fontSize: 12, marginTop: 2, letterSpacing: 0.5 }}>{payment.name || 'NOMBRE APELLIDO'}</div>
+                          </div>
+                          <div>
+                            <div style={{ fontSize: 8, opacity: 0.6 }}>Vence</div>
+                            <div style={{ fontSize: 12, marginTop: 2 }}>{payment.exp || 'MM/AA'}</div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div style={{ gridColumn: '1 / -1' }}>
+                      <label className="ch-label">Número de tarjeta *</label>
+                      <input
+                        className="ch-input"
+                        value={formatCardNumber(payment.card)}
+                        onChange={e => setPayment({...payment, card: e.target.value.replace(/\D/g, '').slice(0, 19)})}
+                        placeholder="0000 0000 0000 0000"
+                        inputMode="numeric"
+                        style={invalidStyle(touched[4] && !validCard)}
+                      />
+                      {touched[4] && !validCard && <ErrText>Número de tarjeta inválido</ErrText>}
+                    </div>
+                    <div>
+                      <label className="ch-label">Vencimiento *</label>
+                      <input
+                        className="ch-input"
+                        value={payment.exp}
+                        onChange={e => setPayment({...payment, exp: formatExp(e.target.value)})}
+                        placeholder="MM / AA"
+                        inputMode="numeric"
+                        style={invalidStyle(touched[4] && !validExp)}
+                      />
+                      {touched[4] && !validExp && <ErrText>MM/AA · no expirada</ErrText>}
+                    </div>
+                    <div>
+                      <label className="ch-label">CVV *</label>
+                      <input
+                        className="ch-input"
+                        type="password"
+                        value={payment.cvv}
+                        onChange={e => setPayment({...payment, cvv: e.target.value.replace(/\D/g, '').slice(0, 4)})}
+                        placeholder="•••"
+                        inputMode="numeric"
+                        style={invalidStyle(touched[4] && !validCvv)}
+                      />
+                      {touched[4] && !validCvv && <ErrText>3 o 4 dígitos</ErrText>}
+                    </div>
+                    <div style={{ gridColumn: '1 / -1' }}>
+                      <label className="ch-label">Nombre en la tarjeta *</label>
+                      <input
+                        className="ch-input"
+                        value={payment.name}
+                        onChange={e => setPayment({...payment, name: e.target.value.toUpperCase()})}
+                        style={invalidStyle(touched[4] && !validPayName)}
+                      />
+                      {touched[4] && !validPayName && <ErrText>Requerido</ErrText>}
+                    </div>
+                    <div style={{ gridColumn: '1 / -1', fontSize: 11, color: 'var(--brown-soft)', display: 'flex', alignItems: 'center', gap: 8 }}>
+                      🔒 Pago encriptado SSL · No guardamos datos de tarjeta
+                    </div>
+                  </div>
+                )}
+
+                {/* Yape / Plin */}
+                {(payMethod === 'yape' || payMethod === 'plin') && (
+                  <div style={{ marginTop: 40, padding: 32, background: 'var(--cream-2)', borderRadius: 4, textAlign: 'center' }}>
+                    <div className="mono" style={{ color: 'var(--brown-soft)', marginBottom: 16 }}>
+                      {payMethod === 'yape' ? 'YAPE' : 'PLIN'} · SOL CARIBE
+                    </div>
+                    <div style={{ display: 'inline-block', padding: 16, background: '#fff', borderRadius: 8, marginBottom: 16 }}>
+                      <div style={{
+                        width: 180, height: 180,
+                        background: `repeating-conic-gradient(${payMethod === 'yape' ? '#7b2cbf' : '#00b8a9'} 0 25%, #fff 0 50%)`,
+                        backgroundSize: '20px 20px',
+                        borderRadius: 4,
+                      }}/>
+                    </div>
+                    <div style={{ fontSize: 18, fontWeight: 600, marginBottom: 6 }}>+51 999 888 777</div>
+                    <div style={{ fontSize: 13, color: 'var(--brown)' }}>
+                      Escanea el QR o usa el número. Monto: <b>S/ {depositoNoche}</b>
+                    </div>
+                    <div className="mono" style={{ fontSize: 10, color: 'var(--brown-soft)', marginTop: 16 }}>
+                      Tras pagar, confirmamos la reserva por WhatsApp en 5 min.
+                    </div>
+                  </div>
+                )}
+
+                {/* Transferencia */}
+                {payMethod === 'transferencia' && (
+                  <div style={{ marginTop: 32, display: 'grid', gap: 12 }}>
+                    {[
+                      { banco: 'BCP Cuenta Soles', numero: '194-1234567-0-89', cci: '002-194-001234567089-12' },
+                      { banco: 'BBVA Cuenta Soles', numero: '0011-0123-0100123456', cci: '011-123-010012345678-12' },
+                      { banco: 'Interbank Soles', numero: '123-300456789-1', cci: '003-123-030045678912-34' },
+                    ].map(c => (
+                      <div key={c.banco} style={{ padding: 16, background: 'var(--cream-2)', borderRadius: 4 }}>
+                        <div className="mono" style={{ fontSize: 10, color: 'var(--brown-soft)' }}>{c.banco}</div>
+                        <div style={{ fontFamily: 'var(--f-mono)', fontSize: 15, marginTop: 4 }}>{c.numero}</div>
+                        <div style={{ fontSize: 10, color: 'var(--brown-soft)', marginTop: 4 }}>CCI interbancario: {c.cci}</div>
+                      </div>
+                    ))}
+                    <div style={{ padding: 12, background: 'var(--terracotta)', color: 'var(--cream)', borderRadius: 4, fontSize: 13 }}>
+                      Titular: <b>INVERSIONES HOTELERAS SOL CARIBE E.I.R.L.</b> · RUC 20608896709
+                    </div>
+                  </div>
+                )}
+
+                {/* Efectivo */}
+                {payMethod === 'efectivo' && (
+                  <div style={{ marginTop: 40, padding: 32, background: 'var(--cream-2)', borderRadius: 4, textAlign: 'center' }}>
+                    <div style={{ fontSize: 40, marginBottom: 16 }}>💵</div>
+                    <div className="display" style={{ fontSize: 24, marginBottom: 8 }}>Pago al llegar</div>
+                    <div style={{ fontSize: 14, color: 'var(--brown)', maxWidth: 420, margin: '0 auto', lineHeight: 1.7 }}>
+                      Reservamos tu habitación sin adelanto. Pagas en efectivo al hacer check-in en el hotel.
+                    </div>
+                    <div className="mono" style={{ fontSize: 10, color: 'var(--brown-soft)', marginTop: 20 }}>
+                      Te llamaremos para confirmar la hora de llegada.
+                    </div>
+                  </div>
+                )}
               </div>
             )}
 
             {/* Nav */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 60, paddingTop: 30, borderTop: '1px solid var(--line)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 60, paddingTop: 30, borderTop: '1px solid var(--line)', gap: 12 }}>
               {step > 1 ? (
-                <button className="ch-btn" onClick={() => setStep(step - 1)}>← Anterior</button>
+                <button className="ch-btn" onClick={goPrev}>← Anterior</button>
               ) : <div/>}
               {step < 4 ? (
-                <button className="ch-btn terracotta" onClick={() => setStep(step + 1)}
-                  disabled={step === 2 && !roomId}
-                  style={{ opacity: (step === 2 && !roomId) ? 0.4 : 1 }}>
+                <button className="ch-btn terracotta" onClick={goNext}
+                  style={{ opacity: canAdvance(step) ? 1 : 0.6, cursor: canAdvance(step) ? 'pointer' : 'not-allowed' }}>
                   Continuar →
                 </button>
               ) : (
-                <button className="ch-btn terracotta" onClick={() => onDone({ room, dates, guest, total })}>
-                  Confirmar reserva
+                <button
+                  className="ch-btn terracotta"
+                  onClick={() => {
+                    if (!canAdvance(4)) { setTouched({ ...touched, 4: true }); return; }
+                    onDone({ room, dates, guest, total, payMethod });
+                  }}
+                  style={{ opacity: canAdvance(4) ? 1 : 0.6, fontSize: 15 }}
+                >
+                  {payMethod === 'efectivo' ? 'Reservar sin adelanto →' : `Pagar S/ ${depositoNoche} y confirmar →`}
                 </button>
               )}
             </div>
@@ -474,8 +711,8 @@ function BookingFlow({ preselectedRoom, onDone }) {
                       <span>{formatCOP(subtotal)}</span>
                     </div>
                     <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                      <span style={{ opacity: 0.7 }}>Impuestos (19%)</span>
-                      <span>{formatCOP(taxes)}</span>
+                      <span style={{ opacity: 0.7 }}>IGV (18%)</span>
+                      <span>{formatCOP(igv)}</span>
                     </div>
                   </div>
                   <hr style={{ border: 'none', height: 1, background: 'rgba(246,239,227,0.14)', margin: '24px 0' }}/>
@@ -483,6 +720,15 @@ function BookingFlow({ preselectedRoom, onDone }) {
                     <span className="mono" style={{ opacity: 0.7 }}>Total</span>
                     <span className="display" style={{ fontSize: 32, fontWeight: 500 }}>{formatCOP(total)}</span>
                   </div>
+                  {step === 4 && payMethod !== 'efectivo' && (
+                    <div style={{ marginTop: 18, padding: 12, background: 'rgba(201,90,61,0.15)', borderRadius: 4, fontSize: 12 }}>
+                      <div className="mono" style={{ opacity: 0.7, fontSize: 9 }}>SE COBRA AHORA</div>
+                      <div style={{ fontSize: 18, fontWeight: 500, marginTop: 4 }}>{formatCOP(depositoNoche)}</div>
+                      <div style={{ opacity: 0.7, fontSize: 11, marginTop: 2 }}>
+                        Primera noche. El resto al check-in.
+                      </div>
+                    </div>
+                  )}
                 </>
               )}
             </div>
@@ -493,29 +739,223 @@ function BookingFlow({ preselectedRoom, onDone }) {
   );
 }
 
-function BookingConfirmed({ booking, onHome }) {
+// ─────────────────────────────────────────────────────────────
+// Helpers y utilidades de validación para pagos
+// ─────────────────────────────────────────────────────────────
+
+function formatCardNumber(raw) {
+  const digits = (raw || '').toString().replace(/\D/g, '').slice(0, 19);
+  return digits.match(/.{1,4}/g)?.join('  ') || '';
+}
+
+function formatExp(raw) {
+  const d = (raw || '').toString().replace(/\D/g, '').slice(0, 4);
+  if (d.length < 3) return d;
+  return d.slice(0, 2) + ' / ' + d.slice(2);
+}
+
+function isCardExpired(expStr) {
+  const m = expStr.match(/^(\d{2})\s*\/\s*(\d{2})$/);
+  if (!m) return false;
+  const month = parseInt(m[1], 10);
+  const year = 2000 + parseInt(m[2], 10);
+  const now = new Date();
+  const expDate = new Date(year, month, 0, 23, 59, 59); // último día del mes
+  return expDate < now;
+}
+
+function detectCardBrand(digits) {
+  if (!digits) return '';
+  if (/^4/.test(digits)) return 'Visa';
+  if (/^(5[1-5]|2[2-7])/.test(digits)) return 'Mastercard';
+  if (/^(34|37)/.test(digits)) return 'AmEx';
+  if (/^(6011|65|64[4-9])/.test(digits)) return 'Discover';
+  if (/^3[0689]/.test(digits)) return 'Diners';
+  return '';
+}
+
+// Algoritmo Luhn para validar número de tarjeta
+function luhn(digits) {
+  if (!digits || digits.length < 13) return false;
+  let sum = 0;
+  let alt = false;
+  for (let i = digits.length - 1; i >= 0; i--) {
+    let n = parseInt(digits[i], 10);
+    if (alt) {
+      n *= 2;
+      if (n > 9) n -= 9;
+    }
+    sum += n;
+    alt = !alt;
+  }
+  return sum % 10 === 0;
+}
+
+function invalidStyle(isInvalid) {
+  return isInvalid ? { borderColor: '#c0392b', background: 'rgba(192,57,43,0.05)' } : {};
+}
+
+function ErrText({ children }) {
   return (
-    <section style={{ minHeight: 'calc(100vh - 78px)', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--cream)', padding: 48 }}>
-      <div style={{ maxWidth: 640, textAlign: 'center' }}>
-        <div className="display" style={{ fontSize: 120, color: 'var(--terracotta)', fontStyle: 'italic', fontWeight: 300, lineHeight: 1 }}>✓</div>
-        <h1 className="display" style={{ fontSize: 64, fontWeight: 400, margin: '20px 0' }}>
-          Tu reserva está <span style={{ fontStyle: 'italic', color: 'var(--terracotta)' }}>confirmada.</span>
-        </h1>
-        <p style={{ fontSize: 16, lineHeight: 1.7, color: 'var(--brown)', margin: '24px 0 40px' }}>
-          Te enviamos un correo con los detalles. Nos vemos pronto en el Rodadero.
-        </p>
+    <div style={{ fontSize: 11, color: '#c0392b', marginTop: 6, fontFamily: 'var(--f-sans)' }}>
+      ⚠ {children}
+    </div>
+  );
+}
+
+function BookingConfirmed({ booking, onHome }) {
+  const [copied, setCopied] = React.useState(false);
+  const code = React.useMemo(
+    () => 'HS-' + Math.random().toString(36).slice(2, 8).toUpperCase(),
+    [],
+  );
+  const fmt = (d) => d ? new Date(d).toLocaleDateString('es', { day: 'numeric', month: 'short', year: 'numeric' }) : '';
+
+  const copyCode = async () => {
+    try {
+      await navigator.clipboard.writeText(code);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1600);
+    } catch {}
+  };
+
+  const waMsg = encodeURIComponent(
+    `Hola! Confirmé mi reserva ${code} en Sol Caribe.${booking?.room ? ' Habitación: ' + booking.room.name : ''}${booking ? ' Total: S/ ' + booking.total : ''}`
+  );
+
+  return (
+    <section style={{ minHeight: 'calc(100vh - 78px)', background: 'var(--cream)', padding: '60px 24px' }}>
+      <div style={{ maxWidth: 720, margin: '0 auto' }}>
+        {/* Check animado */}
+        <div style={{ textAlign: 'center', marginBottom: 40 }}>
+          <div style={{
+            width: 96, height: 96, margin: '0 auto', borderRadius: '50%',
+            background: 'var(--terracotta)', color: 'var(--cream)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            fontSize: 48,
+            boxShadow: '0 12px 36px rgba(201,90,61,0.4)',
+            animation: 'ch-pop 0.4s cubic-bezier(.34,1.56,.64,1)',
+          }}>✓</div>
+          <h1 className="display" style={{ fontSize: 56, fontWeight: 400, margin: '28px 0 12px', lineHeight: 1.1 }}>
+            ¡Reserva <span style={{ fontStyle: 'italic', color: 'var(--terracotta)' }}>confirmada!</span>
+          </h1>
+          <p style={{ fontSize: 15, lineHeight: 1.7, color: 'var(--brown)', maxWidth: 500, margin: '0 auto' }}>
+            Te enviamos un correo con todos los detalles. Te esperamos en Sol Caribe.
+          </p>
+        </div>
+
         {booking && booking.room && (
-          <div style={{ padding: 32, background: 'var(--cream-2)', marginBottom: 40, textAlign: 'left' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 14, marginBottom: 12 }}>
-              <span className="mono" style={{ color: 'var(--brown-soft)' }}>Reserva</span>
-              <span className="mono">HS-{Math.random().toString(36).slice(2, 8).toUpperCase()}</span>
+          <div style={{ background: 'var(--cream-2)', borderRadius: 4, overflow: 'hidden' }}>
+            {/* Código grande */}
+            <div style={{ padding: 24, borderBottom: '1px dashed var(--line)', textAlign: 'center' }}>
+              <div className="mono" style={{ fontSize: 10, color: 'var(--brown-soft)', letterSpacing: 2 }}>
+                CÓDIGO DE RESERVA
+              </div>
+              <div
+                onClick={copyCode}
+                style={{
+                  marginTop: 8, fontFamily: 'var(--f-mono)', fontSize: 28, fontWeight: 600,
+                  cursor: 'pointer', letterSpacing: 2, color: 'var(--ink)',
+                  display: 'inline-flex', alignItems: 'center', gap: 12,
+                }}
+                title="Click para copiar"
+              >
+                {code}
+                <span style={{ fontSize: 12, color: copied ? 'var(--terracotta)' : 'var(--brown-soft)' }}>
+                  {copied ? '✓ copiado' : '📋'}
+                </span>
+              </div>
             </div>
-            <div className="display" style={{ fontSize: 24, margin: '8px 0' }}>{booking.room.name}</div>
-            <div className="mono" style={{ color: 'var(--brown-soft)' }}>Total {formatCOP(booking.total)}</div>
+
+            {/* Detalles */}
+            <div style={{ padding: 28 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', gap: 20, marginBottom: 20 }}>
+                <div className="ch-img-wrap" style={{ aspectRatio: '1' }}>
+                  <img src={booking.room.img}/>
+                </div>
+                <div>
+                  <div className="mono" style={{ fontSize: 9, color: 'var(--brown-soft)' }}>{booking.room.tier}</div>
+                  <div className="display" style={{ fontSize: 22, marginTop: 4 }}>{booking.room.name}</div>
+                  <div style={{ fontSize: 12, color: 'var(--brown)', marginTop: 6 }}>
+                    {booking.room.size} m² · {booking.room.beds}
+                  </div>
+                </div>
+              </div>
+
+              <hr style={{ border: 'none', borderTop: '1px dashed var(--line)', margin: '16px 0' }}/>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, fontSize: 13 }}>
+                <div>
+                  <div className="mono" style={{ fontSize: 9, color: 'var(--brown-soft)' }}>CHECK-IN</div>
+                  <div style={{ marginTop: 4, textTransform: 'capitalize' }}>{fmt(booking.dates?.start)}</div>
+                  <div style={{ fontSize: 10, color: 'var(--brown-soft)' }}>desde 15:00</div>
+                </div>
+                <div>
+                  <div className="mono" style={{ fontSize: 9, color: 'var(--brown-soft)' }}>CHECK-OUT</div>
+                  <div style={{ marginTop: 4, textTransform: 'capitalize' }}>{fmt(booking.dates?.end)}</div>
+                  <div style={{ fontSize: 10, color: 'var(--brown-soft)' }}>hasta 12:00</div>
+                </div>
+              </div>
+
+              <hr style={{ border: 'none', borderTop: '1px dashed var(--line)', margin: '16px 0' }}/>
+
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+                <div>
+                  <div className="mono" style={{ fontSize: 9, color: 'var(--brown-soft)' }}>MÉTODO</div>
+                  <div style={{ fontSize: 14, textTransform: 'uppercase', marginTop: 4 }}>
+                    {booking.payMethod || 'Tarjeta'}
+                  </div>
+                </div>
+                <div style={{ textAlign: 'right' }}>
+                  <div className="mono" style={{ fontSize: 9, color: 'var(--brown-soft)' }}>TOTAL</div>
+                  <div className="display" style={{ fontSize: 28, color: 'var(--terracotta)', fontWeight: 500, marginTop: 4 }}>
+                    {formatCOP(booking.total)}
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         )}
-        <button className="ch-btn primary" onClick={onHome}>Volver al inicio</button>
+
+        {/* Acciones */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(180px,1fr))', gap: 12, marginTop: 32 }}>
+          <a
+            href={`https://wa.me/51900000000?text=${waMsg}`}
+            target="_blank"
+            rel="noopener"
+            className="ch-btn"
+            style={{ background: '#25d366', color: '#fff', textAlign: 'center', textDecoration: 'none' }}
+          >
+            💬 Confirmar por WhatsApp
+          </a>
+          <button className="ch-btn" onClick={() => window.print()}>
+            🖨 Imprimir
+          </button>
+          <button className="ch-btn terracotta" onClick={onHome}>
+            Volver al inicio
+          </button>
+        </div>
+
+        {/* Próximos pasos */}
+        <div style={{ marginTop: 40, padding: 24, background: 'rgba(201,90,61,0.08)', borderLeft: '3px solid var(--terracotta)' }}>
+          <div className="mono" style={{ fontSize: 10, color: 'var(--terracotta)', letterSpacing: 2, marginBottom: 8 }}>
+            PRÓXIMOS PASOS
+          </div>
+          <ol style={{ fontSize: 13, color: 'var(--brown)', lineHeight: 1.9, margin: 0, paddingLeft: 20 }}>
+            <li>Te enviamos el detalle a tu correo</li>
+            <li>Guarda tu código de reserva (<b>{code}</b>)</li>
+            <li>Día del check-in trae DNI + código</li>
+            <li>Cualquier cambio, escríbenos por WhatsApp</li>
+          </ol>
+        </div>
       </div>
+
+      <style>{`
+        @keyframes ch-pop {
+          from { transform: scale(0.4); opacity: 0; }
+          to { transform: scale(1); opacity: 1; }
+        }
+      `}</style>
     </section>
   );
 }

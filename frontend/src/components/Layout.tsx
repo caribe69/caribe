@@ -105,6 +105,12 @@ const groups: Group[] = [
         icon: TrendingUp,
         roles: ['SUPERADMIN', 'ADMIN_SEDE'],
       },
+      {
+        to: '/caja-estadisticas',
+        label: 'Caja · estadística',
+        icon: BarChart3,
+        roles: ['SUPERADMIN', 'ADMIN_SEDE', 'HOTELERO', 'CAJERO'],
+      },
     ],
   },
   {

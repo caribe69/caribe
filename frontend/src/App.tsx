@@ -11,6 +11,7 @@ import Alquileres from '@/pages/Alquileres';
 import Historial from '@/pages/Historial';
 import Limpieza from '@/pages/Limpieza';
 import Caja from '@/pages/Caja';
+import CajaEstadisticas from '@/pages/CajaEstadisticas';
 import Sedes from '@/pages/Sedes';
 import Usuarios from '@/pages/Usuarios';
 import Configuracion from '@/pages/Configuracion';
@@ -46,6 +47,7 @@ export default function App() {
         <Route path="historial" element={<Historial />} />
         <Route path="limpieza" element={<Limpieza />} />
         <Route path="caja" element={<Caja />} />
+        <Route path="caja-estadisticas" element={<CajaEstadisticas />} />
         <Route path="sedes" element={<Sedes />} />
         <Route path="usuarios" element={<Usuarios />} />
         <Route path="chat" element={<Chat />} />

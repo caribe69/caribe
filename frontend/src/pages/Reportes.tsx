@@ -48,6 +48,50 @@ interface MesItem {
   ingresos: number;
 }
 
+interface KpisHoteleros {
+  periodo: { desde: string; hasta: string; dias: number };
+  inventario: { totalHabitaciones: number; habitacionesActivas: number };
+  ocupacion: {
+    promedioPct: number;
+    nochesOcupadas: number;
+    nochesDisponibles: number;
+  };
+  ingresos: { total: number; habitacion: number; productos: number };
+  kpis: {
+    adr: number;
+    revpar: number;
+    ticketPromedio: number;
+    estadiaPromedioHoras: number;
+  };
+  alquileres: {
+    finalizados: number;
+    anulados: number;
+    activos: number;
+    tasaAnulacionPct: number;
+  };
+  clientes: { total: number; nuevos: number; recurrentes: number };
+  topHabitaciones: Array<{
+    habitacionId: number;
+    numero: string;
+    pisoNumero: number;
+    ingresos: number;
+    alquileres: number;
+  }>;
+  topCajeros: Array<{
+    usuarioId: number;
+    nombre: string;
+    ingresos: number;
+    alquileres: number;
+  }>;
+  serie: Array<{
+    fecha: string;
+    ocupacionPct: number;
+    ingresos: number;
+    alquileres: number;
+  }>;
+  mejorDia: { fecha: string; ocupacionPct: number } | null;
+}
+
 interface PanelGlobal {
   totales: {
     alquileres: number;
@@ -85,9 +129,7 @@ export default function Reportes() {
 
   const [desde, setDesde] = useState(daysAgo(30));
   const [hasta, setHasta] = useState(today());
-  const [tab, setTab] = useState<'sede' | 'global'>(
-    esSuperadmin ? 'global' : 'sede',
-  );
+  const [tab, setTab] = useState<'kpis' | 'sede' | 'global'>('kpis');
 
   const params = useMemo(() => {
     const p: Record<string, string> = {};
@@ -129,6 +171,13 @@ export default function Reportes() {
     enabled: tab === 'global' && esSuperadmin,
   });
 
+  const kpis = useQuery<KpisHoteleros>({
+    queryKey: ['reportes', 'kpis', params],
+    queryFn: async () =>
+      (await api.get('/reportes/kpis-hoteleros', { params })).data,
+    enabled: tab === 'kpis',
+  });
+
   const totales = useMemo(() => {
     if (!habTop.data) return { alquileres: 0, ingresos: 0 };
     return habTop.data.reduce(
@@ -144,8 +193,18 @@ export default function Reportes() {
     <div className="space-y-5">
       {/* Filtros */}
       <div className="bg-white rounded-3xl p-5 shadow-sm flex flex-wrap gap-3 items-end">
-        {esSuperadmin && (
-          <div className="flex bg-slate-100 rounded-xl p-1 mr-2">
+        <div className="flex bg-slate-100 rounded-xl p-1 mr-2">
+          <button
+            onClick={() => setTab('kpis')}
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition ${
+              tab === 'kpis'
+                ? 'bg-white shadow-sm text-violet-700'
+                : 'text-slate-600'
+            }`}
+          >
+            KPIs hoteleros
+          </button>
+          {esSuperadmin && (
             <button
               onClick={() => setTab('global')}
               className={`px-4 py-2 rounded-lg text-sm font-medium transition ${
@@ -154,20 +213,20 @@ export default function Reportes() {
                   : 'text-slate-600'
               }`}
             >
-              Global (todas las sedes)
+              Global
             </button>
-            <button
-              onClick={() => setTab('sede')}
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition ${
-                tab === 'sede'
-                  ? 'bg-white shadow-sm text-violet-700'
-                  : 'text-slate-600'
-              }`}
-            >
-              Sede actual
-            </button>
-          </div>
-        )}
+          )}
+          <button
+            onClick={() => setTab('sede')}
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition ${
+              tab === 'sede'
+                ? 'bg-white shadow-sm text-violet-700'
+                : 'text-slate-600'
+            }`}
+          >
+            Ranking
+          </button>
+        </div>
 
         <Field label="Desde">
           <input
@@ -200,6 +259,227 @@ export default function Reportes() {
           </QuickBtn>
         </div>
       </div>
+
+      {tab === 'kpis' && kpis.data && (
+        <>
+          {/* KPIs principales: Ocupación, ADR, RevPAR, Ingresos */}
+          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <KpiBig
+              icon="🏨"
+              label="Ocupación"
+              value={`${kpis.data.ocupacion.promedioPct.toFixed(1)}%`}
+              color="from-violet-500 to-violet-600"
+              sub={`${kpis.data.ocupacion.nochesOcupadas.toFixed(0)} / ${kpis.data.ocupacion.nochesDisponibles} noches`}
+            />
+            <KpiBig
+              icon="💳"
+              label="ADR"
+              value={`S/ ${kpis.data.kpis.adr.toFixed(2)}`}
+              color="from-emerald-500 to-emerald-600"
+              sub="Tarifa promedio"
+            />
+            <KpiBig
+              icon="📈"
+              label="RevPAR"
+              value={`S/ ${kpis.data.kpis.revpar.toFixed(2)}`}
+              color="from-amber-500 to-amber-600"
+              sub="Ingreso por hab. disponible"
+            />
+            <KpiBig
+              icon="💰"
+              label="Ingresos"
+              value={`S/ ${kpis.data.ingresos.total.toFixed(0)}`}
+              color="from-rose-500 to-rose-600"
+              sub={`${kpis.data.alquileres.finalizados} alquileres · ${kpis.data.periodo.dias}d`}
+            />
+          </div>
+
+          {/* KPIs secundarios */}
+          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <KpiSmall label="Ticket promedio" value={`S/ ${kpis.data.kpis.ticketPromedio.toFixed(2)}`} />
+            <KpiSmall label="Estadía promedio" value={`${kpis.data.kpis.estadiaPromedioHoras.toFixed(1)} h`} />
+            <KpiSmall
+              label="Clientes nuevos"
+              value={String(kpis.data.clientes.nuevos)}
+              sub={`${kpis.data.clientes.recurrentes} recurrentes`}
+            />
+            <KpiSmall
+              label="Tasa anulación"
+              value={`${kpis.data.alquileres.tasaAnulacionPct.toFixed(1)}%`}
+              sub={`${kpis.data.alquileres.anulados} anulados`}
+              danger={kpis.data.alquileres.tasaAnulacionPct > 10}
+            />
+          </div>
+
+          {/* Grafica de ocupación + ingresos */}
+          <div className="bg-white rounded-3xl p-5 shadow-sm">
+            <div className="flex items-center gap-2 mb-4">
+              <TrendingUp size={18} className="text-violet-500" />
+              <h2 className="font-hotel text-lg font-bold">
+                Ocupación e ingresos por día
+              </h2>
+            </div>
+            {kpis.data.serie.length > 0 ? (
+              <div className="h-80">
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={kpis.data.serie}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                    <XAxis
+                      dataKey="fecha"
+                      tick={{ fontSize: 11 }}
+                      tickFormatter={(f) =>
+                        new Date(f).toLocaleDateString('es-PE', { day: '2-digit', month: '2-digit' })
+                      }
+                    />
+                    <YAxis yAxisId="left" tick={{ fontSize: 11 }} tickFormatter={(v) => `${v}%`} />
+                    <YAxis
+                      yAxisId="right"
+                      orientation="right"
+                      tick={{ fontSize: 11 }}
+                      tickFormatter={(v) => `S/${v}`}
+                    />
+                    <Tooltip
+                      formatter={(v: any, name: any) => {
+                        if (name === 'Ocupación %') return `${Number(v).toFixed(1)}%`;
+                        if (name === 'Ingresos') return `S/ ${Number(v).toFixed(2)}`;
+                        return v;
+                      }}
+                      labelFormatter={(f) =>
+                        new Date(f).toLocaleDateString('es-PE', { weekday: 'long', day: '2-digit', month: 'long' })
+                      }
+                    />
+                    <Legend wrapperStyle={{ fontSize: 12 }} />
+                    <Line yAxisId="left" type="monotone" dataKey="ocupacionPct" stroke="#8b5cf6" strokeWidth={3} name="Ocupación %" dot={{ r: 3 }} />
+                    <Line yAxisId="right" type="monotone" dataKey="ingresos" stroke="#10b981" strokeWidth={2} name="Ingresos" dot={{ r: 3 }} />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+            ) : (
+              <EmptyChart>Sin datos en este rango</EmptyChart>
+            )}
+          </div>
+
+          {/* Top habitaciones + Top cajeros */}
+          <div className="grid lg:grid-cols-2 gap-4">
+            {/* Top habitaciones */}
+            <div className="bg-white rounded-3xl p-5 shadow-sm">
+              <div className="flex items-center gap-2 mb-4">
+                <Trophy size={18} className="text-amber-500" />
+                <h2 className="font-hotel text-lg font-bold">
+                  Top 10 habitaciones
+                </h2>
+              </div>
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="text-[10px] uppercase tracking-widest text-slate-500 border-b border-slate-200">
+                    <th className="text-left py-2">#</th>
+                    <th className="text-left py-2">Hab.</th>
+                    <th className="text-right py-2">Alq.</th>
+                    <th className="text-right py-2">Ingresos</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {kpis.data.topHabitaciones.map((h, i) => (
+                    <tr key={h.habitacionId} className="border-b border-slate-100 hover:bg-violet-50/30">
+                      <td className="py-2.5"><RankBadge pos={i + 1} /></td>
+                      <td className="py-2.5">
+                        <div className="font-semibold">{h.numero}</div>
+                        <div className="text-[10px] text-slate-400">Piso {h.pisoNumero}</div>
+                      </td>
+                      <td className="py-2.5 text-right tabular-nums">{h.alquileres}</td>
+                      <td className="py-2.5 text-right text-emerald-700 font-semibold tabular-nums">
+                        S/ {h.ingresos.toFixed(2)}
+                      </td>
+                    </tr>
+                  ))}
+                  {kpis.data.topHabitaciones.length === 0 && (
+                    <tr><td colSpan={4} className="py-6 text-center text-slate-400 text-xs">Sin datos</td></tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Top cajeros */}
+            <div className="bg-white rounded-3xl p-5 shadow-sm">
+              <div className="flex items-center gap-2 mb-4">
+                <Users size={18} className="text-emerald-500" />
+                <h2 className="font-hotel text-lg font-bold">
+                  Top cajeros del periodo
+                </h2>
+              </div>
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="text-[10px] uppercase tracking-widest text-slate-500 border-b border-slate-200">
+                    <th className="text-left py-2">#</th>
+                    <th className="text-left py-2">Usuario</th>
+                    <th className="text-right py-2">Alq.</th>
+                    <th className="text-right py-2">Ingresos</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {kpis.data.topCajeros.map((c, i) => (
+                    <tr key={c.usuarioId} className="border-b border-slate-100 hover:bg-violet-50/30">
+                      <td className="py-2.5"><RankBadge pos={i + 1} /></td>
+                      <td className="py-2.5 font-semibold truncate max-w-[180px]">{c.nombre}</td>
+                      <td className="py-2.5 text-right tabular-nums">{c.alquileres}</td>
+                      <td className="py-2.5 text-right text-emerald-700 font-semibold tabular-nums">
+                        S/ {c.ingresos.toFixed(2)}
+                      </td>
+                    </tr>
+                  ))}
+                  {kpis.data.topCajeros.length === 0 && (
+                    <tr><td colSpan={4} className="py-6 text-center text-slate-400 text-xs">Sin datos</td></tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {/* Ingresos breakdown */}
+          <div className="bg-white rounded-3xl p-5 shadow-sm">
+            <h2 className="font-hotel text-lg font-bold mb-4">Desglose de ingresos</h2>
+            <div className="grid md:grid-cols-3 gap-4 text-sm">
+              <div className="bg-violet-50 rounded-2xl p-4">
+                <div className="text-[10px] uppercase tracking-widest text-violet-600 font-bold">Habitaciones</div>
+                <div className="text-2xl font-hotel font-bold text-violet-700 mt-1">
+                  S/ {kpis.data.ingresos.habitacion.toFixed(2)}
+                </div>
+                <div className="text-[11px] text-violet-500 mt-1">
+                  {kpis.data.ingresos.total > 0
+                    ? ((kpis.data.ingresos.habitacion / kpis.data.ingresos.total) * 100).toFixed(0)
+                    : 0}% del total
+                </div>
+              </div>
+              <div className="bg-blue-50 rounded-2xl p-4">
+                <div className="text-[10px] uppercase tracking-widest text-blue-600 font-bold">Productos</div>
+                <div className="text-2xl font-hotel font-bold text-blue-700 mt-1">
+                  S/ {kpis.data.ingresos.productos.toFixed(2)}
+                </div>
+                <div className="text-[11px] text-blue-500 mt-1">
+                  {kpis.data.ingresos.total > 0
+                    ? ((kpis.data.ingresos.productos / kpis.data.ingresos.total) * 100).toFixed(0)
+                    : 0}% del total
+                </div>
+              </div>
+              <div className="bg-emerald-50 rounded-2xl p-4">
+                <div className="text-[10px] uppercase tracking-widest text-emerald-600 font-bold">Total</div>
+                <div className="text-2xl font-hotel font-bold text-emerald-700 mt-1">
+                  S/ {kpis.data.ingresos.total.toFixed(2)}
+                </div>
+                <div className="text-[11px] text-emerald-500 mt-1">
+                  {kpis.data.inventario.habitacionesActivas} hab. activas
+                </div>
+              </div>
+            </div>
+          </div>
+        </>
+      )}
+
+      {tab === 'kpis' && !kpis.data && (
+        <div className="bg-white rounded-3xl p-16 text-center text-slate-400">
+          Calculando KPIs del periodo...
+        </div>
+      )}
 
       {tab === 'sede' && (
         <>
@@ -681,6 +961,67 @@ function EmptyChart({ children }: { children: React.ReactNode }) {
   return (
     <div className="h-40 flex items-center justify-center text-slate-400 text-sm">
       {children}
+    </div>
+  );
+}
+
+function KpiBig({
+  icon,
+  label,
+  value,
+  color,
+  sub,
+}: {
+  icon: string;
+  label: string;
+  value: string;
+  color: string;
+  sub?: string;
+}) {
+  return (
+    <div
+      className={`relative rounded-3xl p-5 shadow-md text-white overflow-hidden bg-gradient-to-br ${color}`}
+    >
+      <div className="absolute -right-4 -top-4 text-6xl opacity-15">
+        {icon}
+      </div>
+      <div className="relative">
+        <div className="text-[10px] uppercase tracking-widest font-semibold opacity-90">
+          {label}
+        </div>
+        <div className="text-3xl font-hotel font-bold mt-1 truncate">
+          {value}
+        </div>
+        {sub && <div className="text-[11px] opacity-80 mt-1">{sub}</div>}
+      </div>
+    </div>
+  );
+}
+
+function KpiSmall({
+  label,
+  value,
+  sub,
+  danger,
+}: {
+  label: string;
+  value: string;
+  sub?: string;
+  danger?: boolean;
+}) {
+  return (
+    <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100">
+      <div className="text-[10px] uppercase tracking-widest text-slate-500 font-semibold">
+        {label}
+      </div>
+      <div
+        className={`text-xl font-hotel font-bold mt-1 ${
+          danger ? 'text-rose-600' : 'text-slate-900'
+        }`}
+      >
+        {value}
+      </div>
+      {sub && <div className="text-[11px] text-slate-400 mt-0.5">{sub}</div>}
     </div>
   );
 }

@@ -43,6 +43,21 @@ export class ReportesController {
   }
 
   @Roles(Rol.SUPERADMIN, Rol.ADMIN_SEDE)
+  @Get('kpis-hoteleros')
+  kpisHoteleros(
+    @CurrentUser() user: JwtPayload,
+    @Query('desde') desde?: string,
+    @Query('hasta') hasta?: string,
+    @Query('sedeId') sedeId?: string,
+  ) {
+    return this.service.kpisHoteleros(user, {
+      desde,
+      hasta,
+      sedeId: sedeId ? Number(sedeId) : undefined,
+    });
+  }
+
+  @Roles(Rol.SUPERADMIN, Rol.ADMIN_SEDE)
   @Get('comparativo-mensual')
   comparativoMensual(
     @CurrentUser() user: JwtPayload,

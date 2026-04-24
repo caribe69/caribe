@@ -134,6 +134,268 @@ export class ReportesService {
   }
 
   /**
+   * KPIs hoteleros completos para gerencia: ocupación, ADR, RevPAR,
+   * ingresos, clientes nuevos/recurrentes, top habitaciones y cajeros.
+   */
+  async kpisHoteleros(user: JwtPayload, dto: RangoDto) {
+    const sedeId = resolveSedeId(user, dto.sedeId);
+    const rango = this.rangoFechas(dto) ?? {
+      gte: new Date(Date.now() - 30 * 24 * 3600 * 1000),
+      lte: new Date(),
+    };
+    const diasPeriodo = Math.max(
+      1,
+      Math.ceil(
+        (rango.lte.getTime() - rango.gte.getTime()) / (24 * 3600 * 1000),
+      ),
+    );
+
+    // Inventario de habitaciones
+    const [totalHab, activas] = await Promise.all([
+      this.prisma.habitacion.count({ where: { sedeId } }),
+      this.prisma.habitacion.count({ where: { sedeId, activa: true } }),
+    ]);
+
+    // Alquileres del período
+    const whereFinalizados = {
+      sedeId,
+      estado: EstadoAlquiler.FINALIZADO,
+      creadoEn: rango,
+    };
+    const whereAnulados = {
+      sedeId,
+      estado: EstadoAlquiler.ANULADO,
+      creadoEn: rango,
+    };
+    const whereActivos = {
+      sedeId,
+      estado: EstadoAlquiler.ACTIVO,
+      creadoEn: rango,
+    };
+
+    const [finalizados, anulados, activos] = await Promise.all([
+      this.prisma.alquiler.findMany({
+        where: whereFinalizados,
+        select: {
+          id: true,
+          precioHabitacion: true,
+          totalProductos: true,
+          total: true,
+          clienteDni: true,
+          creadoEn: true,
+          fechaSalidaReal: true,
+          fechaSalida: true,
+          habitacionId: true,
+          creadoPorId: true,
+          creadoPor: { select: { id: true, nombre: true } },
+          habitacion: {
+            select: { numero: true, piso: { select: { numero: true } } },
+          },
+        },
+      }),
+      this.prisma.alquiler.count({ where: whereAnulados }),
+      this.prisma.alquiler.count({ where: whereActivos }),
+    ]);
+
+    const totalAlquileres = finalizados.length;
+
+    // Ingresos
+    const ingresoHab = finalizados.reduce(
+      (s, a) => s + Number(a.precioHabitacion),
+      0,
+    );
+    const ingresoProd = finalizados.reduce(
+      (s, a) => s + Number(a.totalProductos),
+      0,
+    );
+    const ingresoTotal = ingresoHab + ingresoProd;
+
+    // Noches ocupadas: suma horas reales / 24 por alquiler finalizado
+    let totalHoras = 0;
+    for (const a of finalizados) {
+      const inicio = new Date(a.creadoEn).getTime();
+      const fin = new Date(
+        a.fechaSalidaReal || a.fechaSalida,
+      ).getTime();
+      const h = Math.max(0, (fin - inicio) / (3600 * 1000));
+      totalHoras += h;
+    }
+    const nochesOcupadas = totalHoras / 24; // en "noches equivalentes"
+    const estadiaPromedioHoras =
+      totalAlquileres > 0 ? totalHoras / totalAlquileres : 0;
+
+    // Noches disponibles: días del periodo × habitaciones activas
+    const nochesDisponibles = diasPeriodo * (activas || 1);
+    const ocupacionPromedioPct =
+      nochesDisponibles > 0 ? (nochesOcupadas / nochesDisponibles) * 100 : 0;
+
+    // KPIs hoteleros
+    const adr = totalAlquileres > 0 ? ingresoHab / totalAlquileres : 0;
+    const revpar = activas > 0 ? ingresoHab / (diasPeriodo * activas) : 0;
+    const ticketPromedio =
+      totalAlquileres > 0 ? ingresoTotal / totalAlquileres : 0;
+
+    // Clientes nuevos vs recurrentes
+    const dnisEnPeriodo = Array.from(
+      new Set(finalizados.map((a) => a.clienteDni).filter(Boolean)),
+    );
+    let clientesNuevos = 0;
+    if (dnisEnPeriodo.length > 0) {
+      const primeros = await this.prisma.alquiler.groupBy({
+        by: ['clienteDni'],
+        where: { clienteDni: { in: dnisEnPeriodo } },
+        _min: { creadoEn: true },
+      });
+      for (const p of primeros) {
+        if (
+          p._min.creadoEn &&
+          p._min.creadoEn >= rango.gte &&
+          p._min.creadoEn <= rango.lte
+        )
+          clientesNuevos += 1;
+      }
+    }
+    const clientesRecurrentes = dnisEnPeriodo.length - clientesNuevos;
+
+    // Top habitaciones
+    const porHab = new Map<
+      number,
+      { ingresos: number; alquileres: number }
+    >();
+    for (const a of finalizados) {
+      const cur = porHab.get(a.habitacionId) ?? { ingresos: 0, alquileres: 0 };
+      cur.ingresos += Number(a.total);
+      cur.alquileres += 1;
+      porHab.set(a.habitacionId, cur);
+    }
+    const habIds = Array.from(porHab.keys());
+    const habsInfo =
+      habIds.length > 0
+        ? await this.prisma.habitacion.findMany({
+            where: { id: { in: habIds } },
+            include: { piso: true },
+          })
+        : [];
+    const topHabitaciones = habsInfo
+      .map((h) => ({
+        habitacionId: h.id,
+        numero: h.numero,
+        pisoNumero: h.piso.numero,
+        ...porHab.get(h.id)!,
+      }))
+      .sort((a, b) => b.ingresos - a.ingresos)
+      .slice(0, 10);
+
+    // Top cajeros
+    const porCajero = new Map<
+      number,
+      { nombre: string; ingresos: number; alquileres: number }
+    >();
+    for (const a of finalizados) {
+      const cur = porCajero.get(a.creadoPorId) ?? {
+        nombre: a.creadoPor?.nombre || `Usuario ${a.creadoPorId}`,
+        ingresos: 0,
+        alquileres: 0,
+      };
+      cur.ingresos += Number(a.total);
+      cur.alquileres += 1;
+      porCajero.set(a.creadoPorId, cur);
+    }
+    const topCajeros = Array.from(porCajero.entries())
+      .map(([id, v]) => ({ usuarioId: id, ...v }))
+      .sort((a, b) => b.ingresos - a.ingresos)
+      .slice(0, 10);
+
+    // Ocupación e ingresos por día
+    const byDia = new Map<
+      string,
+      { noches: number; ingresos: number; alquileres: number }
+    >();
+    for (const a of finalizados) {
+      const key = new Date(a.creadoEn).toISOString().slice(0, 10);
+      const cur = byDia.get(key) ?? {
+        noches: 0,
+        ingresos: 0,
+        alquileres: 0,
+      };
+      const horas =
+        (new Date(a.fechaSalidaReal || a.fechaSalida).getTime() -
+          new Date(a.creadoEn).getTime()) /
+        (3600 * 1000);
+      cur.noches += Math.max(0, horas / 24);
+      cur.ingresos += Number(a.total);
+      cur.alquileres += 1;
+      byDia.set(key, cur);
+    }
+    const serie = Array.from(byDia.entries())
+      .map(([fecha, v]) => ({
+        fecha,
+        ocupacionPct:
+          activas > 0 ? Math.min(100, (v.noches / activas) * 100) : 0,
+        ingresos: Number(v.ingresos.toFixed(2)),
+        alquileres: v.alquileres,
+      }))
+      .sort((a, b) => (a.fecha < b.fecha ? -1 : 1));
+
+    // Día con mejor/peor ocupación
+    const mejorDia =
+      serie.length > 0
+        ? serie.reduce(
+            (best, d) => (d.ocupacionPct > best.ocupacionPct ? d : best),
+            serie[0],
+          )
+        : null;
+
+    const tasaAnulacion =
+      totalAlquileres + anulados > 0
+        ? (anulados / (totalAlquileres + anulados)) * 100
+        : 0;
+
+    return {
+      periodo: {
+        desde: rango.gte.toISOString(),
+        hasta: rango.lte.toISOString(),
+        dias: diasPeriodo,
+      },
+      inventario: {
+        totalHabitaciones: totalHab,
+        habitacionesActivas: activas,
+      },
+      ocupacion: {
+        promedioPct: Number(ocupacionPromedioPct.toFixed(1)),
+        nochesOcupadas: Number(nochesOcupadas.toFixed(1)),
+        nochesDisponibles,
+      },
+      ingresos: {
+        total: Number(ingresoTotal.toFixed(2)),
+        habitacion: Number(ingresoHab.toFixed(2)),
+        productos: Number(ingresoProd.toFixed(2)),
+      },
+      kpis: {
+        adr: Number(adr.toFixed(2)),
+        revpar: Number(revpar.toFixed(2)),
+        ticketPromedio: Number(ticketPromedio.toFixed(2)),
+        estadiaPromedioHoras: Number(estadiaPromedioHoras.toFixed(1)),
+      },
+      alquileres: {
+        finalizados: totalAlquileres,
+        anulados,
+        activos,
+        tasaAnulacionPct: Number(tasaAnulacion.toFixed(1)),
+      },
+      clientes: {
+        total: dnisEnPeriodo.length,
+        nuevos: clientesNuevos,
+        recurrentes: clientesRecurrentes,
+      },
+      topHabitaciones,
+      topCajeros,
+      serie,
+      mejorDia,
+    };
+  }
+
+  /**
    * Panel SUPERADMIN: comparativo global entre sedes + KPIs totales
    */
   async panelGlobal(dto: RangoDto) {

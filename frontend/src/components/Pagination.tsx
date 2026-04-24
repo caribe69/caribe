@@ -40,11 +40,11 @@ export default function Pagination({
   }
 
   return (
-    <div className="flex items-center justify-between flex-wrap gap-3 px-6 py-3 border-t border-slate-100 bg-slate-50/50 text-sm">
-      <div className="text-slate-500">
-        Mostrando <span className="font-semibold text-slate-700">{from}</span>{' '}
-        – <span className="font-semibold text-slate-700">{to}</span> de{' '}
-        <span className="font-semibold text-slate-700">{totalItems}</span>
+    <div className="flex items-center justify-between flex-wrap gap-3 px-6 py-3 border-t border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/40 text-sm">
+      <div className="text-slate-500 dark:text-slate-400">
+        Mostrando <span className="font-semibold text-slate-700 dark:text-slate-200">{from}</span>{' '}
+        – <span className="font-semibold text-slate-700 dark:text-slate-200">{to}</span> de{' '}
+        <span className="font-semibold text-slate-700 dark:text-slate-200">{totalItems}</span>
       </div>
 
       <div className="flex items-center gap-2">
@@ -52,7 +52,7 @@ export default function Pagination({
           <select
             value={size}
             onChange={(e) => setSize(Number(e.target.value))}
-            className="bg-white border border-slate-200 rounded-lg text-xs px-2 py-1.5 font-medium text-slate-600 focus:outline-none focus:border-violet-400 cursor-pointer"
+            className="bg-white dark:bg-slate-900 dark:text-slate-200 border border-slate-200 dark:border-slate-700 rounded-lg text-xs px-2 py-1.5 font-medium text-slate-600 focus:outline-none focus:border-violet-400 cursor-pointer"
           >
             {pageSizes.map((s) => (
               <option key={s} value={s}>
@@ -62,11 +62,11 @@ export default function Pagination({
           </select>
         )}
 
-        <div className="flex items-center gap-1 bg-white rounded-xl p-1 border border-slate-200">
+        <div className="flex items-center gap-1 bg-white dark:bg-slate-900 rounded-xl p-1 border border-slate-200 dark:border-slate-700">
           <button
             onClick={() => setPage(Math.max(1, page - 1))}
             disabled={page === 1}
-            className="w-8 h-8 flex items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100 disabled:opacity-30 disabled:cursor-not-allowed btn-press"
+            className="w-8 h-8 flex items-center justify-center rounded-lg text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-30 disabled:cursor-not-allowed btn-press"
           >
             <ChevronLeft size={16} />
           </button>
@@ -75,7 +75,7 @@ export default function Pagination({
             p === 'dots' ? (
               <span
                 key={`dots-${i}`}
-                className="w-8 text-center text-slate-400 text-xs"
+                className="w-8 text-center text-slate-400 dark:text-slate-500 text-xs"
               >
                 …
               </span>
@@ -86,7 +86,7 @@ export default function Pagination({
                 className={`min-w-[32px] h-8 flex items-center justify-center rounded-lg text-xs font-semibold transition btn-press ${
                   p === page
                     ? 'bg-gradient-to-r from-violet-600 to-violet-500 text-white shadow-md shadow-violet-500/30'
-                    : 'text-slate-600 hover:bg-slate-100'
+                    : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
                 }`}
               >
                 {p}
@@ -97,7 +97,7 @@ export default function Pagination({
           <button
             onClick={() => setPage(Math.min(totalPages, page + 1))}
             disabled={page === totalPages}
-            className="w-8 h-8 flex items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100 disabled:opacity-30 disabled:cursor-not-allowed btn-press"
+            className="w-8 h-8 flex items-center justify-center rounded-lg text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-30 disabled:cursor-not-allowed btn-press"
           >
             <ChevronRight size={16} />
           </button>

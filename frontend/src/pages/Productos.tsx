@@ -251,10 +251,33 @@ function Fila({
 
   const ajustar = async (nuevo: number) => {
     if (nuevo < 0 || nuevo === p.stock) return;
+
+    const delta = nuevo - p.stock;
+    const esAumento = delta > 0;
+    const absDelta = Math.abs(delta);
+
+    // Confirmación con countdown de 3s antes de habilitar "Confirmar"
+    const ok = await confirm({
+      title: `¿Confirmas el cambio de stock?`,
+      message:
+        `${p.nombre}\n\n` +
+        `Stock actual: ${p.stock}\n` +
+        `Cambio: ${esAumento ? '+' : '−'}${absDelta}\n` +
+        `Stock resultante: ${nuevo}`,
+      variant: esAumento ? 'info' : 'warning',
+      confirmText: esAumento ? 'Sí, sumar stock' : 'Sí, descontar stock',
+      cancelText: 'Cancelar',
+      confirmDelaySec: 3,
+    });
+    if (!ok) {
+      setValor(String(p.stock));
+      return;
+    }
+
     setGuardando(true);
     try {
       await api.post(`/productos/${p.id}/ajuste-stock`, {
-        cantidad: nuevo - p.stock,
+        cantidad: delta,
       });
       qc.invalidateQueries({ queryKey: ['productos'] });
       toast({

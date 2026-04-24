@@ -23,6 +23,11 @@ export interface ConfirmOptions {
   confirmText?: string;
   cancelText?: string;
   variant?: Variant;
+  /**
+   * Segundos que el botón "Confirmar" estará bloqueado antes de habilitarse.
+   * Útil para acciones que conviene pensar dos veces (ej. ajustar stock).
+   */
+  confirmDelaySec?: number;
 }
 
 export interface PromptOptions extends ConfirmOptions {
@@ -143,18 +148,37 @@ function ConfirmDialog({
   const theme = VARIANT_STYLES[opts.variant || 'info'];
   const { Icon } = theme;
 
+  // Cuenta regresiva para habilitar el botón Confirmar
+  const delaySec = Math.max(0, opts.confirmDelaySec || 0);
+  const [remaining, setRemaining] = useState(delaySec);
+  const disabled = remaining > 0;
+
+  useEffect(() => {
+    if (delaySec <= 0) return;
+    const t = setInterval(() => {
+      setRemaining((r) => {
+        if (r <= 1) {
+          clearInterval(t);
+          return 0;
+        }
+        return r - 1;
+      });
+    }, 1000);
+    return () => clearInterval(t);
+  }, [delaySec]);
+
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onClose(false);
-      if (e.key === 'Enter') onClose(true);
+      if (e.key === 'Enter' && !disabled) onClose(true);
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [onClose]);
+  }, [onClose, disabled]);
 
   return (
     <div className="fixed inset-0 z-[90] flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-sm animate-fade-in">
-      <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl dark:shadow-slate-950/60 animate-scale-in overflow-hidden">
+      <div className="bg-white dark:bg-slate-900 dark:ring-1 dark:ring-slate-800 rounded-2xl w-full max-w-md shadow-2xl dark:shadow-slate-950/60 animate-scale-in overflow-hidden">
         <div className="p-6">
           <div className="flex items-start gap-4">
             <div
@@ -163,36 +187,49 @@ function ConfirmDialog({
               <Icon size={22} />
             </div>
             <div className="flex-1 min-w-0">
-              <h2 className="font-hotel text-xl font-bold text-slate-900">
+              <h2 className="font-hotel text-xl font-bold text-slate-900 dark:text-slate-100">
                 {opts.title}
               </h2>
               {opts.message && (
-                <p className="text-sm text-slate-600 mt-2 leading-relaxed">
+                <p className="text-sm text-slate-600 dark:text-slate-300 mt-2 leading-relaxed whitespace-pre-line">
                   {opts.message}
                 </p>
               )}
             </div>
             <button
               onClick={() => onClose(false)}
-              className="text-slate-400 hover:text-slate-700 p-1 rounded-lg hover:bg-slate-100 btn-press"
+              className="text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 p-1 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 btn-press"
             >
               <X size={18} />
             </button>
           </div>
         </div>
-        <div className="px-6 py-4 bg-slate-50 flex gap-2 justify-end border-t border-slate-100">
+        <div className="px-6 py-4 bg-slate-50 dark:bg-slate-800/50 flex gap-2 justify-end border-t border-slate-100 dark:border-slate-800">
           <button
             onClick={() => onClose(false)}
-            className="px-4 py-2.5 rounded-xl text-sm font-medium text-slate-700 bg-white hover:bg-slate-100 border border-slate-200 btn-press transition"
+            className="px-4 py-2.5 rounded-xl text-sm font-medium text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 btn-press transition"
           >
             {opts.cancelText || 'Cancelar'}
           </button>
           <button
-            onClick={() => onClose(true)}
+            onClick={() => !disabled && onClose(true)}
+            disabled={disabled}
             autoFocus
-            className={`px-5 py-2.5 rounded-xl text-sm font-semibold text-white shadow-md btn-press transition ${theme.confirmBtn}`}
+            className={`relative overflow-hidden px-5 py-2.5 rounded-xl text-sm font-semibold text-white shadow-md btn-press transition ${theme.confirmBtn} ${disabled ? 'opacity-60 cursor-not-allowed' : ''}`}
           >
-            {opts.confirmText || 'Confirmar'}
+            {/* Barra de progreso del countdown */}
+            {disabled && delaySec > 0 && (
+              <span
+                className="absolute left-0 bottom-0 h-0.5 bg-white/60"
+                style={{
+                  width: `${((delaySec - remaining) / delaySec) * 100}%`,
+                  transition: 'width 1s linear',
+                }}
+              />
+            )}
+            {disabled
+              ? `${opts.confirmText || 'Confirmar'} (${remaining}s)`
+              : opts.confirmText || 'Confirmar'}
           </button>
         </div>
       </div>

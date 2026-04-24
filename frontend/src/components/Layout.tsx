@@ -1,4 +1,5 @@
-import { NavLink, Outlet, useNavigate } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 import {
@@ -18,6 +19,11 @@ import {
   MessageSquare,
   TrendingUp,
   Truck,
+  ChevronDown,
+  Briefcase,
+  Warehouse,
+  BarChart3,
+  UserCog,
 } from 'lucide-react';
 import { useAuthStore, Rol } from '@/store/auth';
 import TopBar from './TopBar';
@@ -31,96 +37,147 @@ interface Item {
   roles?: Rol[];
 }
 
-const items: Item[] = [
+interface Group {
+  key: string;
+  label: string;
+  icon: React.ComponentType<{ size?: number; className?: string }>;
+  items: Item[];
+}
+
+// Ítem directo (sin grupo) — Dashboard siempre visible arriba
+const dashboard: Item = {
+  to: '/',
+  label: 'Dashboard',
+  icon: LayoutDashboard,
+  roles: ['SUPERADMIN', 'ADMIN_SEDE', 'CAJERO', 'LIMPIEZA'],
+};
+
+const groups: Group[] = [
   {
-    to: '/',
-    label: 'Dashboard',
-    icon: LayoutDashboard,
-    roles: ['SUPERADMIN', 'ADMIN_SEDE', 'CAJERO', 'LIMPIEZA'],
+    key: 'operacion',
+    label: 'Operación',
+    icon: Briefcase,
+    items: [
+      {
+        to: '/alquileres',
+        label: 'Alquileres',
+        icon: ClipboardList,
+        roles: ['SUPERADMIN', 'ADMIN_SEDE', 'HOTELERO', 'CAJERO'],
+      },
+      {
+        to: '/habitaciones',
+        label: 'Habitaciones',
+        icon: BedDouble,
+        roles: ['SUPERADMIN', 'ADMIN_SEDE'],
+      },
+      {
+        to: '/ventas',
+        label: 'Venta directa',
+        icon: ShoppingCart,
+        roles: ['SUPERADMIN', 'ADMIN_SEDE', 'CAJERO'],
+      },
+      {
+        to: '/caja',
+        label: 'Caja',
+        icon: Wallet,
+        roles: ['SUPERADMIN', 'ADMIN_SEDE', 'HOTELERO', 'CAJERO'],
+      },
+    ],
   },
   {
-    to: '/habitaciones',
-    label: 'Habitaciones',
-    icon: BedDouble,
-    roles: ['SUPERADMIN', 'ADMIN_SEDE'],
+    key: 'reportes',
+    label: 'Reportes',
+    icon: BarChart3,
+    items: [
+      {
+        to: '/historial',
+        label: 'Historial',
+        icon: FileBarChart,
+        roles: ['SUPERADMIN', 'ADMIN_SEDE', 'HOTELERO', 'CAJERO'],
+      },
+      {
+        to: '/reportes',
+        label: 'KPIs & ranking',
+        icon: TrendingUp,
+        roles: ['SUPERADMIN', 'ADMIN_SEDE'],
+      },
+    ],
   },
   {
-    to: '/alquileres',
-    label: 'Alquileres',
-    icon: ClipboardList,
-    roles: ['SUPERADMIN', 'ADMIN_SEDE', 'HOTELERO', 'CAJERO'],
+    key: 'almacen',
+    label: 'Almacén',
+    icon: Warehouse,
+    items: [
+      {
+        to: '/productos',
+        label: 'Productos',
+        icon: Package,
+        roles: ['SUPERADMIN', 'ADMIN_SEDE', 'HOTELERO', 'CAJERO'],
+      },
+      {
+        to: '/productos-limpieza',
+        label: 'Prod. limpieza',
+        icon: Package,
+        roles: ['SUPERADMIN', 'ADMIN_SEDE', 'LIMPIEZA'],
+      },
+      {
+        to: '/transferencias',
+        label: 'Transferencias',
+        icon: Truck,
+        roles: ['SUPERADMIN', 'ADMIN_SEDE', 'HOTELERO', 'CAJERO'],
+      },
+    ],
   },
   {
-    to: '/historial',
-    label: 'Historial',
-    icon: FileBarChart,
-    roles: ['SUPERADMIN', 'ADMIN_SEDE', 'HOTELERO', 'CAJERO'],
-  },
-  {
-    to: '/ventas',
-    label: 'Venta directa',
-    icon: ShoppingCart,
-    roles: ['SUPERADMIN', 'ADMIN_SEDE', 'CAJERO'],
-  },
-  {
-    to: '/productos',
-    label: 'Productos',
-    icon: Package,
-    roles: ['SUPERADMIN', 'ADMIN_SEDE', 'HOTELERO', 'CAJERO'],
-  },
-  {
-    to: '/limpieza',
+    key: 'limpieza',
     label: 'Limpieza',
     icon: Sparkles,
-    roles: ['SUPERADMIN', 'ADMIN_SEDE', 'LIMPIEZA'],
+    items: [
+      {
+        to: '/limpieza',
+        label: 'Tareas',
+        icon: Sparkles,
+        roles: ['SUPERADMIN', 'ADMIN_SEDE', 'LIMPIEZA'],
+      },
+    ],
   },
   {
-    to: '/productos-limpieza',
-    label: 'Prod. limpieza',
-    icon: Package,
-    roles: ['SUPERADMIN', 'ADMIN_SEDE', 'LIMPIEZA'],
-  },
-  {
-    to: '/caja',
-    label: 'Caja',
-    icon: Wallet,
-    roles: ['SUPERADMIN', 'ADMIN_SEDE', 'HOTELERO', 'CAJERO'],
-  },
-  {
-    to: '/sedes',
-    label: 'Sedes',
-    icon: Building,
-    roles: ['SUPERADMIN'],
-  },
-  {
-    to: '/usuarios',
-    label: 'Usuarios',
-    icon: Users,
-    roles: ['SUPERADMIN', 'ADMIN_SEDE'],
-  },
-  {
-    to: '/reportes',
-    label: 'Reportes',
-    icon: TrendingUp,
-    roles: ['SUPERADMIN', 'ADMIN_SEDE'],
-  },
-  {
-    to: '/transferencias',
-    label: 'Transferencias',
-    icon: Truck,
-    roles: ['SUPERADMIN', 'ADMIN_SEDE', 'HOTELERO', 'CAJERO'],
-  },
-  {
-    to: '/chat',
-    label: 'Conversaciones',
+    key: 'comunicacion',
+    label: 'Comunicación',
     icon: MessageSquare,
-    roles: ['SUPERADMIN', 'ADMIN_SEDE', 'HOTELERO', 'CAJERO', 'LIMPIEZA'],
+    items: [
+      {
+        to: '/chat',
+        label: 'Conversaciones',
+        icon: MessageSquare,
+        roles: ['SUPERADMIN', 'ADMIN_SEDE', 'HOTELERO', 'CAJERO', 'LIMPIEZA'],
+      },
+    ],
   },
   {
-    to: '/configuracion',
-    label: 'Configuración',
-    icon: Settings,
-    roles: ['SUPERADMIN', 'ADMIN_SEDE'],
+    key: 'admin',
+    label: 'Administración',
+    icon: UserCog,
+    items: [
+      {
+        to: '/sedes',
+        label: 'Sedes',
+        icon: Building,
+        roles: ['SUPERADMIN'],
+      },
+      {
+        to: '/usuarios',
+        label: 'Usuarios',
+        icon: Users,
+        roles: ['SUPERADMIN', 'ADMIN_SEDE'],
+      },
+      {
+        to: '/configuracion',
+        label: 'Configuración',
+        icon: Settings,
+        roles: ['SUPERADMIN', 'ADMIN_SEDE'],
+      },
+    ],
   },
 ];
 
@@ -136,9 +193,56 @@ export default function Layout() {
     navigate('/login');
   };
 
-  const visibles = items.filter(
-    (i) => !i.roles || (usuario && i.roles.includes(usuario.rol)),
-  );
+  // Filtrado por rol
+  const canSee = (item: Item) =>
+    !item.roles || (usuario && item.roles.includes(usuario.rol));
+
+  const visibleDashboard = canSee(dashboard);
+  const visibleGroups = groups
+    .map((g) => ({ ...g, items: g.items.filter(canSee) }))
+    .filter((g) => g.items.length > 0);
+
+  // Estado de grupos abiertos: persiste en localStorage
+  const location = useLocation();
+  const [openGroups, setOpenGroups] = useState<Set<string>>(() => {
+    try {
+      const saved = localStorage.getItem('sidebar-open-groups');
+      if (saved) return new Set(JSON.parse(saved));
+    } catch {}
+    return new Set(['operacion']);
+  });
+
+  // Al cambiar de ruta, abre automáticamente el grupo que la contiene
+  useEffect(() => {
+    const match = visibleGroups.find((g) =>
+      g.items.some((i) => i.to === location.pathname),
+    );
+    if (match && !openGroups.has(match.key)) {
+      setOpenGroups((prev) => {
+        const next = new Set(prev);
+        next.add(match.key);
+        return next;
+      });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.pathname]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(
+        'sidebar-open-groups',
+        JSON.stringify(Array.from(openGroups)),
+      );
+    } catch {}
+  }, [openGroups]);
+
+  const toggleGroup = (key: string) =>
+    setOpenGroups((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
 
   // Badge de conversaciones no leídas (se refresca vía socket invalidation)
   const inboxQuery = useQuery<{ noLeidos: number }[]>({
@@ -162,6 +266,23 @@ export default function Layout() {
   });
   const transfPendientes = transfQuery.data?.length ?? 0;
 
+  // Badges por path (para mostrarlos junto al grupo cuando está colapsado)
+  const badgeFor = (path: string) => {
+    if (path === '/chat' && chatUnread > 0) return { n: chatUnread, color: 'bg-rose-500' };
+    if (path === '/transferencias' && transfPendientes > 0)
+      return { n: transfPendientes, color: 'bg-amber-500' };
+    return null;
+  };
+
+  const groupTotalBadge = (g: { items: Item[] }) => {
+    let total = 0;
+    for (const i of g.items) {
+      const b = badgeFor(i.to);
+      if (b) total += b.n;
+    }
+    return total;
+  };
+
   return (
     <div className="flex h-screen overflow-hidden p-4 gap-4 bg-gradient-to-br from-slate-50 via-violet-50/30 to-emerald-50/20">
       {/* Sidebar FIJO */}
@@ -183,39 +304,99 @@ export default function Layout() {
           </div>
         </div>
 
-        {/* Nav (scroll interno solo si hay muchos ítems) */}
-        <nav className="flex-1 overflow-y-auto scroll-premium px-3 py-2 space-y-1 min-h-0">
-          {visibles.map((it) => {
-            const Icon = it.icon;
-            const showChatBadge = it.to === '/chat' && chatUnread > 0;
-            const showTransfBadge =
-              it.to === '/transferencias' && transfPendientes > 0;
+        {/* Nav agrupado colapsable */}
+        <nav className="flex-1 overflow-y-auto scroll-premium px-3 py-2 space-y-0.5 min-h-0">
+          {/* Dashboard siempre visible arriba */}
+          {visibleDashboard && (
+            <NavLink
+              to="/"
+              end
+              className={({ isActive }) =>
+                `flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium transition-all ${
+                  isActive
+                    ? 'bg-gradient-to-r from-violet-600 to-violet-500 text-white shadow-lg shadow-violet-500/30'
+                    : 'text-slate-500 hover:bg-slate-50 hover:text-slate-800'
+                }`
+              }
+            >
+              <LayoutDashboard size={18} />
+              <span className="flex-1">Dashboard</span>
+            </NavLink>
+          )}
+
+          {/* Grupos */}
+          {visibleGroups.map((g) => {
+            const GroupIcon = g.icon;
+            const isOpen = openGroups.has(g.key);
+            const hasActiveChild = g.items.some(
+              (i) => location.pathname === i.to,
+            );
+            const groupBadge = groupTotalBadge(g);
             return (
-              <NavLink
-                key={it.to}
-                to={it.to}
-                end={it.to === '/'}
-                className={({ isActive }) =>
-                  `flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all ${
-                    isActive
-                      ? 'bg-gradient-to-r from-violet-600 to-violet-500 text-white shadow-lg shadow-violet-500/30'
-                      : 'text-slate-500 hover:bg-slate-50 hover:text-slate-800'
-                  }`
-                }
-              >
-                <Icon size={18} />
-                <span className="flex-1">{it.label}</span>
-                {showChatBadge && (
-                  <span className="bg-rose-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-[20px] text-center">
-                    {chatUnread > 9 ? '9+' : chatUnread}
-                  </span>
-                )}
-                {showTransfBadge && (
-                  <span className="bg-amber-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-[20px] text-center animate-pulse">
-                    {transfPendientes > 9 ? '9+' : transfPendientes}
-                  </span>
-                )}
-              </NavLink>
+              <div key={g.key} className="mt-1">
+                {/* Header del grupo */}
+                <button
+                  onClick={() => toggleGroup(g.key)}
+                  className={`w-full flex items-center gap-2.5 px-4 py-2 rounded-xl text-xs font-semibold uppercase tracking-wider transition ${
+                    hasActiveChild
+                      ? 'text-violet-700 bg-violet-50'
+                      : 'text-slate-500 hover:bg-slate-50'
+                  }`}
+                >
+                  <GroupIcon size={14} className="shrink-0" />
+                  <span className="flex-1 text-left">{g.label}</span>
+                  {!isOpen && groupBadge > 0 && (
+                    <span className="bg-rose-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full min-w-[18px] text-center">
+                      {groupBadge > 9 ? '9+' : groupBadge}
+                    </span>
+                  )}
+                  <ChevronDown
+                    size={13}
+                    className={`shrink-0 transition-transform duration-200 ${
+                      isOpen ? 'rotate-0' : '-rotate-90'
+                    }`}
+                  />
+                </button>
+
+                {/* Ítems hijos con animación */}
+                <div
+                  className={`overflow-hidden transition-all duration-200 ${
+                    isOpen ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0'
+                  }`}
+                >
+                  <div className="mt-1 ml-2 space-y-0.5">
+                    {g.items.map((it) => {
+                      const Icon = it.icon;
+                      const badge = badgeFor(it.to);
+                      return (
+                        <NavLink
+                          key={it.to}
+                          to={it.to}
+                          className={({ isActive }) =>
+                            `flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition ${
+                              isActive
+                                ? 'bg-gradient-to-r from-violet-600 to-violet-500 text-white shadow-md shadow-violet-500/30 font-medium'
+                                : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
+                            }`
+                          }
+                        >
+                          <Icon size={15} className="shrink-0" />
+                          <span className="flex-1 truncate">{it.label}</span>
+                          {badge && (
+                            <span
+                              className={`${badge.color} text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full min-w-[18px] text-center ${
+                                it.to === '/transferencias' ? 'animate-pulse' : ''
+                              }`}
+                            >
+                              {badge.n > 9 ? '9+' : badge.n}
+                            </span>
+                          )}
+                        </NavLink>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
             );
           })}
         </nav>

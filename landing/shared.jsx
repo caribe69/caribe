@@ -94,7 +94,11 @@ function Nav({ current, onNavigate }) {
     <header className={`ed-nav ${scrolled ? 'ed-nav-scrolled' : ''}`}>
       <div className="ed-nav-row">
         <a className="ed-nav-logo" onClick={() => onNavigate('home')} style={{ cursor: 'pointer' }}>
-          <span className="ed-nav-logo-mark">S</span>
+          <img
+            src="assets/logo.png"
+            alt="Sol Caribe"
+            style={{ width: 42, height: 42, borderRadius: '50%', objectFit: 'cover', background: 'var(--ed-ink)' }}
+          />
           <span>Sol <em style={{ color: 'var(--ed-gold)' }}>Caribe</em></span>
         </a>
         <nav className="ed-nav-tabs" aria-label="Main">
@@ -126,7 +130,14 @@ function Footer() {
       <div className="ed-footer-inner">
         <div className="ed-footer-top">
           <div className="ed-footer-brand">
-            <h3>Sol <em style={{ fontStyle: 'italic', color: 'var(--ed-gold-soft)' }}>Caribe</em></h3>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 18 }}>
+              <img
+                src="assets/logo.png"
+                alt="Sol Caribe"
+                style={{ width: 52, height: 52, borderRadius: '50%', objectFit: 'cover', background: 'rgba(255,255,255,0.08)', padding: 4, border: '1px solid rgba(255,255,255,0.12)' }}
+              />
+              <h3 style={{ margin: 0 }}>Sol <em style={{ fontStyle: 'italic', color: 'var(--ed-gold-soft)' }}>Caribe</em></h3>
+            </div>
             <p>
               Tu hogar fuera de casa en el Caribe colombiano. Cuatro sedes
               frente al mar, once habitaciones y 39 años ininterrumpidos

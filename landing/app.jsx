@@ -2,6 +2,85 @@
 // Hs Sol Caribe — router principal
 // ─────────────────────────────────────────────────────────────
 
+// SEO dinámico — actualiza <title>, <meta description> y <link canonical>
+// según la sección activa. Ejecutado desde dentro del router principal.
+const SEO_BY_SECTION = {
+  home: {
+    title: 'Sol Caribe — Hotel 4 sedes · Rodadero · Cartagena · San Andrés · Minca',
+    description: 'Vive el Caribe como pocos. 4 sedes frente al mar en Colombia con desayuno incluido, piscina y atención caribeña. Reserva directa 10% off.',
+    path: '/',
+  },
+  rooms: {
+    title: 'Habitaciones — Hs Sol Caribe · 11 habitaciones en 4 sedes',
+    description: 'Explora nuestras habitaciones en las 4 sedes: desde estándar hasta suites frente al mar. Fotos, precios, amenidades y disponibilidad.',
+    path: '/habitaciones',
+  },
+  sedes: {
+    title: 'Sedes — Hs Sol Caribe · Rodadero, Cartagena, San Andrés y Minca',
+    description: '4 destinos del Caribe colombiano bajo la misma marca. Descubre cada sede, su carácter y qué la hace única.',
+    path: '/sedes',
+  },
+  sede: {
+    // completado dinámicamente con el nombre de la sede
+    title: 'Sede — Hs Sol Caribe',
+    description: 'Detalle de la sede Sol Caribe: fotos, habitaciones, amenidades y precios.',
+    path: '/sede',
+  },
+  room: {
+    title: 'Habitación — Hs Sol Caribe',
+    description: 'Detalle de la habitación: fotos, amenidades, capacidad y precio por noche.',
+    path: '/habitacion',
+  },
+  amenities: {
+    title: 'Servicios y amenidades — Hs Sol Caribe',
+    description: 'Piscina, desayuno incluido, WiFi gratuito, playa privada, parqueadero y más en todas nuestras sedes del Caribe.',
+    path: '/servicios',
+  },
+  gallery: {
+    title: 'Galería — Hs Sol Caribe · Fotos y videos del Caribe',
+    description: 'Fotografías y tour en video de las 4 sedes. Playa, piscinas, habitaciones, amaneceres y atardeceres caribeños.',
+    path: '/galeria',
+  },
+  contact: {
+    title: 'Contacto — Hs Sol Caribe · +57 305 · 284 · 9123',
+    description: 'Habla con nosotros por teléfono, WhatsApp o email. Atención 24/7 para reservas, grupos y eventos en cualquiera de nuestras 4 sedes.',
+    path: '/contacto',
+  },
+  booking: {
+    title: 'Reserva — Hs Sol Caribe',
+    description: 'Completa tu reserva en Hs Sol Caribe con mejor precio garantizado y cancelación gratis 72h antes.',
+    path: '/reserva',
+  },
+  confirmed: {
+    title: 'Reserva confirmada — Hs Sol Caribe',
+    description: 'Tu reserva ha sido confirmada. Gracias por elegir Sol Caribe.',
+    path: '/confirmada',
+  },
+};
+
+function applySEO(section, extra) {
+  const cfg = SEO_BY_SECTION[section] || SEO_BY_SECTION.home;
+  const title = extra?.title || cfg.title;
+  const description = extra?.description || cfg.description;
+  const path = extra?.path || cfg.path;
+
+  document.title = title;
+
+  const setMeta = (selector, attr, content) => {
+    const el = document.querySelector(selector);
+    if (el) el.setAttribute(attr, content);
+  };
+  setMeta('meta[name="description"]', 'content', description);
+  setMeta('meta[property="og:title"]', 'content', title);
+  setMeta('meta[property="og:description"]', 'content', description);
+  setMeta('meta[name="twitter:title"]', 'content', title);
+  setMeta('meta[name="twitter:description"]', 'content', description);
+
+  const canonical = document.querySelector('link[rel="canonical"]');
+  if (canonical) canonical.setAttribute('href', `https://caribeperu.com${path}`);
+  setMeta('meta[property="og:url"]', 'content', `https://caribeperu.com${path}`);
+}
+
 // Observer global para elementos [data-reveal] — se activan al entrar en viewport
 function useScrollReveal() {
   React.useEffect(() => {
@@ -67,6 +146,38 @@ function VariationB({ onNavigateExternal }) {
     setSection(s);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
+
+  // SEO: actualiza <title>, description, canonical cada vez que cambia la sección.
+  // Para 'sede' y 'room' resolvemos el nombre real desde los datos.
+  React.useEffect(() => {
+    if (section === 'sede' && sedeId && window.SEDES) {
+      const sede = window.SEDES.find((s) => s.id === sedeId);
+      if (sede) {
+        applySEO('sede', {
+          title: `${sede.name} — Hs Sol Caribe · Sede ${sede.short || ''}`,
+          description: sede.desc
+            ? `${sede.desc} Reserva directa en Hs Sol Caribe.`
+            : `Sede ${sede.name} de Hs Sol Caribe: habitaciones, amenidades y precios.`,
+          path: `/sede/${sede.id}`,
+        });
+        return;
+      }
+    }
+    if (section === 'room' && roomId && window.ROOMS) {
+      const room = window.ROOMS.find((r) => r.id === roomId);
+      if (room) {
+        applySEO('room', {
+          title: `${room.name} — Hs Sol Caribe · Habitación #${room.num}`,
+          description: room.desc
+            ? `${room.desc}`
+            : `Habitación ${room.name} en Hs Sol Caribe. ${room.capacity || 2} huéspedes, ${room.beds || 'cama doble'}.`,
+          path: `/habitacion/${room.id}`,
+        });
+        return;
+      }
+    }
+    applySEO(section);
+  }, [section, sedeId, roomId, liveData.loaded]);
 
   return (
     <div className="ch-root ed-page" style={{ minHeight: '100%' }}>

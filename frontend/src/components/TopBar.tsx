@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
@@ -23,6 +23,7 @@ import {
   Sun,
   Moon,
   Monitor,
+  Clock,
 } from 'lucide-react';
 import { useAuthStore, UsuarioInfo } from '@/store/auth';
 import { useThemeStore, ThemeMode } from '@/store/theme';
@@ -302,6 +303,7 @@ export default function TopBar({ usuario }: { usuario: UsuarioInfo | null }) {
                     </div>
                   </div>
                 </div>
+                <SessionCountdown/>
                 <div className="p-1">
                   <button
                     onClick={() => {
@@ -392,6 +394,68 @@ function ThemeToggle() {
           </div>
         </>
       )}
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────
+// SessionCountdown — muestra tiempo restante de la sesión actual
+// (en el dropdown del usuario, arriba de los botones).
+// ─────────────────────────────────────────────────────────────
+function SessionCountdown() {
+  const tokenExp = useAuthStore((s) => s.tokenExp);
+  const [now, setNow] = useState(() => Math.floor(Date.now() / 1000));
+
+  useEffect(() => {
+    const id = setInterval(() => setNow(Math.floor(Date.now() / 1000)), 30_000);
+    return () => clearInterval(id);
+  }, []);
+
+  if (!tokenExp) return null;
+  const remaining = tokenExp - now;
+
+  // Si ya expiró
+  if (remaining <= 0) {
+    return (
+      <div className="px-4 py-3 border-b border-slate-100 dark:border-slate-700 bg-rose-50 dark:bg-rose-900/20 flex items-center gap-2">
+        <Clock size={14} className="text-rose-600 dark:text-rose-400" />
+        <span className="text-[11px] font-semibold text-rose-700 dark:text-rose-300">
+          Sesión expirada
+        </span>
+      </div>
+    );
+  }
+
+  const days = Math.floor(remaining / 86400);
+  const hours = Math.floor((remaining % 86400) / 3600);
+  const minutes = Math.floor((remaining % 3600) / 60);
+
+  // Color según cuánto queda
+  const urgent = remaining < 3600; // <1h
+  const warn = remaining < 86400;  // <1d
+
+  const colorClass = urgent
+    ? 'bg-rose-50 dark:bg-rose-900/20 text-rose-700 dark:text-rose-300 border-rose-100 dark:border-rose-800'
+    : warn
+      ? 'bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-300 border-amber-100 dark:border-amber-800'
+      : 'bg-violet-50 dark:bg-violet-900/20 text-violet-700 dark:text-violet-300 border-violet-100 dark:border-violet-800';
+
+  const parts: string[] = [];
+  if (days > 0) parts.push(`${days}d`);
+  if (hours > 0 || days > 0) parts.push(`${hours}h`);
+  parts.push(`${minutes}m`);
+
+  return (
+    <div className={`px-4 py-2.5 border-b flex items-center gap-2 ${colorClass}`}>
+      <Clock size={13} className="shrink-0" />
+      <div className="flex-1 min-w-0">
+        <div className="text-[9px] uppercase tracking-widest font-semibold opacity-70">
+          La sesión cierra en
+        </div>
+        <div className="text-sm font-bold tabular-nums leading-tight">
+          {parts.join(' ')}
+        </div>
+      </div>
     </div>
   );
 }

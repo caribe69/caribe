@@ -14,11 +14,15 @@ import { extname, join } from 'path';
 import { mkdirSync } from 'fs';
 import {
   IsEmail,
+  IsInt,
   IsOptional,
   IsString,
   IsUrl,
+  Max,
   MaxLength,
+  Min,
 } from 'class-validator';
+import { Type } from 'class-transformer';
 import { Rol } from '@prisma/client';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../auth/roles.guard';
@@ -42,6 +46,7 @@ class UpdateSettingsDto {
   @IsOptional() @IsString() apiRucToken?: string;
   @IsOptional() @IsUrl() apiDniUrl?: string;
   @IsOptional() @IsUrl() apiRucUrl?: string;
+  @IsOptional() @Type(() => Number) @IsInt() @Min(1) @Max(365) sessionTtlDays?: number;
 }
 
 @UseGuards(JwtAuthGuard, RolesGuard)

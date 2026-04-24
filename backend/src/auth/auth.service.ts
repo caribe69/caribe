@@ -52,8 +52,21 @@ export class AuthService {
       rol: user.rol,
       sedeId: sedeIdEfectivo,
     };
+
+    // Duración de la sesión: leer de AppConfig.sessionTtlDays (default 30).
+    // Si no existe la fila aún, usamos 30 días. Clamp [1, 365].
+    let ttlDays = 30;
+    try {
+      const cfg = await this.prisma.appConfig.findUnique({ where: { id: 1 } });
+      if (cfg && Number.isFinite(cfg.sessionTtlDays)) {
+        ttlDays = Math.min(365, Math.max(1, cfg.sessionTtlDays));
+      }
+    } catch {
+      // Si falla la lectura, usamos el default; no bloquear el login
+    }
+
     return {
-      access_token: this.jwt.sign(payload),
+      access_token: this.jwt.sign(payload, { expiresIn: `${ttlDays}d` }),
       usuario: {
         id: user.id,
         nombre: user.nombre,

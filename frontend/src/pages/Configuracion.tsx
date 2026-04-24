@@ -8,9 +8,12 @@ import {
   Eye,
   EyeOff,
   CheckCircle2,
+  Clock,
+  ShieldCheck,
 } from 'lucide-react';
 import { api } from '@/lib/api';
 import { useToast } from '@/components/ToastProvider';
+import { useAuthStore } from '@/store/auth';
 
 interface Config {
   id: number;
@@ -24,11 +27,16 @@ interface Config {
   apiRucToken?: string | null;
   apiDniUrl?: string;
   apiRucUrl?: string;
+  sessionTtlDays?: number;
 }
+
+const SESSION_PRESETS = [1, 7, 14, 30, 60, 90, 180, 365];
 
 export default function Configuracion() {
   const qc = useQueryClient();
   const { show: toast } = useToast();
+  const usuario = useAuthStore((s) => s.usuario);
+  const isSuper = usuario?.rol === 'SUPERADMIN';
   const { data } = useQuery<Config>({
     queryKey: ['config'],
     queryFn: async () => (await api.get('/settings')).data,
@@ -45,6 +53,7 @@ export default function Configuracion() {
     apiRucToken: '',
     apiDniUrl: 'https://dniruc.apisperu.com/api/v1/dni',
     apiRucUrl: 'https://dniruc.apisperu.com/api/v1/ruc',
+    sessionTtlDays: 30,
   });
   const [showDniToken, setShowDniToken] = useState(false);
   const [showRucToken, setShowRucToken] = useState(false);
@@ -65,6 +74,7 @@ export default function Configuracion() {
         apiDniUrl: data.apiDniUrl || 'https://dniruc.apisperu.com/api/v1/dni',
         apiRucUrl: data.apiRucUrl || 'https://dniruc.apisperu.com/api/v1/ruc',
         logoPath: data.logoPath,
+        sessionTtlDays: data.sessionTtlDays ?? 30,
       });
     }
   }, [data]);
@@ -82,6 +92,7 @@ export default function Configuracion() {
           apiRucToken: form.apiRucToken || null,
           apiDniUrl: form.apiDniUrl,
           apiRucUrl: form.apiRucUrl,
+          sessionTtlDays: form.sessionTtlDays ?? 30,
         })
       ).data,
     onSuccess: () => {
@@ -352,6 +363,75 @@ export default function Configuracion() {
           )}
         </div>
       </section>
+
+      {/* Sesión — duración del JWT (SUPERADMIN only) */}
+      {isSuper && (
+        <section className="bg-white rounded-3xl p-6 shadow-sm">
+          <div className="flex items-center gap-2 mb-1">
+            <ShieldCheck size={18} className="text-violet-600" />
+            <h2 className="font-hotel text-lg font-bold text-slate-900">
+              Duración de sesión
+            </h2>
+          </div>
+          <p className="text-sm text-slate-500 mb-4">
+            Cuánto dura la sesión antes de pedir volver a iniciar sesión.
+            Los cambios se aplican en los próximos logins (los tokens ya
+            emitidos mantienen su expiración anterior).
+          </p>
+
+          <div className="flex flex-wrap gap-2 mb-4">
+            {SESSION_PRESETS.map((d) => (
+              <button
+                key={d}
+                type="button"
+                onClick={() => setForm({ ...form, sessionTtlDays: d })}
+                className={`px-4 py-2 rounded-xl text-sm font-semibold border transition ${
+                  form.sessionTtlDays === d
+                    ? 'bg-violet-600 text-white border-violet-600 shadow-md shadow-violet-500/30'
+                    : 'bg-white text-slate-700 border-slate-200 hover:border-violet-300 hover:bg-violet-50'
+                }`}
+              >
+                {d === 1 ? '1 día' : d === 365 ? '1 año' : `${d} días`}
+              </button>
+            ))}
+          </div>
+
+          <div className="flex items-center gap-3">
+            <div className="flex-1">
+              <label className="text-[10px] font-semibold text-slate-500 uppercase tracking-widest">
+                Valor personalizado (1–365 días)
+              </label>
+              <input
+                type="number"
+                min={1}
+                max={365}
+                className={`${inputCls} mt-1`}
+                value={form.sessionTtlDays ?? 30}
+                onChange={(e) =>
+                  setForm({
+                    ...form,
+                    sessionTtlDays: Math.min(365, Math.max(1, Number(e.target.value) || 30)),
+                  })
+                }
+              />
+            </div>
+            <div className="flex-1 bg-violet-50 rounded-xl p-4 flex items-center gap-3">
+              <Clock size={20} className="text-violet-600 shrink-0" />
+              <div>
+                <div className="text-[10px] font-semibold text-violet-700 uppercase tracking-widest">
+                  Actual
+                </div>
+                <div className="text-lg font-bold text-slate-900 tabular-nums">
+                  {form.sessionTtlDays ?? 30} día{(form.sessionTtlDays ?? 30) === 1 ? '' : 's'}
+                </div>
+                <div className="text-[11px] text-slate-500">
+                  ≈ {((form.sessionTtlDays ?? 30) * 24).toLocaleString('es-PE')} horas
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+      )}
 
       <div className="flex justify-end sticky bottom-4">
         <button

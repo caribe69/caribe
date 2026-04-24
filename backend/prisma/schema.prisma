@@ -610,6 +610,8 @@ model AppConfig {
   apiRucToken       String?
   apiDniUrl         String   @default("https://dniruc.apisperu.com/api/v1/dni")
   apiRucUrl         String   @default("https://dniruc.apisperu.com/api/v1/ruc")
+  // Duración de la sesión en días (controla expiresIn del JWT al login)
+  sessionTtlDays    Int      @default(30)
   actualizadoEn     DateTime @updatedAt
   creadoEn          DateTime @default(now())
 }

@@ -12,6 +12,7 @@ export interface UpdateSettingsInput {
   apiRucToken?: string | null;
   apiDniUrl?: string;
   apiRucUrl?: string;
+  sessionTtlDays?: number;
 }
 
 @Injectable()
@@ -35,6 +36,7 @@ export class SettingsService {
       empresaTelefono: cfg.empresaTelefono,
       empresaEmail: cfg.empresaEmail,
       logoPath: cfg.logoPath,
+      sessionTtlDays: cfg.sessionTtlDays,
     };
   }
 
@@ -44,6 +46,14 @@ export class SettingsService {
 
   async update(data: UpdateSettingsInput) {
     await this.ensureRow();
+    // Validar sessionTtlDays si viene
+    if (data.sessionTtlDays !== undefined) {
+      const n = Number(data.sessionTtlDays);
+      if (!Number.isFinite(n) || n < 1 || n > 365) {
+        throw new Error('sessionTtlDays debe estar entre 1 y 365');
+      }
+      data = { ...data, sessionTtlDays: Math.floor(n) };
+    }
     return this.prisma.appConfig.update({
       where: { id: 1 },
       data,

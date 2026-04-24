@@ -3,51 +3,58 @@
 // ─────────────────────────────────────────────────────────────
 
 // Splash loader: reproduce assets/inicio.mp4 fullscreen al cargar.
-// Solo una vez por sesión (sessionStorage). Fade-out al terminar el video
-// o al pasar 6s como máximo. Click o tecla cualquiera = saltarlo.
-function SplashLoader() {
-  const [fading, setFading] = React.useState(false);
-  const [hidden, setHidden] = React.useState(false);
-  const videoRef = React.useRef(null);
-
-  // No mostrar si ya se vio en esta sesión
-  const [show] = React.useState(() => {
+// Con forceShow=true se muestra SIEMPRE (ignorando sessionStorage).
+// Fade-out al terminar el video o al pasar 10s como máximo.
+// Click/tecla después del primer segundo = saltarlo.
+function SplashLoader({ forceShow, onDone }) {
+  const shouldShow = (() => {
+    if (forceShow) return true;
     try { return !sessionStorage.getItem('splash-seen'); } catch { return true; }
-  });
+  })();
+
+  const [fading, setFading] = React.useState(false);
+  const [hidden, setHidden] = React.useState(!shouldShow);
+  const videoRef = React.useRef(null);
+  const canSkipRef = React.useRef(false);
 
   React.useEffect(() => {
-    if (!show) { setHidden(true); return; }
+    if (!shouldShow) return;
     try { sessionStorage.setItem('splash-seen', '1'); } catch {}
 
-    // Bloquear scroll mientras está visible
     const prevOverflow = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
 
-    // Timeout de seguridad (6s máximo)
-    const safetyTimer = setTimeout(() => triggerFade(), 6000);
+    // Permitir skip recién después de 1s (así no se salta solo por un click del botón)
+    const enableSkip = setTimeout(() => { canSkipRef.current = true; }, 1000);
 
-    // Saltar al click o tecla
-    const skip = () => triggerFade();
-    window.addEventListener('click', skip, { once: true });
-    window.addEventListener('keydown', skip, { once: true });
+    // Timeout de seguridad aumentado a 10s (por si la red es lenta)
+    const safety = setTimeout(() => triggerFade(), 10000);
+
+    const skip = () => { if (canSkipRef.current) triggerFade(); };
+    window.addEventListener('click', skip);
+    window.addEventListener('keydown', skip);
 
     return () => {
-      clearTimeout(safetyTimer);
+      clearTimeout(safety);
+      clearTimeout(enableSkip);
       window.removeEventListener('click', skip);
       window.removeEventListener('keydown', skip);
       document.body.style.overflow = prevOverflow;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [forceShow]);
 
   const triggerFade = () => {
     if (fading) return;
     setFading(true);
-    setTimeout(() => setHidden(true), 850);
     document.body.style.overflow = '';
+    setTimeout(() => {
+      setHidden(true);
+      if (onDone) onDone();
+    }, 850);
   };
 
-  if (!show || hidden) return null;
+  if (hidden) return null;
 
   return (
     <div className={`ed-splash ${fading ? 'fading' : ''}`}>
@@ -57,6 +64,7 @@ function SplashLoader() {
         autoPlay muted playsInline
         preload="auto"
         onEnded={triggerFade}
+        onError={() => triggerFade()}
         className="ed-splash-video"
       />
     </div>
@@ -176,7 +184,15 @@ function VariationB({ onNavigateExternal }) {
   const [sedeId, setSedeId] = React.useState(null);
   const [booking, setBooking] = React.useState(null);
   const [liveData, setLiveData] = React.useState({ loaded: false });
+  const [splashKey, setSplashKey] = React.useState(0);          // incrementa para re-montar
+  const [splashForce, setSplashForce] = React.useState(false);  // true = ignorar sessionStorage
   useScrollReveal();
+
+  const replaySplash = () => {
+    try { sessionStorage.removeItem('splash-seen'); } catch {}
+    setSplashForce(true);
+    setSplashKey((k) => k + 1);
+  };
 
   // Cargar datos reales desde el backend (sedes + habitaciones con fotos)
   React.useEffect(() => {
@@ -243,7 +259,16 @@ function VariationB({ onNavigateExternal }) {
 
   return (
     <div className="ch-root ed-page" style={{ minHeight: '100%' }}>
-      <SplashLoader/>
+      <SplashLoader key={splashKey} forceShow={splashForce}/>
+      <button
+        type="button"
+        className="ed-splash-replay"
+        onClick={replaySplash}
+        title="Reproducir intro"
+      >
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+        Ver intro
+      </button>
       <Nav current={section} onNavigate={(s) => go(s)} />
       {section === 'home' && (
         <>

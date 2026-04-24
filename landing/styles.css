@@ -617,6 +617,35 @@ a[style*="border-radius: 32px"]:hover {
   .ed-splash-video { object-fit: contain; }
 }
 
+/* Botón flotante "Ver intro" para reproducir splash de prueba */
+.ed-splash-replay {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  z-index: 95;
+  font-family: var(--ed-fs-mono);
+  font-size: 10px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: #fff;
+  background: var(--ed-ink);
+  border: 1px solid var(--ed-ink);
+  border-radius: 100px;
+  padding: 10px 18px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  box-shadow: 0 10px 30px -8px rgba(20,24,31,0.4);
+  transition: transform 0.3s ease, box-shadow 0.3s ease, background 0.3s ease;
+}
+.ed-splash-replay:hover {
+  transform: translateY(-2px);
+  background: var(--ed-gold);
+  border-color: var(--ed-gold);
+  box-shadow: 0 14px 36px -8px rgba(184,148,78,0.45);
+}
+
 /* ═══════════════════════════════════════════════════════════════
  * EDITORIAL REDESIGN — "Caribe Editorial"
  * Sistema de diseño nuevo con prefijo .ed-

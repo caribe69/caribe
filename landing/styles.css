@@ -980,28 +980,31 @@ a[style*="border-radius: 32px"]:hover {
 @media (max-width: 960px) {
   .ed-hero-card { padding: 40px 28px; }
 }
+/* Logo animado en la esquina superior-derecha de la tarjeta del hero */
+.ed-hero-card { position: relative; }
 .ed-hero-intro-video {
-  position: relative;
-  margin-bottom: 28px;
-  height: 140px;
-  display: flex;
-  align-items: center;
-  justify-content: flex-start;
+  position: absolute;
+  top: 40px;
+  right: 40px;
+  width: 170px;
+  height: 170px;
+  z-index: 2;
   pointer-events: none;
 }
 .ed-hero-intro-video video {
+  width: 100%;
   height: 100%;
-  width: auto;
-  max-width: 100%;
   object-fit: contain;
-  /* Hace que el fondo negro del video se vuelva transparente sobre el cream */
+  /* Fondo negro del video se vuelve transparente sobre el cream */
   mix-blend-mode: screen;
   filter: contrast(1.05) saturate(1.1);
 }
 @media (max-width: 960px) {
   .ed-hero-intro-video {
-    height: 110px;
-    justify-content: center;
+    position: relative;
+    top: auto; right: auto;
+    width: 120px; height: 120px;
+    margin: 0 0 20px auto;
   }
 }
 

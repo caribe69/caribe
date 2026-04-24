@@ -78,7 +78,6 @@ function Nav({ current, onNavigate }) {
     { id: 'rooms', label: 'Habitaciones' },
     { id: 'sedes', label: 'Sedes' },
     { id: 'amenities', label: 'Servicios' },
-    { id: 'gallery', label: 'Galería' },
     { id: 'contact', label: 'Contacto' },
   ];
 

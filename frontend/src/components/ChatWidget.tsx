@@ -284,7 +284,7 @@ export default function ChatWidget() {
 
       {/* Panel */}
       {abierto && (
-        <div className="fixed bottom-5 right-5 z-[61] w-[380px] max-w-[95vw] h-[560px] max-h-[85vh] bg-white rounded-3xl shadow-2xl border border-slate-200 flex flex-col overflow-hidden animate-scale-in">
+        <div className="fixed bottom-5 right-5 z-[61] w-[380px] max-w-[95vw] h-[560px] max-h-[85vh] bg-white rounded-3xl shadow-2xl dark:shadow-slate-950/60 border border-slate-200 flex flex-col overflow-hidden animate-scale-in">
           {/* Header */}
           <div className="bg-gradient-to-r from-violet-700 to-violet-600 text-white px-4 py-3 flex items-center gap-3">
             {activeUserId && (
@@ -303,10 +303,10 @@ export default function ChatWidget() {
                       {activeContacto.nombre?.[0]?.toUpperCase()}
                     </div>
                     <span
-                      className={`absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2 border-violet-700 ${
+                      className={`absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2 border-violet-700 dark:border-violet-900 ${
                         online.has(activeContacto.id)
                           ? 'bg-emerald-400'
-                          : 'bg-slate-400'
+                          : 'bg-slate-400 dark:bg-slate-500'
                       }`}
                     />
                   </div>
@@ -322,7 +322,7 @@ export default function ChatWidget() {
                         </>
                       ) : (
                         <>
-                          <span className="w-1.5 h-1.5 rounded-full bg-slate-400" />
+                          <span className="w-1.5 h-1.5 rounded-full bg-slate-400 dark:bg-slate-500" />
                           desconectado · {activeContacto.rol?.replace('_', ' ')}
                         </>
                       )}
@@ -425,7 +425,7 @@ export default function ChatWidget() {
                 onClick={() =>
                   bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
                 }
-                className="sticky bottom-2 left-[calc(100%-3rem)] w-9 h-9 rounded-full bg-white shadow-lg border border-slate-200 flex items-center justify-center text-violet-600 hover:bg-violet-50 btn-press animate-fade-in"
+                className="sticky bottom-2 left-[calc(100%-3rem)] w-9 h-9 rounded-full bg-white shadow-lg dark:shadow-slate-950/60 border border-slate-200 flex items-center justify-center text-violet-600 hover:bg-violet-50 btn-press animate-fade-in"
                 aria-label="Bajar al final"
               >
                 <ChevronDown size={16} />
@@ -525,12 +525,12 @@ function Inbox({
       </div>
 
       {/* Indicador de gente online */}
-      <div className="px-4 py-2 bg-emerald-50/40 border-b border-emerald-100 flex items-center gap-2 text-xs">
+      <div className="px-4 py-2 bg-emerald-50/40 dark:bg-emerald-900/20 border-b border-emerald-100 dark:border-emerald-900/40 flex items-center gap-2 text-xs">
         <span className="relative flex w-2 h-2">
           <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
           <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
         </span>
-        <span className="text-emerald-700 font-semibold">
+        <span className="text-emerald-700 dark:text-emerald-300 font-semibold">
           {onlineCount} conectado{onlineCount === 1 ? '' : 's'} ahora
         </span>
       </div>
@@ -550,17 +550,17 @@ function Inbox({
             <button
               key={c.usuario.id}
               onClick={() => onSelect(c.usuario.id)}
-              className="w-full flex items-center gap-3 px-4 py-3 hover:bg-white transition text-left"
+              className="w-full flex items-center gap-3 px-4 py-3 hover:bg-white dark:hover:bg-slate-800 transition text-left"
             >
               <div className="relative shrink-0">
                 <div className="w-11 h-11 rounded-full bg-gradient-to-br from-violet-500 to-violet-700 flex items-center justify-center text-white font-bold">
                   {c.usuario.nombre?.[0]?.toUpperCase()}
                 </div>
                 <span
-                  className={`absolute bottom-0 right-0 w-3 h-3 rounded-full border-2 border-slate-50 ${
+                  className={`absolute bottom-0 right-0 w-3 h-3 rounded-full border-2 border-slate-50 dark:border-slate-900 ${
                     online.has(c.usuario.id)
                       ? 'bg-emerald-500'
-                      : 'bg-slate-400'
+                      : 'bg-slate-400 dark:bg-slate-500'
                   }`}
                 />
               </div>
@@ -601,15 +601,15 @@ function Inbox({
             <button
               key={u.id}
               onClick={() => onSelect(u.id)}
-              className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-white transition text-left"
+              className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-white dark:hover:bg-slate-800 transition text-left"
             >
               <div className="relative shrink-0">
                 <div className="w-9 h-9 rounded-full bg-slate-200 flex items-center justify-center text-slate-700 font-bold text-sm">
                   {u.nombre?.[0]?.toUpperCase()}
                 </div>
                 <span
-                  className={`absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full border-2 border-slate-50 ${
-                    online.has(u.id) ? 'bg-emerald-500' : 'bg-slate-300'
+                  className={`absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full border-2 border-slate-50 dark:border-slate-900 ${
+                    online.has(u.id) ? 'bg-emerald-500' : 'bg-slate-300 dark:bg-slate-600'
                   }`}
                 />
               </div>
@@ -619,7 +619,7 @@ function Inbox({
                 </div>
                 <div className="text-[10px] text-slate-400 uppercase tracking-wider flex items-center gap-1">
                   {online.has(u.id) && (
-                    <span className="text-emerald-600 font-bold normal-case tracking-normal">
+                    <span className="text-emerald-600 dark:text-emerald-400 font-bold normal-case tracking-normal">
                       en línea ·
                     </span>
                   )}
@@ -664,11 +664,11 @@ function MessageBubble({
 
   let bubbleClass = '';
   if (isAnulacionReq)
-    bubbleClass = 'bg-amber-50 text-amber-900 border border-amber-300';
+    bubbleClass = 'bg-amber-50 text-amber-900 dark:text-amber-100 border border-amber-300 dark:border-amber-700/60';
   else if (isAprobada)
-    bubbleClass = 'bg-emerald-50 text-emerald-900 border border-emerald-300';
+    bubbleClass = 'bg-emerald-50 text-emerald-900 dark:text-emerald-100 border border-emerald-300 dark:border-emerald-700/60';
   else if (isRechazada)
-    bubbleClass = 'bg-rose-50 text-rose-900 border border-rose-300';
+    bubbleClass = 'bg-rose-50 text-rose-900 dark:text-rose-100 border border-rose-300 dark:border-rose-700/60';
   else if (mine)
     bubbleClass =
       'bg-gradient-to-br from-violet-600 to-violet-500 text-white';
@@ -777,7 +777,7 @@ function DateSeparator({ fecha }: { fecha: Date }) {
     });
   return (
     <div className="flex justify-center my-3">
-      <span className="text-[10px] font-semibold uppercase tracking-widest text-slate-500 bg-white/80 backdrop-blur border border-slate-200 rounded-full px-3 py-1 shadow-sm">
+      <span className="text-[10px] font-semibold uppercase tracking-widest text-slate-500 bg-white/80 dark:bg-slate-900/80 backdrop-blur border border-slate-200 rounded-full px-3 py-1 shadow-sm">
         {label}
       </span>
     </div>

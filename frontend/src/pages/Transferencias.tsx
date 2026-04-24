@@ -97,7 +97,7 @@ export default function Transferencias() {
                 Transferencias entre sedes
               </h1>
               {esPrincipal && (
-                <span className="bg-gradient-to-r from-amber-400 to-amber-500 text-white text-[10px] uppercase tracking-widest font-bold px-2 py-0.5 rounded-full shadow-md shadow-amber-500/30">
+                <span className="bg-gradient-to-r from-amber-400 to-amber-500 text-white text-[10px] uppercase tracking-widest font-bold px-2 py-0.5 rounded-full shadow-md shadow-amber-500/30 dark:shadow-amber-900/40">
                   ⭐ Sede principal
                 </span>
               )}
@@ -112,7 +112,7 @@ export default function Transferencias() {
         {esPrincipal && (
           <button
             onClick={() => setNueva(true)}
-            className="inline-flex items-center gap-2 bg-gradient-to-r from-violet-600 to-violet-500 hover:from-violet-700 hover:to-violet-600 text-white px-4 py-2.5 rounded-xl text-sm font-semibold shadow-md shadow-violet-500/30 btn-press"
+            className="inline-flex items-center gap-2 bg-gradient-to-r from-violet-600 to-violet-500 hover:from-violet-700 hover:to-violet-600 text-white px-4 py-2.5 rounded-xl text-sm font-semibold shadow-md shadow-violet-500/30 dark:shadow-violet-900/40 btn-press"
           >
             <Plus size={16} /> Nueva transferencia
           </button>
@@ -241,7 +241,7 @@ export default function Transferencias() {
                         e.stopPropagation();
                         setDetalle(t);
                       }}
-                      className="inline-flex items-center gap-1 text-xs bg-slate-100 hover:bg-violet-100 hover:text-violet-700 text-slate-700 px-3 py-1.5 rounded-lg transition"
+                      className="inline-flex items-center gap-1 text-xs bg-slate-100 hover:bg-violet-100 hover:text-violet-700 dark:hover:text-violet-200 text-slate-700 px-3 py-1.5 rounded-lg transition"
                     >
                       Ver
                     </button>
@@ -273,17 +273,17 @@ function EstadoBadge({ estado }: { estado: Transferencia['estado'] }) {
   const map = {
     ENVIADA: {
       bg: 'bg-amber-100',
-      text: 'text-amber-800',
+      text: 'text-amber-800 dark:text-amber-200',
       Icon: Clock,
     },
     RECIBIDA: {
       bg: 'bg-emerald-100',
-      text: 'text-emerald-800',
+      text: 'text-emerald-800 dark:text-emerald-200',
       Icon: CheckCircle,
     },
     RECHAZADA: {
       bg: 'bg-rose-100',
-      text: 'text-rose-800',
+      text: 'text-rose-800 dark:text-rose-200',
       Icon: X,
     },
     CANCELADA: {
@@ -460,7 +460,7 @@ function NuevaTransferenciaModal({
                           return next;
                         });
                       }}
-                      className="w-7 h-7 rounded-lg bg-slate-100 hover:bg-rose-100 text-slate-700 hover:text-rose-700 font-bold disabled:opacity-30"
+                      className="w-7 h-7 rounded-lg bg-slate-100 hover:bg-rose-100 text-slate-700 hover:text-rose-700 dark:hover:text-rose-200 font-bold disabled:opacity-30"
                     >
                       −
                     </button>
@@ -492,7 +492,7 @@ function NuevaTransferenciaModal({
                           [p.id]: Math.min(p.stock, cant + 1),
                         }));
                       }}
-                      className="w-7 h-7 rounded-lg bg-slate-100 hover:bg-emerald-100 text-slate-700 hover:text-emerald-700 font-bold disabled:opacity-30"
+                      className="w-7 h-7 rounded-lg bg-slate-100 hover:bg-emerald-100 text-slate-700 hover:text-emerald-700 dark:hover:text-emerald-200 font-bold disabled:opacity-30"
                     >
                       +
                     </button>
@@ -518,8 +518,8 @@ function NuevaTransferenciaModal({
 
         <div className="border-t border-slate-100 p-4 bg-slate-50 flex items-center justify-between gap-3">
           <div className="text-sm text-slate-600">
-            <b className="text-violet-700">{productosSel}</b> productos ·{' '}
-            <b className="text-violet-700">{totalItems}</b> unidades
+            <b className="text-violet-700 dark:text-violet-300">{productosSel}</b> productos ·{' '}
+            <b className="text-violet-700 dark:text-violet-300">{totalItems}</b> unidades
           </div>
           <div className="flex gap-2">
             <button
@@ -531,7 +531,7 @@ function NuevaTransferenciaModal({
             <button
               onClick={() => crear.mutate()}
               disabled={!valido || crear.isPending}
-              className="inline-flex items-center gap-2 bg-gradient-to-r from-violet-600 to-violet-500 hover:from-violet-700 hover:to-violet-600 text-white px-6 py-2.5 rounded-xl font-semibold shadow-md shadow-violet-500/30 disabled:opacity-40 btn-press"
+              className="inline-flex items-center gap-2 bg-gradient-to-r from-violet-600 to-violet-500 hover:from-violet-700 hover:to-violet-600 text-white px-6 py-2.5 rounded-xl font-semibold shadow-md shadow-violet-500/30 dark:shadow-violet-900/40 disabled:opacity-40 btn-press"
             >
               <Send size={14} />
               {crear.isPending ? 'Enviando...' : 'Enviar transferencia'}
@@ -640,7 +640,7 @@ function DetalleTransferenciaModal({
                 {transferencia.sedeOrigen.nombre}
               </div>
             </div>
-            <ArrowRight size={20} className="text-violet-500" />
+            <ArrowRight size={20} className="text-violet-500 dark:text-violet-300" />
             <div className="flex-1 text-right">
               <div className="text-[10px] uppercase tracking-widest text-slate-500 font-semibold">
                 A
@@ -672,7 +672,7 @@ function DetalleTransferenciaModal({
                     </div>
                   </div>
                   <div className="text-right">
-                    <div className="font-hotel text-xl font-bold text-violet-700 tabular-nums">
+                    <div className="font-hotel text-xl font-bold text-violet-700 dark:text-violet-300 tabular-nums">
                       × {i.cantidad}
                     </div>
                   </div>
@@ -691,7 +691,7 @@ function DetalleTransferenciaModal({
           )}
 
           {transferencia.motivoRechazo && (
-            <div className="bg-rose-50 border border-rose-200 rounded-xl p-3 text-sm text-rose-800">
+            <div className="bg-rose-50 border border-rose-200 rounded-xl p-3 text-sm text-rose-800 dark:text-rose-200">
               <div className="text-[10px] uppercase tracking-widest font-bold mb-1">
                 Motivo de rechazo
               </div>
@@ -751,7 +751,7 @@ function DetalleTransferenciaModal({
                 <button
                   onClick={() => recibir.mutate()}
                   disabled={recibir.isPending}
-                  className="inline-flex items-center gap-2 bg-gradient-to-r from-emerald-500 to-emerald-400 hover:from-emerald-600 hover:to-emerald-500 text-white px-6 py-2.5 rounded-xl font-semibold shadow-md shadow-emerald-500/30 btn-press"
+                  className="inline-flex items-center gap-2 bg-gradient-to-r from-emerald-500 to-emerald-400 hover:from-emerald-600 hover:to-emerald-500 text-white px-6 py-2.5 rounded-xl font-semibold shadow-md shadow-emerald-500/30 dark:shadow-emerald-900/40 btn-press"
                 >
                   <CheckCircle size={14} />
                   {recibir.isPending ? 'Recibiendo...' : 'Confirmar recepción'}

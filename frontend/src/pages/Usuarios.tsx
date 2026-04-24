@@ -67,11 +67,11 @@ export default function Usuarios() {
 
   const rolBadge = (rol: string) => {
     const map: Record<string, string> = {
-      SUPERADMIN: 'bg-violet-100 text-violet-700',
-      ADMIN_SEDE: 'bg-blue-100 text-blue-700',
-      HOTELERO: 'bg-emerald-100 text-emerald-700',
-      LIMPIEZA: 'bg-amber-100 text-amber-800',
-      CAJERO: 'bg-rose-100 text-rose-700',
+      SUPERADMIN: 'bg-violet-100 text-violet-700 dark:text-violet-200',
+      ADMIN_SEDE: 'bg-blue-100 text-blue-700 dark:text-blue-200',
+      HOTELERO: 'bg-emerald-100 text-emerald-700 dark:text-emerald-200',
+      LIMPIEZA: 'bg-amber-100 text-amber-800 dark:text-amber-200',
+      CAJERO: 'bg-rose-100 text-rose-700 dark:text-rose-200',
     };
     return map[rol] || 'bg-slate-100 text-slate-700';
   };
@@ -126,7 +126,7 @@ export default function Usuarios() {
                         <div className="font-semibold text-slate-800">
                           {u.nombre}
                           {esYo && (
-                            <span className="ml-2 text-[10px] font-bold text-violet-600 bg-violet-100 px-1.5 py-0.5 rounded">
+                            <span className="ml-2 text-[10px] font-bold text-violet-600 dark:text-violet-200 bg-violet-100 px-1.5 py-0.5 rounded">
                               TÚ
                             </span>
                           )}
@@ -158,7 +158,7 @@ export default function Usuarios() {
                     <span
                       className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold ${
                         u.activo
-                          ? 'bg-emerald-100 text-emerald-700'
+                          ? 'bg-emerald-100 text-emerald-700 dark:text-emerald-200'
                           : 'bg-slate-200 text-slate-600'
                       }`}
                     >
@@ -200,8 +200,8 @@ export default function Usuarios() {
                           Icon={u.activo ? PowerOff : Power}
                           className={
                             u.activo
-                              ? 'bg-amber-100 hover:bg-amber-200 text-amber-700'
-                              : 'bg-emerald-100 hover:bg-emerald-200 text-emerald-700'
+                              ? 'bg-amber-100 hover:bg-amber-200 text-amber-700 dark:text-amber-200'
+                              : 'bg-emerald-100 hover:bg-emerald-200 text-emerald-700 dark:text-emerald-200'
                           }
                         />
                       )}
@@ -557,7 +557,7 @@ function EditUsuarioModal({
           <button
             onClick={() => setForm({ ...form, activo: !form.activo })}
             className={`w-11 h-6 rounded-full transition relative ${
-              form.activo ? 'bg-emerald-500' : 'bg-slate-300'
+              form.activo ? 'bg-emerald-500' : 'bg-slate-300 dark:bg-slate-600'
             }`}
           >
             <span
@@ -709,7 +709,7 @@ function ModalShell({
 
 function ErrorBox({ msg }: { msg: string }) {
   return (
-    <div className="text-sm text-red-600 bg-red-50 border border-red-200 p-3 rounded-lg">
+    <div className="text-sm text-red-600 dark:text-red-300 bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-800 p-3 rounded-lg">
       {msg}
     </div>
   );

@@ -365,7 +365,7 @@ export default function Chat() {
                   {x.usuario.nombre?.[0]?.toUpperCase()}
                 </div>
                 <span
-                  className={`absolute bottom-0 right-0 w-3 h-3 rounded-full border-2 border-white ${
+                  className={`absolute bottom-0 right-0 w-3 h-3 rounded-full border-2 border-white dark:border-slate-900 ${
                     online.has(x.usuario.id) ? 'bg-emerald-500' : 'bg-slate-300'
                   }`}
                 />
@@ -455,7 +455,7 @@ export default function Chat() {
                       {activeContacto.nombre?.[0]?.toUpperCase()}
                     </div>
                     <span
-                      className={`absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full border-2 border-white ${
+                      className={`absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full border-2 border-white dark:border-slate-900 ${
                         online.has(activeContacto.id)
                           ? 'bg-emerald-500'
                           : 'bg-slate-300'
@@ -651,11 +651,11 @@ function MessageBubble({
 
   let bubbleClass = '';
   if (isAnulacionReq)
-    bubbleClass = 'bg-amber-50 text-amber-900 border border-amber-300';
+    bubbleClass = 'bg-amber-50 text-amber-900 dark:text-amber-100 border border-amber-300 dark:border-amber-500/40';
   else if (isAprobada)
-    bubbleClass = 'bg-emerald-50 text-emerald-900 border border-emerald-300';
+    bubbleClass = 'bg-emerald-50 text-emerald-900 dark:text-emerald-100 border border-emerald-300 dark:border-emerald-500/40';
   else if (isRechazada)
-    bubbleClass = 'bg-rose-50 text-rose-900 border border-rose-300';
+    bubbleClass = 'bg-rose-50 text-rose-900 dark:text-rose-100 border border-rose-300 dark:border-rose-500/40';
   else if (mine)
     bubbleClass = 'bg-gradient-to-br from-violet-600 to-violet-500 text-white';
   else
@@ -758,7 +758,7 @@ function DateSeparator({ fecha }: { fecha: Date }) {
     });
   return (
     <div className="flex justify-center my-3">
-      <span className="text-[10px] font-semibold uppercase tracking-widest text-slate-500 bg-white/80 backdrop-blur border border-slate-200 rounded-full px-3 py-1 shadow-sm">
+      <span className="text-[10px] font-semibold uppercase tracking-widest text-slate-500 bg-white/80 dark:bg-slate-800/70 backdrop-blur border border-slate-200 rounded-full px-3 py-1 shadow-sm">
         {label}
       </span>
     </div>

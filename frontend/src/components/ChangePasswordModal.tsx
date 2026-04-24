@@ -55,10 +55,10 @@ export default function ChangePasswordModal({ onClose }: Props) {
 
   return (
     <div className="fixed inset-0 bg-slate-950/60 backdrop-blur-sm z-[70] flex items-center justify-center p-4 animate-fade-in">
-      <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl animate-scale-in overflow-hidden">
+      <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl dark:shadow-slate-950/60 animate-scale-in overflow-hidden">
         <div className="p-6">
           <div className="flex items-start gap-4">
-            <div className="w-12 h-12 rounded-2xl bg-violet-100 text-violet-600 flex items-center justify-center ring-8 ring-violet-100 shrink-0">
+            <div className="w-12 h-12 rounded-2xl bg-violet-100 text-violet-600 flex items-center justify-center ring-8 ring-violet-100 dark:ring-violet-900/40 shrink-0">
               <Lock size={22} />
             </div>
             <div className="flex-1 min-w-0">

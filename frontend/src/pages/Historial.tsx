@@ -155,7 +155,7 @@ export default function Historial() {
                 <button
                   key={p.l}
                   onClick={() => preset(p.d)}
-                  className="px-3 py-2 text-xs font-medium bg-slate-100 hover:bg-violet-100 hover:text-violet-700 text-slate-600 rounded-lg btn-press transition"
+                  className="px-3 py-2 text-xs font-medium bg-slate-100 hover:bg-violet-100 hover:text-violet-700 dark:hover:text-violet-300 text-slate-600 rounded-lg btn-press transition"
                 >
                   {p.l}
                 </button>
@@ -250,7 +250,7 @@ export default function Historial() {
                       <div className="font-medium text-slate-700 flex items-center gap-1.5">
                         {a.clienteNombre}
                         {a.tipoComprobante === 'FACTURA' && (
-                          <span className="text-[9px] bg-amber-100 text-amber-800 font-bold px-1.5 py-0.5 rounded">
+                          <span className="text-[9px] bg-amber-100 text-amber-800 dark:text-amber-300 font-bold px-1.5 py-0.5 rounded">
                             FACTURA
                           </span>
                         )}
@@ -299,7 +299,7 @@ export default function Historial() {
                       {a.estado !== 'ANULADO' && (
                         <button
                           onClick={() => setBoleta(a)}
-                          className="inline-flex items-center gap-1 text-xs bg-violet-100 hover:bg-violet-200 text-violet-700 px-2.5 py-1.5 rounded-lg font-medium btn-press"
+                          className="inline-flex items-center gap-1 text-xs bg-violet-100 hover:bg-violet-200 text-violet-700 dark:text-violet-300 px-2.5 py-1.5 rounded-lg font-medium btn-press"
                           title="Ver e imprimir boleta"
                         >
                           <Printer size={12} />
@@ -395,9 +395,9 @@ function StatCard({
 
 function EstadoBadge({ estado }: { estado: string }) {
   const map: Record<string, string> = {
-    ACTIVO: 'bg-emerald-100 text-emerald-700',
+    ACTIVO: 'bg-emerald-100 text-emerald-700 dark:text-emerald-300',
     FINALIZADO: 'bg-slate-100 text-slate-700',
-    ANULADO: 'bg-rose-100 text-rose-700',
+    ANULADO: 'bg-rose-100 text-rose-700 dark:text-rose-300',
   };
   return (
     <span

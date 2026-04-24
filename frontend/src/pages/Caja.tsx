@@ -102,7 +102,7 @@ export default function Caja() {
         {turno.data ? (
           <div className="flex items-start justify-between flex-wrap gap-4">
             <div>
-              <div className="inline-flex items-center gap-1.5 bg-emerald-100 text-emerald-700 text-[10px] uppercase tracking-widest font-bold px-2.5 py-1 rounded-full mb-2">
+              <div className="inline-flex items-center gap-1.5 bg-emerald-100 text-emerald-700 dark:text-emerald-300 text-[10px] uppercase tracking-widest font-bold px-2.5 py-1 rounded-full mb-2">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
                 Turno abierto
               </div>
@@ -284,7 +284,7 @@ export default function Caja() {
                   <span
                     className={`inline-flex items-center gap-1.5 text-[10px] uppercase tracking-wider px-2.5 py-1 rounded-full font-bold ${
                       t.estado === 'ABIERTO'
-                        ? 'bg-emerald-100 text-emerald-700'
+                        ? 'bg-emerald-100 text-emerald-700 dark:text-emerald-300'
                         : 'bg-slate-100 text-slate-700'
                     }`}
                   >
@@ -298,7 +298,7 @@ export default function Caja() {
                 <Td className="text-right">
                   <button
                     onClick={() => verReporte(t.id)}
-                    className="inline-flex items-center gap-1 text-xs bg-slate-100 hover:bg-violet-100 hover:text-violet-700 text-slate-700 px-3 py-1.5 rounded-lg btn-press transition"
+                    className="inline-flex items-center gap-1 text-xs bg-slate-100 hover:bg-violet-100 hover:text-violet-700 dark:hover:text-violet-300 text-slate-700 px-3 py-1.5 rounded-lg btn-press transition"
                   >
                     <FileText size={12} /> Ver
                   </button>
@@ -467,7 +467,7 @@ function CierrePrintable({
     <>
       <div className="fixed inset-0 bg-slate-950/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 no-print animate-fade-in">
         <div className="bg-white rounded-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto scroll-premium animate-scale-in shadow-2xl">
-          <div className="flex justify-between items-center p-4 border-b border-slate-100 sticky top-0 bg-white z-10">
+          <div className="flex justify-between items-center p-4 border-b border-slate-100 sticky top-0 bg-white dark:bg-slate-900 z-10">
             <h2 className="font-hotel font-bold text-slate-900">
               Cierre de caja · Turno #{turno.id}
             </h2>

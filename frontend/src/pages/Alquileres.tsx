@@ -203,7 +203,7 @@ const ESTADO_STYLES: Record<string, EstadoStyle> = {
     label: 'Mantenimiento',
   },
   FUERA_SERVICIO: {
-    gradient: 'from-slate-50 via-white to-slate-100',
+    gradient: 'from-slate-50 via-white to-slate-100 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900',
     border: 'border-slate-200',
     iconBg: 'bg-slate-500',
     badgeBg: 'bg-slate-200',
@@ -445,7 +445,7 @@ function MapaHabitaciones() {
 
               {/* Info del huésped (solo OCUPADA) */}
               {h.estado === 'OCUPADA' && alquilerRef && (
-                <div className="mt-3 bg-white/70 backdrop-blur-sm border border-white rounded-xl px-2.5 py-1.5">
+                <div className="mt-3 bg-white/70 dark:bg-slate-900/60 backdrop-blur-sm border border-white dark:border-slate-700 rounded-xl px-2.5 py-1.5">
                   <div className="flex items-start justify-between gap-1.5">
                     <div className="min-w-0 flex-1">
                       <div className="text-[10px] text-slate-500 uppercase tracking-widest font-semibold">
@@ -502,7 +502,7 @@ function MapaHabitaciones() {
                   className={`mt-3 rounded-xl px-2.5 py-1.5 text-[11px] font-semibold flex items-center gap-1.5 ${
                     alistandoAtrasada
                       ? 'bg-rose-100 text-rose-700 border border-rose-300'
-                      : 'bg-white/70 text-slate-700 border border-white'
+                      : 'bg-white/70 dark:bg-slate-900/60 text-slate-700 border border-white dark:border-slate-700'
                   }`}
                 >
                   <Clock3 size={11} />
@@ -710,17 +710,17 @@ function AlquilerActivoModal({
                     </div>
                     {/* Badge estado de pago */}
                     {estadoPago === 'pagado' && (
-                      <span className="text-[10px] uppercase tracking-wider bg-emerald-100 text-emerald-800 font-bold px-2.5 py-1 rounded-full shrink-0">
+                      <span className="text-[10px] uppercase tracking-wider bg-emerald-100 text-emerald-800 dark:text-emerald-200 font-bold px-2.5 py-1 rounded-full shrink-0">
                         ✓ Pagado
                       </span>
                     )}
                     {estadoPago === 'parcial' && (
-                      <span className="text-[10px] uppercase tracking-wider bg-amber-100 text-amber-800 font-bold px-2.5 py-1 rounded-full shrink-0 animate-pulse">
+                      <span className="text-[10px] uppercase tracking-wider bg-amber-100 text-amber-800 dark:text-amber-200 font-bold px-2.5 py-1 rounded-full shrink-0 animate-pulse">
                         Parcial S/ {saldo.toFixed(0)}
                       </span>
                     )}
                     {estadoPago === 'pendiente' && (
-                      <span className="text-[10px] uppercase tracking-wider bg-rose-100 text-rose-800 font-bold px-2.5 py-1 rounded-full shrink-0 animate-pulse">
+                      <span className="text-[10px] uppercase tracking-wider bg-rose-100 text-rose-800 dark:text-rose-200 font-bold px-2.5 py-1 rounded-full shrink-0 animate-pulse">
                         Por cobrar
                       </span>
                     )}
@@ -732,12 +732,12 @@ function AlquilerActivoModal({
                       {alquiler.metodoPago}
                     </span>
                     {alquiler.tipoComprobante === 'FACTURA' && (
-                      <span className="text-[10px] bg-amber-100 text-amber-800 font-bold px-2 py-0.5 rounded">
+                      <span className="text-[10px] bg-amber-100 text-amber-800 dark:text-amber-200 font-bold px-2 py-0.5 rounded">
                         FACTURA · {alquiler.clienteRuc}
                       </span>
                     )}
                     {alquiler.amenitiesEntregados && (
-                      <span className="text-[10px] bg-amber-50 text-amber-700 font-medium px-2 py-0.5 rounded">
+                      <span className="text-[10px] bg-amber-50 text-amber-700 dark:text-amber-300 font-medium px-2 py-0.5 rounded">
                         🍫 chocolates ✓
                       </span>
                     )}
@@ -756,7 +756,7 @@ function AlquilerActivoModal({
 
                 {/* Aviso turno si pendiente */}
                 {estadoPago !== 'pagado' && (
-                  <div className="bg-amber-50 border-t border-amber-200 px-4 py-2 text-[11px] text-amber-900">
+                  <div className="bg-amber-50 border-t border-amber-200 px-4 py-2 text-[11px] text-amber-900 dark:text-amber-200">
                     <div className="flex items-start gap-1.5">
                       <span>📋</span>
                       <div>
@@ -769,7 +769,7 @@ function AlquilerActivoModal({
 
                 {/* Cobrado por si pagado */}
                 {estadoPago === 'pagado' && alquiler.cobradoPor && (
-                  <div className="bg-emerald-50 border-t border-emerald-200 px-4 py-2 text-[11px] text-emerald-800">
+                  <div className="bg-emerald-50 border-t border-emerald-200 px-4 py-2 text-[11px] text-emerald-800 dark:text-emerald-200">
                     ✓ Cobrado por <b>{alquiler.cobradoPor.nombre}</b>
                     {alquiler.pagadoEn && (
                       <> · {new Date(alquiler.pagadoEn).toLocaleString('es-PE', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}</>
@@ -811,7 +811,7 @@ function AlquilerActivoModal({
                     <div className="text-[9px] uppercase tracking-wider text-violet-600 font-bold">
                       Habitación
                     </div>
-                    <div className="text-sm font-semibold text-violet-900 tabular-nums">
+                    <div className="text-sm font-semibold text-violet-900 dark:text-violet-200 tabular-nums">
                       S/ {Number(alquiler.precioHabitacion).toFixed(2)}
                     </div>
                   </div>
@@ -819,7 +819,7 @@ function AlquilerActivoModal({
                     <div className="text-[9px] uppercase tracking-wider text-blue-600 font-bold">
                       Productos
                     </div>
-                    <div className="text-sm font-semibold text-blue-900 tabular-nums">
+                    <div className="text-sm font-semibold text-blue-900 dark:text-blue-200 tabular-nums">
                       S/ {Number(alquiler.totalProductos).toFixed(2)}
                     </div>
                   </div>
@@ -1191,7 +1191,7 @@ function NuevoAlquilerModal({
               </div>
             </div>
             {lookup?.fuente === 'local' && (
-              <div className="mt-2 flex items-center gap-2 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-lg px-3 py-2 text-xs">
+              <div className="mt-2 flex items-center gap-2 bg-emerald-50 border border-emerald-200 text-emerald-800 dark:text-emerald-200 rounded-lg px-3 py-2 text-xs">
                 <UserCheck size={14} />
                 <span>
                   <b>Cliente recurrente</b> · encontrado en el sistema ·{' '}
@@ -1202,7 +1202,7 @@ function NuevoAlquilerModal({
               </div>
             )}
             {lookup?.fuente === 'reniec' && (
-              <div className="mt-2 flex items-center gap-2 bg-violet-50 border border-violet-200 text-violet-800 rounded-lg px-3 py-2 text-xs">
+              <div className="mt-2 flex items-center gap-2 bg-violet-50 border border-violet-200 text-violet-800 dark:text-violet-200 rounded-lg px-3 py-2 text-xs">
                 <Search size={14} />
                 <span>
                   <b>Encontrado en RENIEC</b> · {lookup.nombre}
@@ -1230,7 +1230,7 @@ function NuevoAlquilerModal({
                 className="border border-slate-200 rounded-lg px-2.5 py-1 text-xs focus:outline-none focus:border-violet-400"
               />
               {form.clienteFechaNacimiento && (
-                <span className="text-xs font-bold text-violet-700 bg-violet-50 px-2 py-0.5 rounded-full">
+                <span className="text-xs font-bold text-violet-700 dark:text-violet-200 bg-violet-50 px-2 py-0.5 rounded-full">
                   {calcularEdad(form.clienteFechaNacimiento)} años
                 </span>
               )}
@@ -1239,7 +1239,7 @@ function NuevoAlquilerModal({
               !lookup.encontrado &&
               form.clienteDni.length === 8 &&
               !buscando && (
-                <div className="mt-2 flex items-center gap-2 bg-amber-50 border border-amber-200 text-amber-800 rounded-lg px-3 py-2 text-xs">
+                <div className="mt-2 flex items-center gap-2 bg-amber-50 border border-amber-200 text-amber-800 dark:text-amber-200 rounded-lg px-3 py-2 text-xs">
                   <span>
                     <b>No encontrado</b> · no está en el sistema ni en RENIEC.
                     Rellena los datos manualmente.
@@ -1414,18 +1414,18 @@ function NuevoAlquilerModal({
                 </div>
                 {rucData?.fuente === 'local' && (
                   <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-2.5 text-xs">
-                    <div className="font-bold text-emerald-900 flex items-center gap-1.5">
+                    <div className="font-bold text-emerald-900 dark:text-emerald-200 flex items-center gap-1.5">
                       <UserCheck size={12} /> Empresa recurrente
                     </div>
-                    <div className="text-emerald-900 mt-1 uppercase font-semibold">
+                    <div className="text-emerald-900 dark:text-emerald-200 mt-1 uppercase font-semibold">
                       {rucData.razonSocial}
                     </div>
                     {rucData.direccion && (
-                      <div className="text-emerald-700 mt-0.5">
+                      <div className="text-emerald-700 dark:text-emerald-300 mt-0.5">
                         {rucData.direccion}
                       </div>
                     )}
-                    <div className="text-emerald-600 mt-1 text-[10px]">
+                    <div className="text-emerald-600 dark:text-emerald-300 mt-1 text-[10px]">
                       {rucData.visitas} visita{rucData.visitas === 1 ? '' : 's'} · última:{' '}
                       {new Date(rucData.ultimaVisita).toLocaleDateString('es-PE')}
                     </div>
@@ -1433,18 +1433,18 @@ function NuevoAlquilerModal({
                 )}
                 {rucData?.fuente === 'sunat' && (
                   <div className="bg-violet-50 border border-violet-200 rounded-lg p-2.5 text-xs">
-                    <div className="font-bold text-violet-900 flex items-center gap-1.5">
+                    <div className="font-bold text-violet-900 dark:text-violet-200 flex items-center gap-1.5">
                       <Search size={12} /> Encontrado en SUNAT
                     </div>
-                    <div className="text-violet-900 mt-1 uppercase font-semibold">
+                    <div className="text-violet-900 dark:text-violet-200 mt-1 uppercase font-semibold">
                       {rucData.razonSocial}
                     </div>
                     {rucData.direccion && (
-                      <div className="text-violet-700 mt-0.5">
+                      <div className="text-violet-700 dark:text-violet-300 mt-0.5">
                         {rucData.direccion}
                       </div>
                     )}
-                    <div className="text-violet-600 mt-1 text-[10px] uppercase tracking-wider">
+                    <div className="text-violet-600 dark:text-violet-300 mt-1 text-[10px] uppercase tracking-wider">
                       {rucData.estado} · {rucData.condicion}
                     </div>
                   </div>
@@ -1453,7 +1453,7 @@ function NuevoAlquilerModal({
                   !rucData.encontrado &&
                   ruc.length === 11 &&
                   !buscandoRuc && (
-                    <div className="bg-amber-50 border border-amber-200 rounded-lg p-2.5 text-xs text-amber-800">
+                    <div className="bg-amber-50 border border-amber-200 rounded-lg p-2.5 text-xs text-amber-800 dark:text-amber-200">
                       <b>No encontrado</b> · no está en el sistema ni en SUNAT.
                       Completa la razón social manualmente.
                     </div>
@@ -1463,7 +1463,7 @@ function NuevoAlquilerModal({
           </div>
 
           {error && (
-            <div className="text-sm text-red-600 bg-red-50 p-2 rounded">
+            <div className="text-sm text-red-600 dark:text-red-300 bg-red-50 dark:bg-red-950/40 p-2 rounded">
               {error}
             </div>
           )}
@@ -1713,7 +1713,7 @@ function AgregarProductoModal({
             </div>
 
             {error && (
-              <div className="text-xs text-rose-700 bg-rose-50 border border-rose-200 rounded-lg p-2">
+              <div className="text-xs text-rose-700 dark:text-rose-300 bg-rose-50 border border-rose-200 rounded-lg p-2">
                 {error}
               </div>
             )}
@@ -1847,7 +1847,7 @@ function ListaAlquileres() {
                   {new Date(a.fechaSalida).toLocaleString()}
                 </div>
                 {a.motivoAnulacion && (
-                  <div className="text-xs text-red-600 mt-1">
+                  <div className="text-xs text-red-600 dark:text-red-300 mt-1">
                     Anulado: {a.motivoAnulacion}
                   </div>
                 )}
@@ -1857,9 +1857,9 @@ function ListaAlquileres() {
                 <span
                   className={`text-xs px-2 py-1 rounded-full font-medium ${
                     a.estado === 'ACTIVO'
-                      ? 'bg-emerald-100 text-emerald-700'
+                      ? 'bg-emerald-100 text-emerald-700 dark:text-emerald-200'
                       : a.estado === 'ANULADO'
-                        ? 'bg-red-100 text-red-700'
+                        ? 'bg-red-100 text-red-700 dark:text-red-200'
                         : 'bg-slate-100 text-slate-700'
                   }`}
                 >
@@ -2115,7 +2115,7 @@ function ExtenderAlquilerModal({
             ) : cotizacion.data ? (
               <>
                 <div className="flex items-center justify-between">
-                  <div className="text-[10px] uppercase tracking-widest text-violet-700 font-semibold">
+                  <div className="text-[10px] uppercase tracking-widest text-violet-700 dark:text-violet-300 font-semibold">
                     Precio de la extensión
                   </div>
                   <label className="flex items-center gap-1.5 cursor-pointer">
@@ -2165,7 +2165,7 @@ function ExtenderAlquilerModal({
                               cotizacion.data!.costoAuto.toFixed(2),
                             )
                           }
-                          className="font-semibold text-violet-700 hover:underline"
+                          className="font-semibold text-violet-700 dark:text-violet-300 hover:underline"
                         >
                           S/ {cotizacion.data.costoAuto.toFixed(2)}
                         </button>
@@ -2180,7 +2180,7 @@ function ExtenderAlquilerModal({
                     <span className="text-sm text-slate-600">
                       {cantidad} × S/ {cotizacion.data.precioUnidad.toFixed(2)}
                     </span>
-                    <span className="text-3xl font-hotel font-bold text-violet-700 tabular-nums">
+                    <span className="text-3xl font-hotel font-bold text-violet-700 dark:text-violet-300 tabular-nums">
                       + S/ {cotizacion.data.costoAuto.toFixed(2)}
                     </span>
                   </div>
@@ -2286,7 +2286,7 @@ function CobrarAlquilerModal({
 
         <div className="p-5 space-y-4">
           {/* Resumen */}
-          <div className="bg-gradient-to-br from-slate-50 to-slate-100 border border-slate-200 rounded-2xl p-4 space-y-1.5 text-sm">
+          <div className="bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-800 dark:to-slate-900 border border-slate-200 rounded-2xl p-4 space-y-1.5 text-sm">
             <div className="flex justify-between">
               <span className="text-slate-600">Total del alquiler</span>
               <span className="font-semibold tabular-nums">
@@ -2378,7 +2378,7 @@ function CobrarAlquilerModal({
                 </div>
               )}
               {!valido && montoNum > saldo && (
-                <div className="mt-2 text-xs text-rose-700 bg-rose-50 border border-rose-200 rounded p-2">
+                <div className="mt-2 text-xs text-rose-700 dark:text-rose-300 bg-rose-50 border border-rose-200 rounded p-2">
                   El monto excede el saldo pendiente
                 </div>
               )}
@@ -2579,10 +2579,10 @@ function DatosFiscalesModal({
               </div>
               {rucData?.fuente === 'local' && (
                 <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3 text-xs">
-                  <div className="font-bold text-emerald-900 flex items-center gap-1.5">
+                  <div className="font-bold text-emerald-900 dark:text-emerald-200 flex items-center gap-1.5">
                     <UserCheck size={12} /> Empresa recurrente
                   </div>
-                  <div className="text-emerald-700 mt-0.5">
+                  <div className="text-emerald-700 dark:text-emerald-300 mt-0.5">
                     {rucData.visitas} visita
                     {rucData.visitas === 1 ? '' : 's'} · última:{' '}
                     {new Date(rucData.ultimaVisita).toLocaleDateString('es-PE')}
@@ -2591,10 +2591,10 @@ function DatosFiscalesModal({
               )}
               {rucData?.fuente === 'sunat' && (
                 <div className="bg-violet-50 border border-violet-200 rounded-xl p-3 text-xs">
-                  <div className="font-bold text-violet-900 flex items-center gap-1.5">
+                  <div className="font-bold text-violet-900 dark:text-violet-200 flex items-center gap-1.5">
                     <Search size={12} /> Encontrado en SUNAT
                   </div>
-                  <div className="text-violet-700 mt-0.5">
+                  <div className="text-violet-700 dark:text-violet-300 mt-0.5">
                     {rucData.estado} · {rucData.condicion}
                   </div>
                 </div>
@@ -2603,7 +2603,7 @@ function DatosFiscalesModal({
                 !rucData.encontrado &&
                 ruc.length === 11 &&
                 !buscando && (
-                  <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 text-xs text-amber-800">
+                  <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 text-xs text-amber-800 dark:text-amber-200">
                     <b>No encontrado</b> · no está en el sistema ni en SUNAT.
                     Rellena la razón social manualmente abajo.
                   </div>

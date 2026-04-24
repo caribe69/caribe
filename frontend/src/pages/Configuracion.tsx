@@ -244,21 +244,21 @@ export default function Configuracion() {
           primero en tu historial (cliente frecuente) y si no existe consultará
           el servicio externo para auto-completar los datos del huésped.
         </p>
-        <div className="bg-violet-50 border border-violet-200 rounded-xl p-3 mb-4 text-xs text-violet-900">
+        <div className="bg-violet-50 border border-violet-200 rounded-xl p-3 mb-4 text-xs text-violet-900 dark:text-violet-200">
           <div className="font-semibold mb-1">📌 Proveedores soportados:</div>
           <div>
             <b>apisperu.com</b> — plan básico solo devuelve nombres.{' '}
-            <code className="bg-white px-1 py-0.5 rounded">
+            <code className="bg-white dark:bg-slate-800 dark:text-violet-100 px-1 py-0.5 rounded">
               https://dniruc.apisperu.com/api/v1/dni
             </code>
           </div>
           <div className="mt-1">
             <b>perudevs.com</b> — incluye fecha nacimiento + edad:{' '}
-            <code className="bg-white px-1 py-0.5 rounded">
+            <code className="bg-white dark:bg-slate-800 dark:text-violet-100 px-1 py-0.5 rounded">
               https://api.perudevs.com/api/v1/dni/complete
             </code>
           </div>
-          <div className="mt-1 text-violet-700">
+          <div className="mt-1 text-violet-700 dark:text-violet-300">
             El sistema detecta el proveedor automáticamente por la URL.
           </div>
         </div>
@@ -332,8 +332,8 @@ export default function Configuracion() {
             <div
               className={`text-xs px-3 py-1.5 rounded-lg ${
                 resultadoProbar.encontrado
-                  ? 'bg-emerald-100 text-emerald-800'
-                  : 'bg-amber-100 text-amber-800'
+                  ? 'bg-emerald-100 text-emerald-800 dark:text-emerald-200'
+                  : 'bg-amber-100 text-amber-800 dark:text-amber-200'
               }`}
             >
               {resultadoProbar.encontrado ? (

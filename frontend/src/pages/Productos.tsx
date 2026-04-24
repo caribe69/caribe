@@ -158,7 +158,7 @@ export default function Productos() {
             onClick={() => setVista('grid')}
             className={`px-2.5 py-1.5 rounded-md text-xs transition ${
               vista === 'grid'
-                ? 'bg-white shadow-sm text-violet-700'
+                ? 'bg-white shadow-sm text-violet-700 dark:text-violet-300'
                 : 'text-slate-500'
             }`}
             title="Grid"
@@ -169,7 +169,7 @@ export default function Productos() {
             onClick={() => setVista('lista')}
             className={`px-2.5 py-1.5 rounded-md text-xs transition ${
               vista === 'lista'
-                ? 'bg-white shadow-sm text-violet-700'
+                ? 'bg-white shadow-sm text-violet-700 dark:text-violet-300'
                 : 'text-slate-500'
             }`}
             title="Lista"
@@ -182,7 +182,7 @@ export default function Productos() {
         {puedeEditar && (
           <button
             onClick={() => setShowModal(true)}
-            className="inline-flex items-center gap-2 bg-gradient-to-r from-violet-600 to-violet-500 hover:from-violet-700 hover:to-violet-600 text-white px-4 py-2 rounded-xl text-sm font-medium shadow-md shadow-violet-500/30 btn-press"
+            className="inline-flex items-center gap-2 bg-gradient-to-r from-violet-600 to-violet-500 hover:from-violet-700 hover:to-violet-600 text-white px-4 py-2 rounded-xl text-sm font-medium shadow-md shadow-violet-500/30 dark:shadow-violet-900/40 btn-press"
           >
             <Plus size={15} /> Nuevo
           </button>
@@ -331,10 +331,10 @@ export default function Productos() {
                         <span
                           className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold ${
                             out
-                              ? 'bg-rose-100 text-rose-700'
+                              ? 'bg-rose-100 text-rose-700 dark:text-rose-200'
                               : low
-                                ? 'bg-amber-100 text-amber-800'
-                                : 'bg-emerald-100 text-emerald-700'
+                                ? 'bg-amber-100 text-amber-800 dark:text-amber-200'
+                                : 'bg-emerald-100 text-emerald-700 dark:text-emerald-200'
                           }`}
                         >
                           <span
@@ -356,7 +356,7 @@ export default function Productos() {
                         <td className="px-6 py-4 text-right">
                           <button
                             onClick={() => setShowAjuste(p)}
-                            className="inline-flex items-center gap-1.5 text-xs bg-slate-100 hover:bg-violet-100 hover:text-violet-700 text-slate-700 px-3 py-1.5 rounded-lg transition"
+                            className="inline-flex items-center gap-1.5 text-xs bg-slate-100 hover:bg-violet-100 hover:text-violet-700 dark:hover:text-violet-200 text-slate-700 px-3 py-1.5 rounded-lg transition"
                           >
                             <PackagePlus size={13} /> Stock
                           </button>
@@ -498,7 +498,7 @@ function ProductoCard({
               ? 'bg-rose-500 text-white'
               : low
                 ? 'bg-amber-500 text-white'
-                : 'bg-white/90 text-slate-700'
+                : 'bg-white/90 text-slate-700 dark:bg-slate-900/80 dark:text-slate-100'
           }`}
         >
           {out ? 'Agotado' : `${p.stock}`}
@@ -514,10 +514,10 @@ function ProductoCard({
           {p.nombre}
         </div>
         <div className="mt-2 flex items-baseline justify-between">
-          <div className="font-hotel text-xl font-bold text-violet-700 tabular-nums">
+          <div className="font-hotel text-xl font-bold text-violet-700 dark:text-violet-300 tabular-nums">
             S/ {Number(p.precio).toFixed(2)}
           </div>
-          <div className="text-[10px] uppercase tracking-widest text-slate-400 group-hover:text-violet-500 transition">
+          <div className="text-[10px] uppercase tracking-widest text-slate-400 group-hover:text-violet-500 dark:group-hover:text-violet-300 transition">
             Stock ±
           </div>
         </div>
@@ -594,7 +594,7 @@ function ProductoModal({ onClose }: { onClose: () => void }) {
         />
       </div>
       {error && (
-        <div className="text-sm text-red-600 bg-red-50 p-2 rounded">
+        <div className="text-sm text-red-600 dark:text-red-300 bg-red-50 dark:bg-red-900/30 p-2 rounded">
           {error}
         </div>
       )}
@@ -674,10 +674,10 @@ function AjusteStockModal({
       {/* Stock actual destacado */}
       <div className="bg-gradient-to-br from-violet-50 to-violet-100 border border-violet-200 rounded-2xl p-4 flex items-center justify-between">
         <div>
-          <div className="text-[10px] font-semibold text-violet-600 uppercase tracking-widest">
+          <div className="text-[10px] font-semibold text-violet-600 dark:text-violet-300 uppercase tracking-widest">
             Stock actual
           </div>
-          <div className="text-3xl font-hotel font-bold text-violet-700 mt-0.5">
+          <div className="text-3xl font-hotel font-bold text-violet-700 dark:text-violet-200 mt-0.5">
             {producto.stock}
           </div>
         </div>
@@ -688,9 +688,9 @@ function AjusteStockModal({
           <div
             className={`text-3xl font-hotel font-bold mt-0.5 ${
               stockResultante < 0
-                ? 'text-rose-600'
+                ? 'text-rose-600 dark:text-rose-300'
                 : stockResultante !== producto.stock
-                  ? 'text-emerald-600'
+                  ? 'text-emerald-600 dark:text-emerald-300'
                   : 'text-slate-400'
             }`}
           >
@@ -705,7 +705,7 @@ function AjusteStockModal({
           onClick={() => setModo('ajuste')}
           className={`flex-1 py-2 rounded-lg text-sm font-medium transition ${
             modo === 'ajuste'
-              ? 'bg-white shadow-sm text-violet-700'
+              ? 'bg-white shadow-sm text-violet-700 dark:text-violet-300'
               : 'text-slate-600'
           }`}
         >
@@ -715,7 +715,7 @@ function AjusteStockModal({
           onClick={() => setModo('establecer')}
           className={`flex-1 py-2 rounded-lg text-sm font-medium transition ${
             modo === 'establecer'
-              ? 'bg-white shadow-sm text-violet-700'
+              ? 'bg-white shadow-sm text-violet-700 dark:text-violet-300'
               : 'text-slate-600'
           }`}
         >
@@ -733,7 +733,7 @@ function AjusteStockModal({
               onClick={() =>
                 setDelta(String((Number(delta) || 0) - 1))
               }
-              className="w-10 h-10 rounded-xl bg-rose-100 hover:bg-rose-200 text-rose-700 font-bold text-xl btn-press"
+              className="w-10 h-10 rounded-xl bg-rose-100 hover:bg-rose-200 text-rose-700 dark:text-rose-200 font-bold text-xl btn-press"
             >
               −
             </button>
@@ -748,7 +748,7 @@ function AjusteStockModal({
               onClick={() =>
                 setDelta(String((Number(delta) || 0) + 1))
               }
-              className="w-10 h-10 rounded-xl bg-emerald-100 hover:bg-emerald-200 text-emerald-700 font-bold text-xl btn-press"
+              className="w-10 h-10 rounded-xl bg-emerald-100 hover:bg-emerald-200 text-emerald-700 dark:text-emerald-200 font-bold text-xl btn-press"
             >
               +
             </button>
@@ -762,8 +762,8 @@ function AjusteStockModal({
                 }
                 className={`px-2.5 py-1 rounded-lg text-xs font-medium ${
                   n > 0
-                    ? 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100'
-                    : 'bg-rose-50 text-rose-700 hover:bg-rose-100'
+                    ? 'bg-emerald-50 text-emerald-700 dark:text-emerald-200 hover:bg-emerald-100'
+                    : 'bg-rose-50 text-rose-700 dark:text-rose-200 hover:bg-rose-100'
                 }`}
               >
                 {n > 0 ? '+' : ''}
@@ -787,7 +787,7 @@ function AjusteStockModal({
           />
           <div className="text-xs text-slate-500 mt-2">
             Se registrará el movimiento como{' '}
-            <b className={cantidadAEnviar > 0 ? 'text-emerald-700' : 'text-rose-700'}>
+            <b className={cantidadAEnviar > 0 ? 'text-emerald-700 dark:text-emerald-300' : 'text-rose-700 dark:text-rose-300'}>
               {cantidadAEnviar > 0 ? '+' : ''}
               {cantidadAEnviar}
             </b>{' '}
@@ -813,12 +813,12 @@ function AjusteStockModal({
       </div>
 
       {stockResultante < 0 && (
-        <div className="text-xs text-rose-700 bg-rose-50 border border-rose-200 rounded-lg p-2.5">
+        <div className="text-xs text-rose-700 dark:text-rose-200 bg-rose-50 border border-rose-200 rounded-lg p-2.5">
           ⚠ El stock no puede quedar negativo.
         </div>
       )}
       {error && (
-        <div className="text-sm text-rose-700 bg-rose-50 border border-rose-200 rounded-lg p-2.5">
+        <div className="text-sm text-rose-700 dark:text-rose-200 bg-rose-50 border border-rose-200 rounded-lg p-2.5">
           {error}
         </div>
       )}
@@ -833,7 +833,7 @@ function AjusteStockModal({
         <button
           onClick={() => ajuste.mutate()}
           disabled={ajuste.isPending || !valido || stockResultante < 0}
-          className="flex-1 bg-gradient-to-r from-violet-600 to-violet-500 hover:from-violet-700 hover:to-violet-600 text-white py-2.5 rounded-xl font-semibold shadow-md shadow-violet-500/30 disabled:opacity-40 btn-press"
+          className="flex-1 bg-gradient-to-r from-violet-600 to-violet-500 hover:from-violet-700 hover:to-violet-600 text-white py-2.5 rounded-xl font-semibold shadow-md shadow-violet-500/30 dark:shadow-violet-900/40 disabled:opacity-40 btn-press"
         >
           {ajuste.isPending ? 'Guardando...' : 'Guardar cambio'}
         </button>

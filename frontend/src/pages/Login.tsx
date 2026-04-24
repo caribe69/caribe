@@ -192,7 +192,7 @@ export default function Login() {
               </div>
 
               {error && (
-                <div className="text-sm text-rose-700 bg-rose-50 border border-rose-200 rounded-xl p-3 animate-fade-in">
+                <div className="text-sm text-rose-700 dark:text-rose-200 bg-rose-50 border border-rose-200 dark:border-rose-500/30 rounded-xl p-3 animate-fade-in">
                   {error}
                 </div>
               )}

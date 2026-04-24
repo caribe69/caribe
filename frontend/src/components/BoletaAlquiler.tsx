@@ -58,7 +58,7 @@ export default function BoletaAlquiler({
   return (
     <>
       <div className="fixed inset-0 bg-slate-950/60 backdrop-blur-sm flex items-center justify-center p-4 z-[100] no-print animate-fade-in">
-        <div className="bg-white rounded-2xl w-full max-w-sm max-h-[90vh] overflow-y-auto scroll-premium animate-scale-in shadow-2xl">
+        <div className="bg-white rounded-2xl w-full max-w-sm max-h-[90vh] overflow-y-auto scroll-premium animate-scale-in shadow-2xl dark:shadow-slate-950/60">
           <div className="flex justify-between items-center p-3 border-b border-slate-100 sticky top-0 bg-white z-10">
             <h2 className="font-semibold text-slate-900 text-sm">
               {alquiler.tipoComprobante === 'FACTURA' ? 'Factura' : 'Boleta'} · #

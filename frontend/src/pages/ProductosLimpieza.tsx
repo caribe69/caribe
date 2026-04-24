@@ -34,7 +34,7 @@ export default function ProductosLimpieza() {
         </div>
         <button
           onClick={() => setShowModal(true)}
-          className="inline-flex items-center gap-2 bg-gradient-to-r from-violet-600 to-violet-500 hover:from-violet-700 hover:to-violet-600 text-white px-4 py-2.5 rounded-xl text-sm font-medium shadow-md shadow-violet-500/30 transition btn-press"
+          className="inline-flex items-center gap-2 bg-gradient-to-r from-violet-600 to-violet-500 hover:from-violet-700 hover:to-violet-600 text-white px-4 py-2.5 rounded-xl text-sm font-medium shadow-md shadow-violet-500/30 dark:shadow-violet-900/40 transition btn-press"
         >
           <Plus size={16} /> Nuevo producto
         </button>
@@ -77,7 +77,7 @@ export default function ProductosLimpieza() {
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-3">
                       <div className="w-10 h-10 rounded-xl bg-amber-100 flex items-center justify-center shrink-0">
-                        <Sparkles size={18} className="text-amber-600" />
+                        <Sparkles size={18} className="text-amber-600 dark:text-amber-300" />
                       </div>
                       <div className="font-semibold text-slate-800">
                         {p.nombre}
@@ -89,10 +89,10 @@ export default function ProductosLimpieza() {
                     <span
                       className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold ${
                         out
-                          ? 'bg-rose-100 text-rose-700'
+                          ? 'bg-rose-100 text-rose-700 dark:text-rose-200'
                           : low
-                            ? 'bg-amber-100 text-amber-800'
-                            : 'bg-emerald-100 text-emerald-700'
+                            ? 'bg-amber-100 text-amber-800 dark:text-amber-200'
+                            : 'bg-emerald-100 text-emerald-700 dark:text-emerald-200'
                       }`}
                     >
                       <span
@@ -105,7 +105,7 @@ export default function ProductosLimpieza() {
                   <td className="px-6 py-4 text-right">
                     <button
                       onClick={() => setAjuste(p)}
-                      className="inline-flex items-center gap-1.5 text-xs bg-slate-100 hover:bg-violet-100 hover:text-violet-700 text-slate-700 px-3 py-1.5 rounded-lg transition"
+                      className="inline-flex items-center gap-1.5 text-xs bg-slate-100 hover:bg-violet-100 hover:text-violet-700 dark:hover:text-violet-200 text-slate-700 px-3 py-1.5 rounded-lg transition"
                     >
                       <PackagePlus size={13} /> Stock
                     </button>
@@ -222,7 +222,7 @@ function Form({ onClose }: { onClose: () => void }) {
         />
       </div>
       {error && (
-        <div className="text-sm text-red-600 bg-red-50 p-2 rounded">
+        <div className="text-sm text-red-600 dark:text-red-300 bg-red-50 dark:bg-red-900/30 p-2 rounded">
           {error}
         </div>
       )}

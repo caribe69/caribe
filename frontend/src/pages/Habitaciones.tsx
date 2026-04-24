@@ -227,7 +227,7 @@ export default function Habitaciones() {
       </div>
 
       {pisos && pisos.length === 0 && (
-        <div className="bg-gradient-to-r from-amber-50 to-amber-100/50 border border-amber-200 text-amber-800 p-4 rounded-xl mb-4 text-sm flex items-center gap-3">
+        <div className="bg-gradient-to-r from-amber-50 to-amber-100/50 dark:from-amber-900/30 dark:to-amber-800/20 border border-amber-200 text-amber-800 dark:text-amber-200 p-4 rounded-xl mb-4 text-sm flex items-center gap-3">
           <Layers size={18} />
           <span>
             Esta sede aún no tiene pisos. Crea al menos un piso antes de agregar
@@ -247,7 +247,7 @@ export default function Habitaciones() {
           return (
             <div
               key={h.id}
-              className={`group relative bg-gradient-to-br ${theme.gradient} border border-white/80 rounded-2xl overflow-hidden border-l-4 ${theme.accent} shadow-sm hover:shadow-xl transition-all duration-300 hover:-translate-y-1`}
+              className={`group relative bg-gradient-to-br ${theme.gradient} dark:from-slate-800 dark:to-slate-800/60 border border-white/80 dark:border-slate-700 rounded-2xl overflow-hidden border-l-4 ${theme.accent} shadow-sm hover:shadow-xl transition-all duration-300 hover:-translate-y-1`}
             >
               {/* Foto principal como cabecera si hay */}
               {h.fotos && h.fotos.length > 0 ? (
@@ -266,7 +266,7 @@ export default function Habitaciones() {
                       e.stopPropagation();
                       setFotosHab(h);
                     }}
-                    className="absolute top-2 right-2 bg-white/90 hover:bg-white rounded-lg px-2 py-1 text-[10px] font-semibold text-slate-700 flex items-center gap-1 shadow-sm backdrop-blur"
+                    className="absolute top-2 right-2 bg-white/90 dark:bg-slate-900/80 hover:bg-white dark:hover:bg-slate-900 rounded-lg px-2 py-1 text-[10px] font-semibold text-slate-700 dark:text-slate-200 flex items-center gap-1 shadow-sm backdrop-blur"
                   >
                     <Camera size={11} /> {h.fotos.length}
                   </button>
@@ -319,7 +319,7 @@ export default function Habitaciones() {
               )}
 
               {/* Precios */}
-              <div className="mt-4 pt-4 border-t border-white/70 flex items-center justify-between">
+              <div className="mt-4 pt-4 border-t border-white/70 dark:border-slate-700 flex items-center justify-between">
                 <div>
                   <div className="text-[10px] uppercase tracking-widest text-slate-400">
                     Por hora
@@ -342,13 +342,13 @@ export default function Habitaciones() {
               <div className="mt-4 grid grid-cols-2 gap-2">
                 <button
                   onClick={() => setCambiandoEstado(h)}
-                  className="flex items-center justify-center gap-1.5 bg-white/80 hover:bg-white text-slate-700 py-2 rounded-lg text-xs font-medium border border-white shadow-sm transition"
+                  className="flex items-center justify-center gap-1.5 bg-white/80 dark:bg-slate-900/60 hover:bg-white dark:hover:bg-slate-900 text-slate-700 dark:text-slate-200 py-2 rounded-lg text-xs font-medium border border-white dark:border-slate-700 shadow-sm transition"
                 >
                   <Settings2 size={12} /> Estado
                 </button>
                 <button
                   onClick={() => setFotosHab(h)}
-                  className="flex items-center justify-center gap-1.5 bg-white/80 hover:bg-white text-slate-700 py-2 rounded-lg text-xs font-medium border border-white shadow-sm transition"
+                  className="flex items-center justify-center gap-1.5 bg-white/80 dark:bg-slate-900/60 hover:bg-white dark:hover:bg-slate-900 text-slate-700 dark:text-slate-200 py-2 rounded-lg text-xs font-medium border border-white dark:border-slate-700 shadow-sm transition"
                 >
                   <Camera size={12} /> Fotos
                 </button>
@@ -359,7 +359,7 @@ export default function Habitaciones() {
         })}
 
         {!isLoading && filtradas.length === 0 && (
-          <div className="col-span-full bg-white/70 backdrop-blur rounded-2xl border border-slate-200 p-12 text-center">
+          <div className="col-span-full bg-white/70 dark:bg-slate-900/60 backdrop-blur rounded-2xl border border-slate-200 p-12 text-center">
             <BedDouble
               size={40}
               className="mx-auto text-slate-300 mb-2"
@@ -657,7 +657,7 @@ function Modal({
 }) {
   return (
     <div className="fixed inset-0 bg-violet-950/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-fade-in">
-      <div className="bg-white rounded-2xl w-full max-w-md p-6 shadow-2xl border border-white animate-scale-in">
+      <div className="bg-white rounded-2xl w-full max-w-md p-6 shadow-2xl border border-white dark:border-slate-700 animate-scale-in">
         <div className="flex justify-between items-center mb-5">
           <h2 className="font-hotel text-xl font-semibold text-slate-900">
             {title}

@@ -120,7 +120,7 @@ export default function Sedes() {
                         {s.nombre}
                       </div>
                       {s.esPrincipal && (
-                        <div className="text-[10px] uppercase tracking-widest text-amber-600 font-bold">
+                        <div className="text-[10px] uppercase tracking-widest text-amber-600 dark:text-amber-300 font-bold">
                           ⭐ Sede principal
                         </div>
                       )}
@@ -135,7 +135,7 @@ export default function Sedes() {
                   <span
                     className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold ${
                       s.activa
-                        ? 'bg-emerald-100 text-emerald-700'
+                        ? 'bg-emerald-100 text-emerald-700 dark:text-emerald-200'
                         : 'bg-slate-200 text-slate-600'
                     }`}
                   >
@@ -151,12 +151,12 @@ export default function Sedes() {
                       <button
                         onClick={() => marcarPrincipal.mutate(s.id)}
                         disabled={marcarPrincipal.isPending}
-                        className="inline-flex items-center gap-1 text-xs bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-300 px-3 py-1.5 rounded-lg transition btn-press"
+                        className="inline-flex items-center gap-1 text-xs bg-amber-50 hover:bg-amber-100 text-amber-800 dark:text-amber-200 border border-amber-300 dark:border-amber-700 px-3 py-1.5 rounded-lg transition btn-press"
                       >
                         <Star size={12} /> Marcar principal
                       </button>
                     ) : (
-                      <span className="text-[10px] text-amber-600 font-bold">
+                      <span className="text-[10px] text-amber-600 dark:text-amber-300 font-bold">
                         ✓ Principal
                       </span>
                     )}
@@ -194,7 +194,7 @@ export default function Sedes() {
       </div>
 
       {show && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center p-4 z-50">
+        <div className="fixed inset-0 bg-black/40 dark:bg-black/70 flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-xl w-full max-w-md p-6">
             <h2 className="text-lg font-bold mb-4">Nueva sede</h2>
             <div className="space-y-3">

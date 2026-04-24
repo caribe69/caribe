@@ -55,7 +55,7 @@ const VARIANT_STYLES: Record<
 > = {
   info: {
     Icon: Info,
-    ring: 'ring-violet-100',
+    ring: 'ring-violet-100 dark:ring-violet-900/40',
     iconBg: 'bg-violet-100',
     iconColor: 'text-violet-600',
     confirmBtn:
@@ -63,7 +63,7 @@ const VARIANT_STYLES: Record<
   },
   success: {
     Icon: Check,
-    ring: 'ring-emerald-100',
+    ring: 'ring-emerald-100 dark:ring-emerald-900/40',
     iconBg: 'bg-emerald-100',
     iconColor: 'text-emerald-600',
     confirmBtn:
@@ -71,7 +71,7 @@ const VARIANT_STYLES: Record<
   },
   warning: {
     Icon: AlertTriangle,
-    ring: 'ring-amber-100',
+    ring: 'ring-amber-100 dark:ring-amber-900/40',
     iconBg: 'bg-amber-100',
     iconColor: 'text-amber-600',
     confirmBtn:
@@ -79,7 +79,7 @@ const VARIANT_STYLES: Record<
   },
   danger: {
     Icon: XCircle,
-    ring: 'ring-rose-100',
+    ring: 'ring-rose-100 dark:ring-rose-900/40',
     iconBg: 'bg-rose-100',
     iconColor: 'text-rose-600',
     confirmBtn:
@@ -154,7 +154,7 @@ function ConfirmDialog({
 
   return (
     <div className="fixed inset-0 z-[90] flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-sm animate-fade-in">
-      <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl animate-scale-in overflow-hidden">
+      <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl dark:shadow-slate-950/60 animate-scale-in overflow-hidden">
         <div className="p-6">
           <div className="flex items-start gap-4">
             <div
@@ -231,7 +231,7 @@ function PromptDialog({
 
   return (
     <div className="fixed inset-0 z-[90] flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-sm animate-fade-in">
-      <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl animate-scale-in overflow-hidden">
+      <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl dark:shadow-slate-950/60 animate-scale-in overflow-hidden">
         <form onSubmit={submit} className="p-6">
           <div className="flex items-start gap-4 mb-4">
             <div

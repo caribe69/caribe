@@ -176,7 +176,7 @@ export default function Limpieza() {
                       </span>
                     </div>
                   ) : (
-                    <span className="text-xs text-amber-600">Sin asignar</span>
+                    <span className="text-xs text-amber-600 dark:text-amber-300">Sin asignar</span>
                   )}
                 </Td>
                 <Td>
@@ -395,9 +395,9 @@ function IconBtn({
 
 function EstadoBadge({ estado }: { estado: string }) {
   const cfg: Record<string, { cls: string; label: string }> = {
-    PENDIENTE: { cls: 'bg-amber-100 text-amber-700', label: 'Pendiente' },
-    EN_PROCESO: { cls: 'bg-blue-100 text-blue-700', label: 'Limpiando' },
-    COMPLETADA: { cls: 'bg-emerald-100 text-emerald-700', label: 'Completada' },
+    PENDIENTE: { cls: 'bg-amber-100 text-amber-700 dark:text-amber-200', label: 'Pendiente' },
+    EN_PROCESO: { cls: 'bg-blue-100 text-blue-700 dark:text-blue-200', label: 'Limpiando' },
+    COMPLETADA: { cls: 'bg-emerald-100 text-emerald-700 dark:text-emerald-200', label: 'Completada' },
     CANCELADA: { cls: 'bg-slate-100 text-slate-700', label: 'Cancelada' },
   };
   const c = cfg[estado] || cfg.CANCELADA;
@@ -704,7 +704,7 @@ function ModalShell({
 
 function ErrorBox({ msg }: { msg: string }) {
   return (
-    <div className="text-sm text-red-600 bg-red-50 border border-red-200 p-3 rounded-lg">
+    <div className="text-sm text-red-600 dark:text-red-300 bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/30 p-3 rounded-lg">
       {msg}
     </div>
   );

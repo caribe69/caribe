@@ -186,7 +186,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
         <button
           onClick={toggleMute}
           title={muted ? 'Activar sonido' : 'Silenciar'}
-          className="fixed top-4 right-[22rem] z-[201] w-9 h-9 rounded-full bg-white/90 backdrop-blur border border-slate-200 shadow-lg flex items-center justify-center hover:bg-white btn-press transition animate-fade-in"
+          className="fixed top-4 right-[22rem] z-[201] w-9 h-9 rounded-full bg-white/90 dark:bg-slate-900/90 backdrop-blur border border-slate-200 shadow-lg dark:shadow-slate-950/60 flex items-center justify-center hover:bg-white dark:hover:bg-slate-900 btn-press transition animate-fade-in"
         >
           {muted ? (
             <VolumeX size={15} className="text-slate-500" />
@@ -311,7 +311,7 @@ function ToastItem({
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
       onClick={onClose}
-      className="pointer-events-auto relative overflow-hidden bg-white/95 backdrop-blur-xl border border-slate-200/60 rounded-2xl shadow-xl shadow-slate-900/10 flex items-start gap-3 pr-2 pl-1 py-3 animate-slide-in-right cursor-pointer hover:shadow-2xl transition-all"
+      className="pointer-events-auto relative overflow-hidden bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl border border-slate-200/60 rounded-2xl shadow-xl shadow-slate-900/10 dark:shadow-slate-950/60 flex items-start gap-3 pr-2 pl-1 py-3 animate-slide-in-right cursor-pointer hover:shadow-2xl transition-all"
       style={{
         transform: `scale(${scale}) translateY(${yOffset}px)`,
         transition: 'transform 250ms cubic-bezier(0.22, 1, 0.36, 1)',
@@ -358,7 +358,7 @@ function ToastItem({
       </button>
 
       {/* Barra de progreso de auto-dismiss */}
-      <div className="absolute left-0 right-0 bottom-0 h-0.5 bg-slate-100/80">
+      <div className="absolute left-0 right-0 bottom-0 h-0.5 bg-slate-100/80 dark:bg-slate-800/80">
         <div
           className={`h-full ${s.progress} transition-none`}
           style={{ width: `${progress}%` }}

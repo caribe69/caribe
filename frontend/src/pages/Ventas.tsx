@@ -74,7 +74,7 @@ export default function Ventas() {
                   {new Date(v.creadoEn).toLocaleString()} · {v.usuario.nombre}
                 </div>
                 {v.motivoAnulacion && (
-                  <div className="text-xs text-red-600 mt-1">
+                  <div className="text-xs text-red-600 dark:text-red-400 mt-1">
                     Anulada: {v.motivoAnulacion}
                   </div>
                 )}
@@ -84,8 +84,8 @@ export default function Ventas() {
                 <span
                   className={`text-xs px-2 py-1 rounded-full font-medium ${
                     v.estado === 'ACTIVA'
-                      ? 'bg-emerald-100 text-emerald-700'
-                      : 'bg-red-100 text-red-700'
+                      ? 'bg-emerald-100 text-emerald-700 dark:text-emerald-300'
+                      : 'bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-300'
                   }`}
                 >
                   {v.estado}
@@ -273,7 +273,7 @@ function NuevaVentaModal({ onClose }: { onClose: () => void }) {
           />
 
           {error && (
-            <div className="text-sm text-red-600 bg-red-50 p-2 rounded">
+            <div className="text-sm text-red-600 dark:text-red-300 bg-red-50 dark:bg-red-900/30 p-2 rounded">
               {error}
             </div>
           )}

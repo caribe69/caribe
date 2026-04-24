@@ -121,7 +121,7 @@ export default function FotosHabitacionModal({
 
   return (
     <div className="fixed inset-0 bg-slate-950/60 backdrop-blur-sm flex items-center justify-center p-4 z-[60] animate-fade-in">
-      <div className="bg-white rounded-3xl w-full max-w-3xl max-h-[90vh] flex flex-col shadow-2xl animate-scale-in overflow-hidden">
+      <div className="bg-white rounded-3xl w-full max-w-3xl max-h-[90vh] flex flex-col shadow-2xl dark:shadow-slate-950/60 animate-scale-in overflow-hidden">
         {/* Header */}
         <div className="flex justify-between items-center p-5 border-b border-slate-100">
           <div>
@@ -159,7 +159,7 @@ export default function FotosHabitacionModal({
             className={`border-2 border-dashed rounded-2xl p-8 text-center cursor-pointer transition ${
               dragging
                 ? 'border-violet-500 bg-violet-50'
-                : 'border-slate-300 hover:border-violet-400 hover:bg-violet-50/50'
+                : 'border-slate-300 dark:border-slate-700 hover:border-violet-400 hover:bg-violet-50/50'
             }`}
           >
             <input
@@ -206,7 +206,7 @@ export default function FotosHabitacionModal({
                     <div
                       key={`empty-${i}`}
                       onClick={() => inputRef.current?.click()}
-                      className="aspect-square rounded-xl border-2 border-dashed border-slate-200 flex items-center justify-center text-slate-300 hover:border-violet-400 hover:text-violet-500 cursor-pointer transition"
+                      className="aspect-square rounded-xl border-2 border-dashed border-slate-200 dark:border-slate-700 flex items-center justify-center text-slate-300 dark:text-slate-600 hover:border-violet-400 hover:text-violet-500 cursor-pointer transition"
                     >
                       <ImagePlus size={22} />
                     </div>
@@ -247,7 +247,7 @@ export default function FotosHabitacionModal({
                       <Trash2 size={13} />
                     </button>
                     {/* Drag handle */}
-                    <div className="absolute bottom-1.5 right-1.5 w-6 h-6 rounded bg-white/90 flex items-center justify-center opacity-0 group-hover:opacity-100 transition text-slate-500">
+                    <div className="absolute bottom-1.5 right-1.5 w-6 h-6 rounded bg-white/90 dark:bg-slate-900/90 flex items-center justify-center opacity-0 group-hover:opacity-100 transition text-slate-500">
                       <GripVertical size={12} />
                     </div>
                   </div>
@@ -301,7 +301,7 @@ export default function FotosHabitacionModal({
                 ))}
               </div>
             ) : (
-              <div className="text-center text-slate-400 text-xs py-8 border border-dashed border-slate-200 rounded-xl">
+              <div className="text-center text-slate-400 text-xs py-8 border border-dashed border-slate-200 dark:border-slate-700 rounded-xl">
                 Las fotos más allá de la 4ª se mostrarán aquí como extras
               </div>
             )}

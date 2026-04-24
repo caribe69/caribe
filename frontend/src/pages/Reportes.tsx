@@ -198,7 +198,7 @@ export default function Reportes() {
             onClick={() => setTab('kpis')}
             className={`px-4 py-2 rounded-lg text-sm font-medium transition ${
               tab === 'kpis'
-                ? 'bg-white shadow-sm text-violet-700'
+                ? 'bg-white shadow-sm text-violet-700 dark:text-violet-300'
                 : 'text-slate-600'
             }`}
           >
@@ -209,7 +209,7 @@ export default function Reportes() {
               onClick={() => setTab('global')}
               className={`px-4 py-2 rounded-lg text-sm font-medium transition ${
                 tab === 'global'
-                  ? 'bg-white shadow-sm text-violet-700'
+                  ? 'bg-white shadow-sm text-violet-700 dark:text-violet-300'
                   : 'text-slate-600'
               }`}
             >
@@ -220,7 +220,7 @@ export default function Reportes() {
             onClick={() => setTab('sede')}
             className={`px-4 py-2 rounded-lg text-sm font-medium transition ${
               tab === 'sede'
-                ? 'bg-white shadow-sm text-violet-700'
+                ? 'bg-white shadow-sm text-violet-700 dark:text-violet-300'
                 : 'text-slate-600'
             }`}
           >
@@ -387,7 +387,7 @@ export default function Reportes() {
                         <div className="text-[10px] text-slate-400">Piso {h.pisoNumero}</div>
                       </td>
                       <td className="py-2.5 text-right tabular-nums">{h.alquileres}</td>
-                      <td className="py-2.5 text-right text-emerald-700 font-semibold tabular-nums">
+                      <td className="py-2.5 text-right text-emerald-700 dark:text-emerald-300 font-semibold tabular-nums">
                         S/ {h.ingresos.toFixed(2)}
                       </td>
                     </tr>
@@ -422,7 +422,7 @@ export default function Reportes() {
                       <td className="py-2.5"><RankBadge pos={i + 1} /></td>
                       <td className="py-2.5 font-semibold truncate max-w-[180px]">{c.nombre}</td>
                       <td className="py-2.5 text-right tabular-nums">{c.alquileres}</td>
-                      <td className="py-2.5 text-right text-emerald-700 font-semibold tabular-nums">
+                      <td className="py-2.5 text-right text-emerald-700 dark:text-emerald-300 font-semibold tabular-nums">
                         S/ {c.ingresos.toFixed(2)}
                       </td>
                     </tr>
@@ -440,33 +440,33 @@ export default function Reportes() {
             <h2 className="font-hotel text-lg font-bold mb-4">Desglose de ingresos</h2>
             <div className="grid md:grid-cols-3 gap-4 text-sm">
               <div className="bg-violet-50 rounded-2xl p-4">
-                <div className="text-[10px] uppercase tracking-widest text-violet-600 font-bold">Habitaciones</div>
-                <div className="text-2xl font-hotel font-bold text-violet-700 mt-1">
+                <div className="text-[10px] uppercase tracking-widest text-violet-600 dark:text-violet-300 font-bold">Habitaciones</div>
+                <div className="text-2xl font-hotel font-bold text-violet-700 dark:text-violet-200 mt-1">
                   S/ {kpis.data.ingresos.habitacion.toFixed(2)}
                 </div>
-                <div className="text-[11px] text-violet-500 mt-1">
+                <div className="text-[11px] text-violet-500 dark:text-violet-300 mt-1">
                   {kpis.data.ingresos.total > 0
                     ? ((kpis.data.ingresos.habitacion / kpis.data.ingresos.total) * 100).toFixed(0)
                     : 0}% del total
                 </div>
               </div>
               <div className="bg-blue-50 rounded-2xl p-4">
-                <div className="text-[10px] uppercase tracking-widest text-blue-600 font-bold">Productos</div>
-                <div className="text-2xl font-hotel font-bold text-blue-700 mt-1">
+                <div className="text-[10px] uppercase tracking-widest text-blue-600 dark:text-blue-300 font-bold">Productos</div>
+                <div className="text-2xl font-hotel font-bold text-blue-700 dark:text-blue-200 mt-1">
                   S/ {kpis.data.ingresos.productos.toFixed(2)}
                 </div>
-                <div className="text-[11px] text-blue-500 mt-1">
+                <div className="text-[11px] text-blue-500 dark:text-blue-300 mt-1">
                   {kpis.data.ingresos.total > 0
                     ? ((kpis.data.ingresos.productos / kpis.data.ingresos.total) * 100).toFixed(0)
                     : 0}% del total
                 </div>
               </div>
               <div className="bg-emerald-50 rounded-2xl p-4">
-                <div className="text-[10px] uppercase tracking-widest text-emerald-600 font-bold">Total</div>
-                <div className="text-2xl font-hotel font-bold text-emerald-700 mt-1">
+                <div className="text-[10px] uppercase tracking-widest text-emerald-600 dark:text-emerald-300 font-bold">Total</div>
+                <div className="text-2xl font-hotel font-bold text-emerald-700 dark:text-emerald-200 mt-1">
                   S/ {kpis.data.ingresos.total.toFixed(2)}
                 </div>
-                <div className="text-[11px] text-emerald-500 mt-1">
+                <div className="text-[11px] text-emerald-500 dark:text-emerald-300 mt-1">
                   {kpis.data.inventario.habitacionesActivas} hab. activas
                 </div>
               </div>
@@ -601,7 +601,7 @@ export default function Reportes() {
                         <td className="py-2.5 text-right font-semibold tabular-nums">
                           {h.alquileres}
                         </td>
-                        <td className="py-2.5 text-right text-emerald-700 font-semibold tabular-nums">
+                        <td className="py-2.5 text-right text-emerald-700 dark:text-emerald-300 font-semibold tabular-nums">
                           S/ {h.ingresos.toFixed(2)}
                         </td>
                       </tr>
@@ -813,7 +813,7 @@ export default function Reportes() {
                           <td className="py-2.5 text-right font-semibold tabular-nums">
                             {s.alquileres}
                           </td>
-                          <td className="py-2.5 text-right text-emerald-700 font-semibold tabular-nums">
+                          <td className="py-2.5 text-right text-emerald-700 dark:text-emerald-300 font-semibold tabular-nums">
                             S/ {s.ingresos.toFixed(2)}
                           </td>
                         </tr>
@@ -902,7 +902,7 @@ function QuickBtn({
   return (
     <button
       onClick={onClick}
-      className="px-3 py-2 text-xs font-medium bg-slate-100 hover:bg-violet-100 hover:text-violet-700 rounded-xl transition"
+      className="px-3 py-2 text-xs font-medium bg-slate-100 hover:bg-violet-100 hover:text-violet-700 dark:hover:text-violet-300 rounded-xl transition"
     >
       {children}
     </button>

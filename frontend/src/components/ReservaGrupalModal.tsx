@@ -170,7 +170,7 @@ export default function ReservaGrupalModal({
 
   return (
     <div className="fixed inset-0 bg-slate-950/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-fade-in">
-      <div className="bg-white rounded-3xl w-full max-w-3xl max-h-[90vh] flex flex-col shadow-2xl animate-scale-in">
+      <div className="bg-white rounded-3xl w-full max-w-3xl max-h-[90vh] flex flex-col shadow-2xl dark:shadow-slate-950/60 animate-scale-in">
         {/* Header */}
         <div className="flex justify-between items-center p-5 border-b border-slate-100">
           <div className="flex items-center gap-3">
@@ -215,7 +215,7 @@ export default function ReservaGrupalModal({
                 <div className="text-sm text-slate-600">
                   {cantHab > 0 ? (
                     <span>
-                      <b className="text-amber-700">{cantHab}</b> habitaciones
+                      <b className="text-amber-700 dark:text-amber-300">{cantHab}</b> habitaciones
                       seleccionadas de {disponibles.length} disponibles
                     </span>
                   ) : (
@@ -228,13 +228,13 @@ export default function ReservaGrupalModal({
                       onClick={() =>
                         setSeleccion(new Set(disponibles.map((h) => h.id)))
                       }
-                      className="text-xs bg-slate-100 hover:bg-slate-200 px-3 py-1.5 rounded-lg"
+                      className="text-xs bg-slate-100 hover:bg-slate-200 dark:hover:bg-slate-700 px-3 py-1.5 rounded-lg"
                     >
                       Todas
                     </button>
                     <button
                       onClick={() => setSeleccion(new Set())}
-                      className="text-xs bg-slate-100 hover:bg-slate-200 px-3 py-1.5 rounded-lg"
+                      className="text-xs bg-slate-100 hover:bg-slate-200 dark:hover:bg-slate-700 px-3 py-1.5 rounded-lg"
                     >
                       Limpiar
                     </button>
@@ -257,8 +257,8 @@ export default function ReservaGrupalModal({
                       }}
                       className={`relative p-3 rounded-xl border-2 transition text-left ${
                         sel
-                          ? 'border-amber-500 bg-gradient-to-br from-amber-50 to-amber-100 shadow-md'
-                          : 'border-slate-200 bg-white hover:border-slate-300'
+                          ? 'border-amber-500 dark:border-amber-600 bg-gradient-to-br from-amber-50 to-amber-100 shadow-md'
+                          : 'border-slate-200 bg-white hover:border-slate-300 dark:hover:border-slate-600'
                       }`}
                     >
                       {sel && (
@@ -332,11 +332,11 @@ export default function ReservaGrupalModal({
               </div>
 
               {cantHab > 0 && precioNum > 0 && (
-                <div className="bg-gradient-to-br from-amber-50 to-amber-100 border border-amber-200 rounded-2xl p-4 flex items-baseline justify-between">
-                  <div className="text-sm text-amber-900">
+                <div className="bg-gradient-to-br from-amber-50 to-amber-100 border border-amber-200 dark:border-amber-700/60 rounded-2xl p-4 flex items-baseline justify-between">
+                  <div className="text-sm text-amber-900 dark:text-amber-100">
                     <b>{cantHab}</b> habitaciones × S/ {precioNum.toFixed(2)}
                   </div>
-                  <div className="text-3xl font-hotel font-bold text-amber-700 tabular-nums">
+                  <div className="text-3xl font-hotel font-bold text-amber-700 dark:text-amber-300 tabular-nums">
                     S/ {total.toFixed(2)}
                   </div>
                 </div>
@@ -362,8 +362,8 @@ export default function ReservaGrupalModal({
                     className={`w-full border rounded-xl px-3.5 py-2.5 pr-10 text-sm font-mono focus:outline-none focus:ring-2 ${
                       ruc.length === 11 &&
                       !/^(10|15|17|20)\d{9}$/.test(ruc)
-                        ? 'border-rose-400 focus:border-rose-500 focus:ring-rose-100'
-                        : 'border-slate-200 focus:border-amber-400 focus:ring-amber-100'
+                        ? 'border-rose-400 focus:border-rose-500 focus:ring-rose-100 dark:focus:ring-rose-900/40'
+                        : 'border-slate-200 focus:border-amber-400 focus:ring-amber-100 dark:focus:ring-amber-900/40'
                     }`}
                   />
                   <div className="absolute right-3 top-1/2 -translate-y-1/2">
@@ -384,7 +384,7 @@ export default function ReservaGrupalModal({
                 )}
                 {ruc.length === 11 &&
                   !/^(10|15|17|20)\d{9}$/.test(ruc) && (
-                    <div className="mt-1.5 text-[11px] text-rose-700 bg-rose-50 border border-rose-200 rounded-lg px-2.5 py-1.5">
+                    <div className="mt-1.5 text-[11px] text-rose-700 dark:text-rose-300 bg-rose-50 border border-rose-200 dark:border-rose-700/60 rounded-lg px-2.5 py-1.5">
                       ⚠ <b>RUC inválido.</b> Los RUCs peruanos deben empezar con:{' '}
                       <code className="bg-white px-1 rounded">10</code> (natural con
                       negocio),{' '}
@@ -397,21 +397,21 @@ export default function ReservaGrupalModal({
               </div>
 
               {rucData?.fuente === 'local' && (
-                <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3 text-xs">
-                  <div className="font-bold text-emerald-900 flex items-center gap-1.5">
+                <div className="bg-emerald-50 border border-emerald-200 dark:border-emerald-700/60 rounded-xl p-3 text-xs">
+                  <div className="font-bold text-emerald-900 dark:text-emerald-100 flex items-center gap-1.5">
                     <UserCheck size={12} /> Empresa recurrente
                   </div>
-                  <div className="text-emerald-700 mt-1">
+                  <div className="text-emerald-700 dark:text-emerald-300 mt-1">
                     {rucData.visitas} visitas previas
                   </div>
                 </div>
               )}
               {rucData?.fuente === 'sunat' && (
-                <div className="bg-violet-50 border border-violet-200 rounded-xl p-3 text-xs">
-                  <div className="font-bold text-violet-900 flex items-center gap-1.5">
+                <div className="bg-violet-50 border border-violet-200 dark:border-violet-700/60 rounded-xl p-3 text-xs">
+                  <div className="font-bold text-violet-900 dark:text-violet-100 flex items-center gap-1.5">
                     <Search size={12} /> Encontrado en SUNAT
                   </div>
-                  <div className="text-violet-700 mt-1">
+                  <div className="text-violet-700 dark:text-violet-300 mt-1">
                     {rucData.estado} · {rucData.condicion}
                   </div>
                 </div>
@@ -420,7 +420,7 @@ export default function ReservaGrupalModal({
                 !rucData.encontrado &&
                 ruc.length === 11 &&
                 !buscandoRuc && (
-                  <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 text-xs text-amber-800">
+                  <div className="bg-amber-50 border border-amber-200 dark:border-amber-700/60 rounded-xl p-3 text-xs text-amber-800 dark:text-amber-200">
                     <b>No encontrado</b> · completa manualmente los datos abajo
                   </div>
                 )}
@@ -569,12 +569,12 @@ export default function ReservaGrupalModal({
           <div className="text-xs text-slate-500">
             {step === 1 && cantHab > 0 && (
               <>
-                <b className="text-amber-700">{cantHab}</b> habitaciones · Total{' '}
-                <b className="text-amber-700">S/ {total.toFixed(2)}</b>
+                <b className="text-amber-700 dark:text-amber-300">{cantHab}</b> habitaciones · Total{' '}
+                <b className="text-amber-700 dark:text-amber-300">S/ {total.toFixed(2)}</b>
               </>
             )}
             {step === 2 && !validoStep2 && (
-              <span className="text-rose-600">
+              <span className="text-rose-600 dark:text-rose-400">
                 {!/^(10|15|17|20)\d{9}$/.test(ruc)
                   ? 'Ingresa un RUC válido (11 dígitos, empieza con 10/15/17/20)'
                   : razonSocial.length < 3
@@ -585,12 +585,12 @@ export default function ReservaGrupalModal({
             {step === 2 && validoStep2 && (
               <>
                 FACTURA · RUC {ruc} ·{' '}
-                <b className="text-amber-700">{razonSocial}</b>
+                <b className="text-amber-700 dark:text-amber-300">{razonSocial}</b>
               </>
             )}
             {step === 3 && (
               <>
-                <b className="text-amber-700">
+                <b className="text-amber-700 dark:text-amber-300">
                   {Object.values(huespedes).filter(
                     (v) => v.nombre.trim() || v.dni.trim(),
                   ).length}
@@ -603,7 +603,7 @@ export default function ReservaGrupalModal({
             {step > 1 && (
               <button
                 onClick={() => setStep((s) => (s - 1) as 1 | 2 | 3)}
-                className="bg-slate-200 hover:bg-slate-300 text-slate-700 px-4 py-2.5 rounded-xl font-medium text-sm"
+                className="bg-slate-200 hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-700 px-4 py-2.5 rounded-xl font-medium text-sm"
               >
                 Atrás
               </button>

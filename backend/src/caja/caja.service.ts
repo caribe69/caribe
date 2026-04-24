@@ -229,6 +229,58 @@ export class CajaService {
       tiers[price] = (tiers[price] || 0) + 1;
     }
 
+    // Lista detallada de alquileres cobrados (para tabla de detalle)
+    const alquileresLista = alquileresValidos.map((a: any) => {
+      const pagosDeEsteAlq = pagosTurno.filter((p) => p.alquiler.id === a.id);
+      const totalPagado = pagosDeEsteAlq.reduce(
+        (s, p) => s + Number(p.monto),
+        0,
+      );
+      return {
+        id: a.id,
+        numeroHabitacion: a.habitacion.numero,
+        tipoHabitacion: a.habitacion.descripcion ?? null,
+        cliente: a.clienteNombre,
+        clienteDni: a.clienteDni,
+        total: Number(a.total),
+        precioHabitacion: Number(a.precioHabitacion),
+        totalProductos: Number(a.totalProductos),
+        pagado: Number(a.montoPagado ?? 0),
+        pagadoEnEsteTurno: totalPagado,
+        estado: a.estado,
+        metodosPago: pagosDeEsteAlq.map((p) => ({
+          metodo: p.metodoPago,
+          monto: Number(p.monto),
+          fecha: p.fecha,
+        })),
+      };
+    });
+
+    // Lista detallada de ventas directas
+    const ventasDirectasLista = ventasValidas.map((v: any) => ({
+      id: v.id,
+      total: Number(v.total),
+      metodoPago: v.metodoPago,
+      creadoEn: v.creadoEn,
+      notas: v.notas,
+      items: v.items.map((it: any) => ({
+        producto: it.producto.nombre,
+        cantidad: it.cantidad,
+        subtotal: Number(it.subtotal),
+      })),
+    }));
+
+    // Lista de pagos individuales (para auditoría de qué se cobró cuando)
+    const pagosLista = pagosTurno.map((p) => ({
+      id: p.id,
+      alquilerId: p.alquiler.id,
+      numeroHabitacion: p.alquiler.habitacion.numero,
+      cliente: p.alquiler.clienteNombre,
+      monto: Number(p.monto),
+      metodoPago: p.metodoPago,
+      fecha: p.fecha,
+    }));
+
     return {
       turno,
       productosVendidos: Object.values(productosVendidos),
@@ -244,11 +296,14 @@ export class CajaService {
       alquileres: {
         cantidad: alquileresValidos.length,
         porTier: tiers,
+        lista: alquileresLista,
       },
       ventasDirectas: {
         cantidad: ventasValidas.length,
         total: ventasValidas.reduce((s, v) => s + Number(v.total), 0),
+        lista: ventasDirectasLista,
       },
+      pagos: pagosLista,
       pendientesDeCobro: {
         cantidad: alquileresPendientes.length,
         monto: alquileresPendientes.reduce(

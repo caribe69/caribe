@@ -112,15 +112,15 @@ function BoletaContenido({
     minute: '2-digit',
   });
 
-  const totalNum = Number(alquiler.total);
+  // El comprobante SOLO incluye el precio de la habitacion.
+  // Los consumos (productos) son gasto interno y no aparecen en el
+  // documento entregado al cliente.
+  const totalNum = Number(alquiler.precioHabitacion);
   // IGV reducido para hospedaje = 10.5% (ley de turismo PE)
   const IGV_RATE = 0.105;
   const baseImponible = totalNum / (1 + IGV_RATE);
   const igv = totalNum - baseImponible;
 
-  // El comprobante SOLO lista el alojamiento como concepto.
-  // Los consumos (productos) son gasto interno y no se facturan al cliente
-  // en el documento impreso: el importe se consolida en el alojamiento.
   const items: Array<{ cant: number; desc: string; importe: number }> = [];
   items.push({
     cant: 1,

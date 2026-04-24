@@ -212,14 +212,21 @@ export default function Layout() {
     .map((g) => ({ ...g, items: g.items.filter(canSee) }))
     .filter((g) => g.items.length > 0);
 
-  // Estado de grupos abiertos: persiste en localStorage
+  // Sidebar en modo acordeón: solo UN grupo abierto a la vez.
+  // Persiste la clave del grupo abierto en localStorage.
   const location = useLocation();
-  const [openGroups, setOpenGroups] = useState<Set<string>>(() => {
+  const [openGroup, setOpenGroup] = useState<string | null>(() => {
     try {
-      const saved = localStorage.getItem('sidebar-open-groups');
-      if (saved) return new Set(JSON.parse(saved));
+      const saved = localStorage.getItem('sidebar-open-group');
+      if (saved) return saved;
+      // Migración: si existía el viejo array, tomar el primero
+      const legacy = localStorage.getItem('sidebar-open-groups');
+      if (legacy) {
+        const arr = JSON.parse(legacy) as string[];
+        if (Array.isArray(arr) && arr.length > 0) return arr[0];
+      }
     } catch {}
-    return new Set(['operacion']);
+    return 'operacion';
   });
 
   // Sidebar colapsada (modo icono) — persistido
@@ -237,36 +244,30 @@ export default function Layout() {
   }, [collapsed]);
 
   // Al cambiar de ruta, abre automáticamente el grupo que la contiene
+  // (cerrando los demás, comportamiento acordeón).
   useEffect(() => {
     const match = visibleGroups.find((g) =>
       g.items.some((i) => i.to === location.pathname),
     );
-    if (match && !openGroups.has(match.key)) {
-      setOpenGroups((prev) => {
-        const next = new Set(prev);
-        next.add(match.key);
-        return next;
-      });
+    if (match && openGroup !== match.key) {
+      setOpenGroup(match.key);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [location.pathname]);
 
   useEffect(() => {
     try {
-      localStorage.setItem(
-        'sidebar-open-groups',
-        JSON.stringify(Array.from(openGroups)),
-      );
+      if (openGroup) localStorage.setItem('sidebar-open-group', openGroup);
+      else localStorage.removeItem('sidebar-open-group');
+      // Limpia el valor legacy
+      localStorage.removeItem('sidebar-open-groups');
     } catch {}
-  }, [openGroups]);
+  }, [openGroup]);
 
+  // Toggle acordeón: si se clickea el abierto, cierra; si no, lo abre
+  // y cierra los demás automáticamente.
   const toggleGroup = (key: string) =>
-    setOpenGroups((prev) => {
-      const next = new Set(prev);
-      if (next.has(key)) next.delete(key);
-      else next.add(key);
-      return next;
-    });
+    setOpenGroup((prev) => (prev === key ? null : key));
 
   // Badge de conversaciones no leídas (se refresca vía socket invalidation)
   const inboxQuery = useQuery<{ noLeidos: number }[]>({
@@ -368,7 +369,7 @@ export default function Layout() {
           {/* Grupos */}
           {visibleGroups.map((g) => {
             const GroupIcon = g.icon;
-            const isOpen = openGroups.has(g.key);
+            const isOpen = openGroup === g.key;
             const hasActiveChild = g.items.some(
               (i) => location.pathname === i.to,
             );

@@ -87,6 +87,15 @@ function VideoCarousel({ videos, interval = 5000 }) {
 }
 
 function HotelHero({ onNavigate }) {
+  const sedes = (typeof window !== 'undefined' && window.SEDES) || [];
+  const rooms = (typeof window !== 'undefined' && window.ROOMS) || [];
+  const nSedes = sedes.length;
+  const nRooms = rooms.length;
+  const priceMin = rooms.length
+    ? Math.min(...rooms.map(r => Number(r.price || r.precioNoche || 0)).filter(p => p > 0))
+    : 0;
+  const sedesList = sedes.map(s => s.short || s.name).filter(Boolean).join(' · ');
+
   return (
     <>
       {/* Hero editorial asimétrico: carrusel de 3 videos (crossfade 5s) + tarjeta */}
@@ -94,21 +103,21 @@ function HotelHero({ onNavigate }) {
         <div className="ed-hero-grid">
           <div className="ed-hero-video-wrap" style={{ position: 'relative' }}>
             <VideoCarousel videos={HERO_VIDEOS} interval={5000}/>
-            <span className="ed-hero-live">En vivo desde el Caribe</span>
+            <span className="ed-hero-live">En vivo · Tour del hotel</span>
           </div>
           <div className="ed-hero-card">
             <div className="ed-hero-meta">
               <span className="ed-number">01</span>
-              <span className="ed-eyebrow">Hs Sol Caribe · Est. 1986</span>
+              <span className="ed-eyebrow">Hs Sol Caribe · Hospedaje</span>
             </div>
             <h1 className="ed-hero-title">
-              Vive el <em>Caribe</em><br/>
-              como pocos.
+              Tu hogar<br/>
+              <em>fuera de casa.</em>
             </h1>
             <p className="ed-hero-sub">
-              Cuatro sedes frente al mar en Colombia — Rodadero, Cartagena,
-              San Andrés y Minca — con amenidades cuidadas al detalle y la
-              calidez de siempre.
+              {nSedes > 0
+                ? `${nSedes} sede${nSedes === 1 ? '' : 's'} con ${nRooms} habitacion${nRooms === 1 ? '' : 'es'}. ${sedesList || ''}`
+                : 'Habitaciones cómodas, limpias y bien ubicadas. Atención cercana y el trato de siempre.'}
             </p>
             <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap' }}>
               <button
@@ -122,46 +131,42 @@ function HotelHero({ onNavigate }) {
                 Ver habitaciones
                 <svg className="ed-btn-arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M5 12h14M13 5l7 7-7 7"/></svg>
               </button>
-              <button className="ed-btn ed-btn-outline" onClick={() => onNavigate('sedes')}>
-                Explorar sedes
-              </button>
+              {nSedes > 1 && (
+                <button className="ed-btn ed-btn-outline" onClick={() => onNavigate('sedes')}>
+                  Explorar sedes
+                </button>
+              )}
             </div>
             <div className="ed-hero-stats">
               <div className="ed-hero-stat">
-                <div className="ed-hero-stat-n">4.8<span style={{ fontSize: 18, color: 'var(--ed-gold)' }}> ★</span></div>
-                <div className="ed-hero-stat-l">2,019 Reseñas</div>
+                <div className="ed-hero-stat-n">{String(nSedes).padStart(2, '0')}</div>
+                <div className="ed-hero-stat-l">{nSedes === 1 ? 'Sede' : 'Sedes'}</div>
               </div>
               <div className="ed-hero-stat">
-                <div className="ed-hero-stat-n">04</div>
-                <div className="ed-hero-stat-l">Sedes</div>
+                <div className="ed-hero-stat-n">{String(nRooms).padStart(2, '0')}</div>
+                <div className="ed-hero-stat-l">{nRooms === 1 ? 'Habitación' : 'Habitaciones'}</div>
               </div>
-              <div className="ed-hero-stat">
-                <div className="ed-hero-stat-n">39<span style={{ fontSize: 18, color: 'var(--ed-gold)' }}> yrs</span></div>
-                <div className="ed-hero-stat-l">Hospitalidad</div>
-              </div>
+              {priceMin > 0 && (
+                <div className="ed-hero-stat">
+                  <div className="ed-hero-stat-n">S/<span style={{ fontSize: 18, color: 'var(--ed-gold)' }}> {priceMin}</span></div>
+                  <div className="ed-hero-stat-l">Desde</div>
+                </div>
+              )}
             </div>
           </div>
         </div>
       </section>
 
-      {/* Marquee editorial — tira infinita de palabras clave */}
+      {/* Marquee editorial — las sedes reales del backend */}
+      {sedes.length > 0 && (
       <div className="ed-marquee">
         <div className="ed-marquee-track">
-          <span>Playas privadas</span>
-          <span>Desayuno incluido</span>
-          <span>Piscina frente al mar</span>
-          <span>WiFi cortesía</span>
-          <span>Cuatro sedes</span>
-          <span>Atención 24/7</span>
-          <span>Playas privadas</span>
-          <span>Desayuno incluido</span>
-          <span>Piscina frente al mar</span>
-          <span>WiFi cortesía</span>
-          <span>Cuatro sedes</span>
-          <span>Atención 24/7</span>
+          {[...sedes, ...sedes, ...sedes].map((s, i) => (
+            <span key={i}>{s.short || s.name}</span>
+          ))}
         </div>
       </div>
-
+      )}
     </>
   );
 }
@@ -209,7 +214,7 @@ function SedesShowcase({ onSedeClick }) {
             <em> {sede.name?.split(' ').slice(1).join(' ') || sede.city || ''}</em>
           </h2>
           <p className="ed-sedes-show-desc">
-            {sede.desc || `Sede de ${sede.short || sede.name} — ${sede.roomCount || 0} habitaciones, playa, piscina y la calidez de siempre.`}
+            {sede.desc || `Sede ${sede.short || sede.name} · ${sede.roomCount || 0} habitación${sede.roomCount === 1 ? '' : 'es'} listas para recibirte.`}
           </p>
           <div className="ed-sedes-show-stats">
             <div>
@@ -255,31 +260,31 @@ function SedesShowcase({ onSedeClick }) {
 // ─────────────────────────────────────────────────────────────
 const REVIEWS = [
   {
-    name: 'María Fernanda',
-    initials: 'MF',
-    location: 'Medellín',
-    date: 'Marzo 2026',
+    name: 'Anthony N.',
+    initials: 'AN',
+    location: 'Lima',
+    date: '2026',
     rating: 5,
-    text: 'La mejor experiencia del Caribe. La decoración, la limpieza y el desayuno fueron excepcionales. Repetimos cada año con la familia.',
-    sede: 'Sede Cartagena',
+    text: 'Muy buena ubicación, habitación limpia y cómoda. La atención del personal fue excelente, muy atentos en todo momento.',
+    sede: 'Sol Caribe',
   },
   {
-    name: 'Andrés Ramírez',
-    initials: 'AR',
-    location: 'Bogotá',
-    date: 'Febrero 2026',
+    name: 'María G.',
+    initials: 'MG',
+    location: 'Arequipa',
+    date: '2026',
     rating: 5,
-    text: 'Atención impecable y playas privadas. Sol Caribe superó mis expectativas — sobre todo la sede de San Andrés. El personal, 10/10.',
-    sede: 'Sede San Andrés',
+    text: 'Cama cómoda, buena ducha y precio justo. Volvería sin dudarlo. Recomendado para quienes buscan descansar tranquilos.',
+    sede: 'Sol Caribe',
   },
   {
-    name: 'Laura Suárez',
-    initials: 'LS',
-    location: 'Cali',
-    date: 'Enero 2026',
+    name: 'Carlos R.',
+    initials: 'CR',
+    location: 'Cusco',
+    date: '2026',
     rating: 5,
-    text: 'Todo cuidado al detalle. Camas cómodas, buen WiFi, piscina hermosa y la atención en recepción de otro nivel. 100 % recomendado.',
-    sede: 'Sede Rodadero',
+    text: 'Todo en orden desde el check-in hasta el check-out. Habitación silenciosa, buena señal de WiFi y trato cordial.',
+    sede: 'Sol Caribe',
   },
 ];
 
@@ -714,9 +719,17 @@ function SedePage({ sedeId, onRoomClick, onNavigate }) {
                 <span style={{ color: 'var(--text-soft)' }}>{sede.reviews} reseñas</span>
               </div>
               <Sep/>
-              <span>📍 {sede.address}</span>
-              <Sep/>
-              <span>📞 +57 305 · 284 · 9123</span>
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                <Icon name="pin" size={12}/> {sede.address}
+              </span>
+              {sede.telefono && (
+                <>
+                  <Sep/>
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                    <Icon name="phone" size={12}/> {sede.telefono}
+                  </span>
+                </>
+              )}
             </div>
           </div>
           <div style={{ textAlign: 'right' }}>
@@ -812,7 +825,9 @@ function SedeRow({ sede, onClick }) {
             <span style={{ color: 'var(--text-soft)' }}>· {sede.reviews} reseñas</span>
           </div>
         </div>
-        <div style={{ marginTop: 8, fontSize: 13, color: 'var(--text-soft)' }}>📍 {sede.address}</div>
+        <div style={{ marginTop: 8, fontSize: 13, color: 'var(--text-soft)', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+          <Icon name="pin" size={13}/> {sede.address}
+        </div>
         <p style={{ fontSize: 13, lineHeight: 1.6, color: 'var(--text)', marginTop: 10, marginBottom: 0 }}>{sede.desc}</p>
         <div style={{ marginTop: 10, display: 'flex', gap: 14, flexWrap: 'wrap' }}>
           {sede.features.slice(0, 4).map(f => (

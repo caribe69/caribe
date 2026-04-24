@@ -6,54 +6,53 @@
 // según la sección activa. Ejecutado desde dentro del router principal.
 const SEO_BY_SECTION = {
   home: {
-    title: 'Sol Caribe — Hotel 4 sedes · Rodadero · Cartagena · San Andrés · Minca',
-    description: 'Vive el Caribe como pocos. 4 sedes frente al mar en Colombia con desayuno incluido, piscina y atención caribeña. Reserva directa 10% off.',
+    title: 'Hs Sol Caribe — Hotel · Tu hogar fuera de casa',
+    description: 'Hospedaje cómodo, limpio y con atención cercana. Habitaciones con WiFi, TV y baño privado. Reserva directa al mejor precio.',
     path: '/',
   },
   rooms: {
-    title: 'Habitaciones — Hs Sol Caribe · 11 habitaciones en 4 sedes',
-    description: 'Explora nuestras habitaciones en las 4 sedes: desde estándar hasta suites frente al mar. Fotos, precios, amenidades y disponibilidad.',
+    title: 'Habitaciones — Hs Sol Caribe',
+    description: 'Habitaciones cómodas con WiFi, TV, baño privado y agua caliente. Fotos, precios y disponibilidad.',
     path: '/habitaciones',
   },
   sedes: {
-    title: 'Sedes — Hs Sol Caribe · Rodadero, Cartagena, San Andrés y Minca',
-    description: '4 destinos del Caribe colombiano bajo la misma marca. Descubre cada sede, su carácter y qué la hace única.',
+    title: 'Sedes — Hs Sol Caribe',
+    description: 'Conoce nuestras sedes. Ubicación, habitaciones disponibles y detalles de cada una.',
     path: '/sedes',
   },
   sede: {
-    // completado dinámicamente con el nombre de la sede
     title: 'Sede — Hs Sol Caribe',
-    description: 'Detalle de la sede Sol Caribe: fotos, habitaciones, amenidades y precios.',
+    description: 'Detalle de la sede Sol Caribe: fotos, habitaciones y precios.',
     path: '/sede',
   },
   room: {
     title: 'Habitación — Hs Sol Caribe',
-    description: 'Detalle de la habitación: fotos, amenidades, capacidad y precio por noche.',
+    description: 'Detalle de la habitación: fotos, características y precio por noche.',
     path: '/habitacion',
   },
   amenities: {
-    title: 'Servicios y amenidades — Hs Sol Caribe',
-    description: 'Piscina, desayuno incluido, WiFi gratuito, playa privada, parqueadero y más en todas nuestras sedes del Caribe.',
+    title: 'Servicios — Hs Sol Caribe',
+    description: 'WiFi gratis, TV por cable, agua caliente 24h, recepción 24/7 y limpieza diaria.',
     path: '/servicios',
   },
   gallery: {
-    title: 'Galería — Hs Sol Caribe · Fotos y videos del Caribe',
-    description: 'Fotografías y tour en video de las 4 sedes. Playa, piscinas, habitaciones, amaneceres y atardeceres caribeños.',
+    title: 'Galería — Hs Sol Caribe',
+    description: 'Fotos y videos del hotel: habitaciones, áreas comunes y recepción.',
     path: '/galeria',
   },
   contact: {
-    title: 'Contacto — Hs Sol Caribe · +57 305 · 284 · 9123',
-    description: 'Habla con nosotros por teléfono, WhatsApp o email. Atención 24/7 para reservas, grupos y eventos en cualquiera de nuestras 4 sedes.',
+    title: 'Contacto — Hs Sol Caribe',
+    description: 'Comunícate con nosotros por teléfono, WhatsApp o email. Atención 24/7.',
     path: '/contacto',
   },
   booking: {
     title: 'Reserva — Hs Sol Caribe',
-    description: 'Completa tu reserva en Hs Sol Caribe con mejor precio garantizado y cancelación gratis 72h antes.',
+    description: 'Completa tu reserva con mejor precio garantizado.',
     path: '/reserva',
   },
   confirmed: {
     title: 'Reserva confirmada — Hs Sol Caribe',
-    description: 'Tu reserva ha sido confirmada. Gracias por elegir Sol Caribe.',
+    description: 'Tu reserva fue confirmada. Gracias por elegirnos.',
     path: '/confirmada',
   },
 };

@@ -35,11 +35,11 @@ function RoomsListPage({ onRoomClick, onNavigate, onSedeClick }) {
           <div className="mono" style={{ marginBottom: 24, color: 'var(--brown-soft)' }}>· Habitaciones</div>
           <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: 60 }}>
             <h1 className="display" style={{ fontSize: 'clamp(64px, 8vw, 120px)', lineHeight: 0.95, margin: 0, fontWeight: 400 }}>
-              Once habitaciones,<br/>
+              {ROOMS.length > 0 ? `${ROOMS.length} habitacion${ROOMS.length === 1 ? '' : 'es'},` : 'Habitaciones,'}<br/>
               <span style={{ fontStyle: 'italic', color: 'var(--terracotta)' }}>una sola casa.</span>
             </h1>
             <p style={{ fontSize: 15, lineHeight: 1.7, color: 'var(--brown)', maxWidth: 380 }}>
-              Todas nuestras habitaciones incluyen desayuno criollo, Wi-Fi, aire acondicionado y acceso a la piscina. Varían en tamaño, vista y cantidad de huéspedes.
+              Todas nuestras habitaciones incluyen WiFi, TV y baño privado. Varían en precio, piso y capacidad.
             </p>
           </div>
         </div>
@@ -215,13 +215,15 @@ function RoomDetailPage({ roomId, onBack, onBook, onSedeClick }) {
             </h1>
             {sede && (
               <a onClick={() => onSedeClick && onSedeClick(sede.id)} className="ch-link mono"
-                style={{ color: 'var(--ink)', background: 'var(--sand)', padding: '4px 10px', cursor: 'pointer', fontSize: 10 }}>
-                📍 {sede.short} · {sede.city}
+                style={{ color: 'var(--ink)', background: 'var(--sand)', padding: '4px 10px', cursor: 'pointer', fontSize: 10, display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+                <Icon name="pin" size={10}/>
+                {sede.short} · {sede.city}
               </a>
             )}
             <span className="mono" style={{ color: 'var(--brown-soft)', fontSize: 10 }}>{room.tier}</span>
-            <span style={{ marginLeft: 'auto', fontSize: 12, color: 'var(--brown)' }}>
-              ⭐ 4.9 · {room.size} m² · {room.capacity} huéspedes
+            <span style={{ marginLeft: 'auto', fontSize: 12, color: 'var(--brown)', display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+              <Icon name="star" size={12} color="#F2B441" strokeWidth={0} style={{ fill: '#F2B441' }}/>
+              4.9 · {room.size} m² · {room.capacity} huéspedes
             </span>
           </div>
 
@@ -372,13 +374,13 @@ function RoomDetailPage({ roomId, onBack, onBook, onSedeClick }) {
               {/* Specs compactas */}
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, fontSize: 12, marginBottom: 16, padding: 12, background: 'var(--cream-2)', borderRadius: 4 }}>
                 {[
-                  ['🛏', room.beds],
-                  ['📐', `${room.size} m²`],
-                  ['👥', `${room.capacity} pers.`],
-                  ['🌿', room.view],
+                  ['bed', room.beds],
+                  ['maximize', `${room.size} m²`],
+                  ['users', `${room.capacity} pers.`],
+                  ['eye', room.view],
                 ].map(([icon, v], i) => (
-                  <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                    <span style={{ fontSize: 14 }}>{icon}</span>
+                  <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <Icon name={icon} size={14} color="var(--terracotta)"/>
                     <span style={{ fontSize: 12 }}>{v}</span>
                   </div>
                 ))}
@@ -418,7 +420,8 @@ function RoomDetailPage({ roomId, onBack, onBook, onSedeClick }) {
                   textDecoration: 'none',
                 }}
               >
-                💬 Consultar por WhatsApp
+                <Icon name="whatsapp" size={16}/>
+                Consultar por WhatsApp
               </a>
 
               {/* Códigos (como "Código: 16550175" de Falabella) */}
@@ -434,10 +437,17 @@ function RoomDetailPage({ roomId, onBack, onBook, onSedeClick }) {
               </div>
 
               {/* Política */}
-              <div style={{ marginTop: 12, fontSize: 11, color: 'var(--brown-soft)', lineHeight: 1.6 }}>
-                ✓ Cancelación gratis hasta 72h antes<br/>
-                ✓ Sin cargo hasta confirmar<br/>
-                ✓ Pago en efectivo, Yape, tarjeta o transferencia
+              <div style={{ marginTop: 12, fontSize: 11, color: 'var(--brown-soft)', lineHeight: 1.8 }}>
+                {[
+                  'Cancelación gratis hasta 72h antes',
+                  'Sin cargo hasta confirmar',
+                  'Pago en efectivo, Yape, tarjeta o transferencia',
+                ].map((txt) => (
+                  <div key={txt} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <Icon name="check" size={12} color="var(--terracotta)"/>
+                    {txt}
+                  </div>
+                ))}
               </div>
             </aside>
           </div>

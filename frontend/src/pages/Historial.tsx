@@ -6,6 +6,7 @@ import { useAuthStore } from '@/store/auth';
 import { usePagination } from '@/hooks/usePagination';
 import Pagination from '@/components/Pagination';
 import BoletaAlquiler from '@/components/BoletaAlquiler';
+import { SkeletonRow } from '@/components/ui/Skeleton';
 
 interface AlquilerHist {
   id: number;
@@ -207,13 +208,10 @@ export default function Historial() {
             </tr>
           </thead>
           <tbody>
-            {query.isLoading && (
-              <tr>
-                <td colSpan={11} className="px-6 py-12 text-center text-slate-400">
-                  Cargando...
-                </td>
-              </tr>
-            )}
+            {query.isLoading &&
+              Array.from({ length: 6 }).map((_, i) => (
+                <SkeletonRow key={i} cols={11} />
+              ))}
             {!query.isLoading &&
               pag.paginated.map((a) => {
                 const fecha = new Date(a.creadoEn);

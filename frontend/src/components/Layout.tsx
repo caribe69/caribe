@@ -30,6 +30,7 @@ import {
 import { useAuthStore, Rol } from '@/store/auth';
 import TopBar from './TopBar';
 import ChatWidget from './ChatWidget';
+import CommandPalette from './CommandPalette';
 import { useLiveEvents } from '@/hooks/useLiveEvents';
 
 interface Item {
@@ -528,6 +529,7 @@ export default function Layout() {
 
       {/* Chat widget flotante */}
       <ChatWidget />
+      <CommandPalette />
     </div>
   );
 }

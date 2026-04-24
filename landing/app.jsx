@@ -74,7 +74,7 @@ function VariationB({ onNavigateExternal }) {
       {section === 'home' && (
         <>
           <HotelHero onNavigate={go}/>
-          <div className="ed-chapter" data-reveal>
+          <div id="habitaciones" className="ed-chapter" data-reveal>
             <div className="ed-chapter-num">Capítulo 02 · Habitaciones</div>
             <h2>Cada sede, <em>un carácter</em>.</h2>
           </div>

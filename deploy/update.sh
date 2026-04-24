@@ -83,6 +83,27 @@ SNIPPET_LANDING_BODY='    root /var/www/landing;
         return 301 $scheme://caribeperu.com$request_uri;
     }
 
+    # API pública: la landing consume /api/public/* para sedes y habitaciones
+    location /api/ {
+        proxy_pass http://127.0.0.1:3001/api/;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_read_timeout 60s;
+    }
+
+    # Uploads (fotos de habitaciones) servidos desde el backend
+    location ^~ /uploads/ {
+        proxy_pass http://127.0.0.1:3001/uploads/;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_read_timeout 60s;
+        expires 7d;
+        add_header Cache-Control "public";
+    }
+
     location / {
         try_files $uri $uri/ /index.html;
     }

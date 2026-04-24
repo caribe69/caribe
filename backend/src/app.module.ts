@@ -21,6 +21,7 @@ import { SettingsModule } from './settings/settings.module';
 import { ReportesModule } from './reportes/reportes.module';
 import { TransferenciasModule } from './transferencias/transferencias.module';
 import { ReservasGrupalesModule } from './reservas-grupales/reservas-grupales.module';
+import { PublicModule } from './public/public.module';
 
 @Module({
   imports: [
@@ -52,6 +53,7 @@ import { ReservasGrupalesModule } from './reservas-grupales/reservas-grupales.mo
     ReportesModule,
     TransferenciasModule,
     ReservasGrupalesModule,
+    PublicModule,
   ],
 })
 export class AppModule {}

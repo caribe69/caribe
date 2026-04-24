@@ -7,6 +7,31 @@ function VariationB({ onNavigateExternal }) {
   const [roomId, setRoomId] = React.useState(null);
   const [sedeId, setSedeId] = React.useState(null);
   const [booking, setBooking] = React.useState(null);
+  const [liveData, setLiveData] = React.useState({ loaded: false });
+
+  // Cargar datos reales desde el backend (sedes + habitaciones con fotos)
+  React.useEffect(() => {
+    fetch('/api/public/landing')
+      .then((r) => (r.ok ? r.json() : Promise.reject(r.status)))
+      .then((data) => {
+        // Muta los arrays globales para que los componentes usen data real
+        if (Array.isArray(data?.rooms) && data.rooms.length > 0) {
+          window.ROOMS.length = 0;
+          data.rooms.forEach((r) => window.ROOMS.push(r));
+        }
+        if (Array.isArray(data?.sedes) && data.sedes.length > 0) {
+          window.SEDES.length = 0;
+          data.sedes.forEach((s) => window.SEDES.push(s));
+        }
+        setLiveData({ loaded: true, ok: true });
+      })
+      .catch((err) => {
+        // Si falla (backend caído o primera instalación sin datos),
+        // la landing sigue funcionando con los datos mock de data.jsx
+        console.warn('Landing API fallback:', err);
+        setLiveData({ loaded: true, ok: false });
+      });
+  }, []);
 
   const go = (s, payload) => {
     if (s === 'room' && payload) { setRoomId(payload); setSection('room'); window.scrollTo({ top: 0, behavior: 'smooth' }); return; }

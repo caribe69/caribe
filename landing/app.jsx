@@ -74,7 +74,6 @@ function VariationB({ onNavigateExternal }) {
       {section === 'home' && (
         <>
           <HotelHero onNavigate={go}/>
-          <BenefitBanner/>
           <SedesShowcase onSedeClick={(id) => go('sede', id)}/>
           <div className="ed-chapter" data-reveal>
             <div className="ed-chapter-num">Capítulo 04 · Habitaciones</div>

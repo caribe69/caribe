@@ -632,255 +632,295 @@ function AlquilerActivoModal({
     },
   });
 
+  // Helpers precalculados
+  const total = Number(alquiler?.total ?? 0);
+  const montoPagado = Number(alquiler?.montoPagado ?? (alquiler?.pagado ? total : 0));
+  const saldo = total - montoPagado;
+  const pctPagado = total > 0 ? Math.min(100, (montoPagado / total) * 100) : 0;
+  const estadoPago: 'pagado' | 'parcial' | 'pendiente' =
+    saldo <= 0.01 ? 'pagado' : montoPagado > 0 ? 'parcial' : 'pendiente';
+
   return (
-    <div className="fixed inset-0 bg-violet-950/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-fade-in">
-      <div className="bg-white rounded-2xl w-full max-w-md p-6 max-h-[90vh] overflow-y-auto animate-scale-in shadow-2xl">
-        <div className="flex justify-between items-start mb-4">
-          <div>
-            <h2 className="text-xl font-bold">Hab. {habitacion.numero}</h2>
-            <div className="text-sm text-slate-500">
-              Piso {habitacion.piso.numero} · {habitacion.descripcion}
+    <div className="fixed inset-0 bg-slate-950/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-fade-in">
+      <div className="bg-slate-50 rounded-3xl w-full max-w-md max-h-[90vh] flex flex-col animate-scale-in shadow-2xl overflow-hidden">
+        {/* HEADER con gradiente violeta */}
+        <div className="bg-gradient-to-br from-violet-600 to-violet-500 text-white px-5 py-4 relative">
+          <button
+            onClick={onClose}
+            className="absolute top-3 right-3 w-8 h-8 rounded-lg hover:bg-white/20 flex items-center justify-center transition"
+          >
+            <X size={18} />
+          </button>
+          <div className="flex items-center gap-3">
+            <div className="w-12 h-12 rounded-2xl bg-white/20 backdrop-blur flex items-center justify-center shadow-lg">
+              <BedDouble size={22} />
+            </div>
+            <div>
+              <h2 className="font-hotel text-2xl font-bold leading-none">
+                Hab. {habitacion.numero}
+              </h2>
+              <div className="text-xs text-violet-100 mt-1">
+                Piso {habitacion.piso.numero}
+                {habitacion.descripcion && ` · ${habitacion.descripcion}`}
+              </div>
             </div>
           </div>
-          <button onClick={onClose}>
-            <X size={20} />
-          </button>
         </div>
 
         {!alquiler && (
-          <div className="text-slate-500 text-sm py-4">
+          <div className="p-6 text-slate-500 text-sm text-center">
             Buscando alquiler activo...
           </div>
         )}
 
         {alquiler && (
-          <>
-            <div className="bg-red-50 border border-red-200 rounded-lg p-3 mb-3">
-              <div className="flex items-center justify-between gap-2">
-                <div className="font-semibold">{alquiler.clienteNombre}</div>
-                {(() => {
-                  const total = Number(alquiler.total);
-                  const pagado = Number(alquiler.montoPagado ?? (alquiler.pagado ? total : 0));
-                  const saldo = total - pagado;
-                  if (pagado >= total - 0.01) {
-                    return (
-                      <span className="text-[10px] uppercase tracking-wider bg-emerald-100 text-emerald-800 font-bold px-2 py-0.5 rounded-full">
+          <div className="flex-1 overflow-y-auto scroll-premium">
+            {/* CARD HUÉSPED */}
+            <div className="p-4">
+              <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+                {/* Nombre + estado */}
+                <div className="p-4 pb-3">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0 flex-1">
+                      <div className="text-[10px] uppercase tracking-widest text-slate-400 font-semibold mb-1">
+                        Huésped
+                      </div>
+                      <div className="font-bold text-slate-900 text-sm leading-tight">
+                        {alquiler.clienteNombre}
+                      </div>
+                      <div className="text-xs text-slate-500 mt-1">
+                        DNI {alquiler.clienteDni}
+                        {alquiler.clienteFechaNacimiento && (
+                          <> · <b className="text-violet-700">{calcularEdad(alquiler.clienteFechaNacimiento)} años</b></>
+                        )}
+                      </div>
+                    </div>
+                    {/* Badge estado de pago */}
+                    {estadoPago === 'pagado' && (
+                      <span className="text-[10px] uppercase tracking-wider bg-emerald-100 text-emerald-800 font-bold px-2.5 py-1 rounded-full shrink-0">
                         ✓ Pagado
                       </span>
-                    );
-                  }
-                  if (pagado > 0) {
-                    return (
-                      <span className="text-[10px] uppercase tracking-wider bg-amber-100 text-amber-800 font-bold px-2 py-0.5 rounded-full animate-pulse">
-                        ⚠ Parcial S/ {saldo.toFixed(2)}
+                    )}
+                    {estadoPago === 'parcial' && (
+                      <span className="text-[10px] uppercase tracking-wider bg-amber-100 text-amber-800 font-bold px-2.5 py-1 rounded-full shrink-0 animate-pulse">
+                        Parcial S/ {saldo.toFixed(0)}
                       </span>
-                    );
-                  }
-                  return (
-                    <span className="text-[10px] uppercase tracking-wider bg-rose-100 text-rose-800 font-bold px-2 py-0.5 rounded-full animate-pulse">
-                      ⚠ Por cobrar
+                    )}
+                    {estadoPago === 'pendiente' && (
+                      <span className="text-[10px] uppercase tracking-wider bg-rose-100 text-rose-800 font-bold px-2.5 py-1 rounded-full shrink-0 animate-pulse">
+                        Por cobrar
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Chips de info */}
+                  <div className="flex flex-wrap gap-1.5 mt-3">
+                    <span className="text-[10px] bg-slate-100 text-slate-600 font-medium px-2 py-0.5 rounded">
+                      {alquiler.metodoPago}
                     </span>
-                  );
-                })()}
-              </div>
-              <div className="text-xs text-slate-600">
-                DNI: {alquiler.clienteDni} · {alquiler.metodoPago}
-                {alquiler.clienteFechaNacimiento && (
-                  <>
-                    {' '}
-                    ·{' '}
-                    <b className="text-violet-700">
-                      {calcularEdad(alquiler.clienteFechaNacimiento)} años
-                    </b>
-                  </>
-                )}
-              </div>
-              {alquiler.pagado && alquiler.cobradoPor && (
-                <div className="text-[10px] text-emerald-700 mt-0.5">
-                  Cobrado por {alquiler.cobradoPor.nombre}
-                  {alquiler.pagadoEn &&
-                    ` · ${new Date(alquiler.pagadoEn).toLocaleString('es-PE', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}`}
-                </div>
-              )}
-              {/* Aviso del turno: si no está pagado y el turno de apertura
-                   es distinto al actual (o el cajero cambió) */}
-              {!alquiler.pagado && (
-                <div className="mt-2 bg-amber-50 border border-amber-300 rounded-lg p-2 text-[11px] text-amber-900">
-                  <div className="font-semibold">
-                    📋 Abierto en turno #{alquiler.turnoCajaId}
-                  </div>
-                  <div>
-                    por{' '}
-                    <b>{(alquiler as any).creadoPor?.nombre || 'N/A'}</b> el{' '}
-                    {new Date(alquiler.creadoEn).toLocaleString('es-PE', {
-                      day: '2-digit',
-                      month: 'short',
-                      hour: '2-digit',
-                      minute: '2-digit',
-                    })}
-                  </div>
-                  <div className="mt-1 text-[10px] text-amber-700">
-                    Al cobrar ahora, el ingreso se registrará en <b>tu turno
-                    actual</b>.
-                  </div>
-                </div>
-              )}
-              {/* Checkbox chocolates de bienvenida */}
-              <label className="mt-2 flex items-center gap-2 cursor-pointer select-none bg-white/60 rounded-lg px-2 py-1">
-                <input
-                  type="checkbox"
-                  checked={!!alquiler.amenitiesEntregados}
-                  onChange={(e) =>
-                    amenities.mutate({
-                      id: alquiler.id,
-                      entregados: e.target.checked,
-                    })
-                  }
-                  className="w-4 h-4 accent-amber-500"
-                />
-                <span className="text-xs font-medium text-slate-700">
-                  🍫 Chocolates de bienvenida entregados
-                </span>
-              </label>
-              {alquiler.clienteFechaNacimiento && (
-                <div className="text-xs text-slate-500 mt-0.5">
-                  🎂 {new Date(alquiler.clienteFechaNacimiento).toLocaleDateString('es-PE')}
-                </div>
-              )}
-              {alquiler.tipoComprobante === 'FACTURA' && (
-                <div className="text-xs text-amber-700 mt-1 font-semibold">
-                  FACTURA · RUC {alquiler.clienteRuc}
-                  {alquiler.clienteRazonSocial && (
-                    <> · {alquiler.clienteRazonSocial}</>
-                  )}
-                </div>
-              )}
-              <div className="text-xs text-slate-600 mt-1">
-                {new Date(alquiler.fechaIngreso).toLocaleString()} →{' '}
-                {new Date(alquiler.fechaSalida).toLocaleString()}
-              </div>
-            </div>
-
-            <div className="text-sm space-y-1 mb-3">
-              <div className="flex justify-between">
-                <span>Habitación</span>
-                <span>S/ {alquiler.precioHabitacion}</span>
-              </div>
-              <div className="flex justify-between">
-                <span>Productos</span>
-                <span>S/ {alquiler.totalProductos}</span>
-              </div>
-              <div className="flex justify-between font-bold pt-1 border-t">
-                <span>Total</span>
-                <span>S/ {alquiler.total}</span>
-              </div>
-              {/* Progreso de pago */}
-              {(() => {
-                const total = Number(alquiler.total);
-                const pagado = Number(
-                  alquiler.montoPagado ?? (alquiler.pagado ? total : 0),
-                );
-                const saldo = total - pagado;
-                const pct = total > 0 ? Math.min(100, (pagado / total) * 100) : 0;
-                return (
-                  <div className="pt-2">
-                    <div className="flex justify-between text-xs">
-                      <span className="text-emerald-700 font-semibold">
-                        Pagado S/ {pagado.toFixed(2)}
+                    {alquiler.tipoComprobante === 'FACTURA' && (
+                      <span className="text-[10px] bg-amber-100 text-amber-800 font-bold px-2 py-0.5 rounded">
+                        FACTURA · {alquiler.clienteRuc}
                       </span>
-                      <span className={saldo > 0 ? 'text-rose-700 font-semibold' : 'text-slate-400'}>
-                        Saldo S/ {saldo.toFixed(2)}
+                    )}
+                    {alquiler.amenitiesEntregados && (
+                      <span className="text-[10px] bg-amber-50 text-amber-700 font-medium px-2 py-0.5 rounded">
+                        🍫 chocolates ✓
                       </span>
-                    </div>
-                    <div className="mt-1 h-1.5 bg-slate-200 rounded-full overflow-hidden">
-                      <div
-                        className="h-full bg-gradient-to-r from-emerald-500 to-emerald-400 transition-all"
-                        style={{ width: `${pct}%` }}
-                      />
-                    </div>
+                    )}
                   </div>
-                );
-              })()}
-            </div>
 
-            {alquiler.consumos.length > 0 && (
-              <div className="text-xs text-slate-600 mb-3">
-                <div className="font-semibold mb-1">Consumos:</div>
-                {alquiler.consumos.map((c) => (
-                  <div key={c.id} className="flex justify-between">
+                  {/* Fechas */}
+                  <div className="mt-3 flex items-center gap-2 text-[11px] text-slate-500">
+                    <Clock3 size={11} className="shrink-0" />
                     <span>
-                      {c.producto.nombre} × {c.cantidad}
+                      {new Date(alquiler.fechaIngreso).toLocaleString('es-PE', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                      {' → '}
+                      {new Date(alquiler.fechaSalida).toLocaleString('es-PE', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
                     </span>
-                    <span>S/ {c.subtotal}</span>
                   </div>
-                ))}
+                </div>
+
+                {/* Aviso turno si pendiente */}
+                {estadoPago !== 'pagado' && (
+                  <div className="bg-amber-50 border-t border-amber-200 px-4 py-2 text-[11px] text-amber-900">
+                    <div className="flex items-start gap-1.5">
+                      <span>📋</span>
+                      <div>
+                        Abierto en <b>turno #{alquiler.turnoCajaId}</b> por{' '}
+                        <b>{(alquiler as any).creadoPor?.nombre || 'N/A'}</b>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Cobrado por si pagado */}
+                {estadoPago === 'pagado' && alquiler.cobradoPor && (
+                  <div className="bg-emerald-50 border-t border-emerald-200 px-4 py-2 text-[11px] text-emerald-800">
+                    ✓ Cobrado por <b>{alquiler.cobradoPor.nombre}</b>
+                    {alquiler.pagadoEn && (
+                      <> · {new Date(alquiler.pagadoEn).toLocaleString('es-PE', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}</>
+                    )}
+                  </div>
+                )}
+
+                {/* Toggle chocolates */}
+                <label className="flex items-center gap-2 px-4 py-2.5 border-t border-slate-100 cursor-pointer select-none hover:bg-amber-50/50 transition">
+                  <input
+                    type="checkbox"
+                    checked={!!alquiler.amenitiesEntregados}
+                    onChange={(e) => amenities.mutate({ id: alquiler.id, entregados: e.target.checked })}
+                    className="w-4 h-4 accent-amber-500"
+                  />
+                  <span className="text-xs font-medium text-slate-700 flex items-center gap-1.5">
+                    <span className="text-base">🍫</span>
+                    Chocolates de bienvenida entregados
+                  </span>
+                </label>
+              </div>
+            </div>
+
+            {/* CARD PRECIO + PROGRESO */}
+            <div className="px-4">
+              <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-4">
+                <div className="flex items-baseline justify-between mb-2">
+                  <span className="text-[10px] uppercase tracking-widest text-slate-400 font-semibold">
+                    Total
+                  </span>
+                  <span className="text-3xl font-hotel font-bold text-slate-900 tabular-nums">
+                    S/ {total.toFixed(2)}
+                  </span>
+                </div>
+
+                {/* Breakdown compacto */}
+                <div className="grid grid-cols-2 gap-2 text-xs mt-3">
+                  <div className="bg-violet-50 rounded-lg px-2.5 py-1.5">
+                    <div className="text-[9px] uppercase tracking-wider text-violet-600 font-bold">
+                      Habitación
+                    </div>
+                    <div className="text-sm font-semibold text-violet-900 tabular-nums">
+                      S/ {Number(alquiler.precioHabitacion).toFixed(2)}
+                    </div>
+                  </div>
+                  <div className="bg-blue-50 rounded-lg px-2.5 py-1.5">
+                    <div className="text-[9px] uppercase tracking-wider text-blue-600 font-bold">
+                      Productos
+                    </div>
+                    <div className="text-sm font-semibold text-blue-900 tabular-nums">
+                      S/ {Number(alquiler.totalProductos).toFixed(2)}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Barra progreso pago */}
+                <div className="mt-4">
+                  <div className="flex justify-between text-[11px] mb-1">
+                    <span className="text-emerald-700 font-semibold">
+                      Pagado S/ {montoPagado.toFixed(2)}
+                    </span>
+                    <span className={saldo > 0.01 ? 'text-rose-700 font-semibold' : 'text-slate-400'}>
+                      {saldo > 0.01 ? `Saldo S/ ${saldo.toFixed(2)}` : '✓ completo'}
+                    </span>
+                  </div>
+                  <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
+                    <div
+                      className={`h-full transition-all ${
+                        estadoPago === 'pagado'
+                          ? 'bg-gradient-to-r from-emerald-500 to-emerald-400'
+                          : 'bg-gradient-to-r from-amber-500 to-amber-400'
+                      }`}
+                      style={{ width: `${pctPagado}%` }}
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* CONSUMOS */}
+            {alquiler.consumos.length > 0 && (
+              <div className="px-4 mt-3">
+                <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-4">
+                  <div className="text-[10px] uppercase tracking-widest text-slate-400 font-semibold mb-2 flex items-center gap-1.5">
+                    <ShoppingBag size={11} />
+                    Consumos ({alquiler.consumos.length})
+                  </div>
+                  <div className="space-y-1">
+                    {alquiler.consumos.map((c) => (
+                      <div key={c.id} className="flex justify-between items-center text-xs py-1">
+                        <span className="text-slate-700 truncate">
+                          <span className="text-slate-400 mr-1.5">×{c.cantidad}</span>
+                          {c.producto.nombre}
+                        </span>
+                        <span className="font-semibold tabular-nums text-slate-800 shrink-0 ml-2">
+                          S/ {Number(c.subtotal).toFixed(2)}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
               </div>
             )}
 
-            <div className="flex flex-col gap-2">
-              {(() => {
-                const total = Number(alquiler.total);
-                const pagado = Number(
-                  alquiler.montoPagado ?? (alquiler.pagado ? total : 0),
-                );
-                const saldo = total - pagado;
-                if (saldo > 0.01) {
-                  return (
-                    <button
-                      onClick={() => setCobrarOpen(true)}
-                      className="flex items-center justify-center gap-2 bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-700 hover:to-emerald-600 text-white py-2.5 rounded-lg btn-press font-semibold shadow-md shadow-emerald-500/30"
-                    >
-                      💰 Cobrar (saldo S/ {saldo.toFixed(2)})
-                    </button>
-                  );
-                }
-                return null;
-              })()}
-              <button
-                onClick={() => setAddProdOpen(true)}
-                className="flex items-center justify-center gap-2 bg-blue-500 hover:bg-blue-600 text-white py-2.5 rounded-lg btn-press"
-              >
-                <ShoppingBag size={16} /> Agregar producto
-              </button>
-              <button
-                onClick={() => setExtenderOpen(true)}
-                className="flex items-center justify-center gap-2 bg-amber-500 hover:bg-amber-600 text-white py-2.5 rounded-lg btn-press"
-              >
-                <CalendarPlus size={16} /> Extender estadía
-              </button>
-              <button
-                onClick={() => setFiscalesOpen(true)}
-                className="flex items-center justify-center gap-2 bg-slate-700 hover:bg-slate-800 text-white py-2.5 rounded-lg btn-press"
-              >
-                <UserCheck size={16} />
-                {alquiler.tipoComprobante === 'FACTURA'
-                  ? `Factura · RUC ${alquiler.clienteRuc}`
-                  : 'Cambiar a factura con RUC'}
-              </button>
-              <button
-                onClick={() => setBoletaOpen(true)}
-                className="flex items-center justify-center gap-2 bg-violet-600 hover:bg-violet-700 text-white py-2.5 rounded-lg btn-press"
-              >
-                <Printer size={16} />
-                {alquiler.tipoComprobante === 'FACTURA'
-                  ? 'Imprimir factura'
-                  : 'Imprimir boleta'}
-              </button>
-              <button
-                onClick={async () => {
-                  const ok = await dialog.confirm({
-                    title: 'Finalizar alquiler',
-                    message:
-                      'La habitación pasará a estado Alistando y se creará una tarea de limpieza automáticamente.',
-                    confirmText: 'Finalizar',
-                    variant: 'success',
-                  });
-                  if (ok) finalizar.mutate(alquiler.id);
-                }}
-                className="flex items-center justify-center gap-2 bg-emerald-500 hover:bg-emerald-600 text-white py-2.5 rounded-lg btn-press"
-              >
-                <CheckCircle size={16} /> Finalizar alquiler
-              </button>
+            {/* ACCIONES */}
+            <div className="p-4 space-y-2">
+              {/* CTA PRINCIPAL: Cobrar (si hay saldo) */}
+              {saldo > 0.01 && (
+                <button
+                  onClick={() => setCobrarOpen(true)}
+                  className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-700 hover:to-emerald-600 text-white py-3 rounded-xl btn-press font-semibold shadow-md shadow-emerald-500/30"
+                >
+                  💰 Cobrar <span className="opacity-80">· saldo S/ {saldo.toFixed(2)}</span>
+                </button>
+              )}
+
+              {/* Acciones secundarias en grid 2x */}
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  onClick={() => setAddProdOpen(true)}
+                  className="flex items-center justify-center gap-1.5 bg-white hover:bg-slate-50 border border-slate-200 text-slate-800 py-2.5 rounded-xl btn-press text-xs font-semibold"
+                >
+                  <ShoppingBag size={14} /> Producto
+                </button>
+                <button
+                  onClick={() => setExtenderOpen(true)}
+                  className="flex items-center justify-center gap-1.5 bg-white hover:bg-slate-50 border border-slate-200 text-slate-800 py-2.5 rounded-xl btn-press text-xs font-semibold"
+                >
+                  <CalendarPlus size={14} /> Extender
+                </button>
+                <button
+                  onClick={() => setFiscalesOpen(true)}
+                  className="flex items-center justify-center gap-1.5 bg-white hover:bg-slate-50 border border-slate-200 text-slate-800 py-2.5 rounded-xl btn-press text-xs font-semibold col-span-2"
+                >
+                  <UserCheck size={14} />
+                  {alquiler.tipoComprobante === 'FACTURA'
+                    ? `Factura · RUC ${alquiler.clienteRuc}`
+                    : 'Cambiar a factura con RUC'}
+                </button>
+                <button
+                  onClick={() => setBoletaOpen(true)}
+                  className="flex items-center justify-center gap-1.5 bg-violet-600 hover:bg-violet-700 text-white py-2.5 rounded-xl btn-press text-xs font-semibold"
+                >
+                  <Printer size={14} />
+                  {alquiler.tipoComprobante === 'FACTURA' ? 'Factura' : 'Boleta'}
+                </button>
+                <button
+                  onClick={async () => {
+                    const ok = await dialog.confirm({
+                      title: 'Finalizar alquiler',
+                      message:
+                        'La habitación pasará a estado Alistando y se creará una tarea de limpieza automáticamente.',
+                      confirmText: 'Finalizar',
+                      variant: 'success',
+                    });
+                    if (ok) finalizar.mutate(alquiler.id);
+                  }}
+                  className="flex items-center justify-center gap-1.5 bg-slate-900 hover:bg-slate-800 text-white py-2.5 rounded-xl btn-press text-xs font-semibold"
+                >
+                  <CheckCircle size={14} /> Finalizar
+                </button>
+              </div>
+
+              {/* Anular (separado, texto discreto) */}
               <button
                 onClick={async () => {
                   if (esAdmin) {
@@ -896,7 +936,6 @@ function AlquilerActivoModal({
                     });
                     if (motivo) anular.mutate({ id: alquiler.id, motivo });
                   } else {
-                    // Recepcionista/cajero: solicita al admin
                     const motivo = await dialog.prompt({
                       title: 'Solicitar anulación',
                       message:
@@ -909,34 +948,28 @@ function AlquilerActivoModal({
                     });
                     if (motivo) {
                       try {
-                        await api.post(
-                          `/anulaciones/alquileres/${alquiler.id}`,
-                          { motivo },
-                        );
+                        await api.post(`/anulaciones/alquileres/${alquiler.id}`, { motivo });
                         toast.show({
                           type: 'success',
                           title: 'Solicitud enviada',
-                          description:
-                            'El administrador recibirá tu solicitud en el chat.',
+                          description: 'El administrador recibirá tu solicitud en el chat.',
                         });
-                        // Abre el chat (le avisará al admin)
                         window.dispatchEvent(new CustomEvent('chat:open'));
                         onClose();
                       } catch (err: any) {
                         toast.show({
                           type: 'error',
                           title: 'No se pudo enviar',
-                          description:
-                            err.response?.data?.message || err.message,
+                          description: err.response?.data?.message || err.message,
                         });
                       }
                     }
                   }
                 }}
-                className="flex items-center justify-center gap-2 bg-red-500 hover:bg-red-600 text-white py-2.5 rounded-lg btn-press"
+                className="w-full flex items-center justify-center gap-1.5 text-rose-600 hover:bg-rose-50 py-2 rounded-xl text-xs font-semibold transition"
               >
-                <X size={16} />
-                {esAdmin ? 'Anular' : 'Solicitar anulación'}
+                <X size={14} />
+                {esAdmin ? 'Anular alquiler' : 'Solicitar anulación'}
               </button>
             </div>
 
@@ -972,7 +1005,7 @@ function AlquilerActivoModal({
                 loading={cobrar.isPending}
               />
             )}
-          </>
+          </div>
         )}
       </div>
     </div>

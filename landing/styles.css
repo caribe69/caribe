@@ -1447,42 +1447,25 @@ a[style*="border-radius: 32px"]:hover {
   height: 100%;
   object-fit: cover;
   opacity: 0;
-  clip-path: inset(50% 0 50% 0);
-  transform: scale(1.15);
-  filter: blur(12px) brightness(0.75);
+  clip-path: inset(48% 0 48% 0);
+  transform: scale(1.08);
+  filter: blur(10px) brightness(0.85);
   transition:
-    opacity 1.5s cubic-bezier(0.76, 0, 0.24, 1),
-    clip-path 1.5s cubic-bezier(0.76, 0, 0.24, 1),
+    opacity 1.4s cubic-bezier(0.76, 0, 0.24, 1),
+    clip-path 1.4s cubic-bezier(0.76, 0, 0.24, 1),
     filter 1.2s cubic-bezier(0.33, 1, 0.68, 1),
-    transform 8s cubic-bezier(0.22, 1, 0.36, 1);
+    transform 1.6s cubic-bezier(0.33, 1, 0.68, 1);
   will-change: opacity, clip-path, transform, filter;
   z-index: 0;
+  transform-origin: center center;
+  backface-visibility: hidden;
 }
 .ed-vcarousel-slide.active {
   opacity: 1;
   clip-path: inset(0 0 0 0);
-  transform: scale(1.02);
+  transform: scale(1);
   filter: blur(0) brightness(1);
   z-index: 1;
-  /* Ken burns lento durante los 5s que está activo */
-  animation: ed-kenburns 8s cubic-bezier(0.22, 1, 0.36, 1) forwards;
-}
-/* Variantes de Ken Burns según índice (cada slide tiene movimiento distinto) */
-.ed-vcarousel-slide.active:nth-of-type(1) { animation-name: ed-kenburns-1; }
-.ed-vcarousel-slide.active:nth-of-type(2) { animation-name: ed-kenburns-2; }
-.ed-vcarousel-slide.active:nth-of-type(3) { animation-name: ed-kenburns-3; }
-
-@keyframes ed-kenburns-1 {
-  0%   { transform: scale(1.08) translate(0, 0); }
-  100% { transform: scale(1.15) translate(-1.5%, -1%); }
-}
-@keyframes ed-kenburns-2 {
-  0%   { transform: scale(1.08) translate(0, 0); }
-  100% { transform: scale(1.14) translate(1.5%, 1%); }
-}
-@keyframes ed-kenburns-3 {
-  0%   { transform: scale(1.1) translate(-1%, 0); }
-  100% { transform: scale(1.18) translate(1%, -1.5%); }
 }
 .ed-vcarousel-label {
   position: absolute;

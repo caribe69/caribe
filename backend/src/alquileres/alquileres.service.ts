@@ -429,6 +429,21 @@ export class AlquileresService {
     const precioUnit = Number(producto.precio);
     const subtotal = precioUnit * dto.cantidad;
 
+    // Turno actual del cajero que agrega el producto: el ingreso del
+    // consumo va a ESTA caja (política: productos se contabilizan en el
+    // turno donde se agregan, no en el turno de apertura del alquiler).
+    const turnoActual = await this.prisma.turnoCaja.findFirst({
+      where: {
+        sedeId: alquiler.sedeId,
+        usuarioId: user.sub,
+        estado: EstadoTurno.ABIERTO,
+      },
+    });
+    if (!turnoActual)
+      throw new BadRequestException(
+        'No tienes turno de caja abierto. Abre caja primero.',
+      );
+
     return this.prisma.$transaction(async (tx) => {
       const consumo = await tx.consumoProducto.create({
         data: {
@@ -457,13 +472,33 @@ export class AlquileresService {
 
       const totalProductosActual =
         Number(alquiler.totalProductos) + subtotal;
-      const totalGeneral = Number(alquiler.precioHabitacion) + totalProductosActual;
+      const totalGeneral =
+        Number(alquiler.precioHabitacion) + totalProductosActual;
+      const nuevoMontoPagado = Number(alquiler.montoPagado) + subtotal;
+      const completo = nuevoMontoPagado >= totalGeneral - 0.001;
 
       await tx.alquiler.update({
         where: { id: alquiler.id },
         data: {
           totalProductos: totalProductosActual,
           total: totalGeneral,
+          // El consumo se cobra inmediatamente en el turno del cajero actual
+          montoPagado: nuevoMontoPagado,
+          pagado: completo,
+          pagadoEn: completo ? new Date() : alquiler.pagadoEn,
+          cobradoPorId: user.sub,
+          turnoPagoId: turnoActual.id,
+        },
+      });
+
+      // Registrar el cobro del producto en el turno actual (no el de apertura)
+      await tx.pagoAlquiler.create({
+        data: {
+          alquilerId: alquiler.id,
+          turnoCajaId: turnoActual.id,
+          usuarioId: user.sub,
+          monto: subtotal,
+          metodoPago: alquiler.metodoPago,
         },
       });
 

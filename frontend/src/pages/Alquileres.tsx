@@ -34,6 +34,7 @@ interface Habitacion {
   precioNoche: string;
   estado: string;
   piso: { id: number; numero: number; nombre?: string };
+  fotos?: Array<{ id: number; path: string; orden: number }>;
   alquileres?: Array<{
     id: number;
     estado: string;
@@ -380,12 +381,24 @@ function MapaHabitaciones() {
                 if (h.estado === 'DISPONIBLE') setReservar(h);
                 else if (h.estado === 'OCUPADA') setVerAlquiler(h);
               }}
-              className={`group relative text-left bg-gradient-to-br ${s.gradient} border ${s.border} rounded-2xl p-5 shadow-sm transition-all duration-300 ${
+              className={`group relative text-left bg-gradient-to-br ${s.gradient} border ${s.border} rounded-2xl p-5 shadow-sm transition-all duration-300 overflow-hidden ${
                 clickable
                   ? 'hover:shadow-xl hover:-translate-y-1 cursor-pointer'
                   : 'cursor-not-allowed opacity-80'
               } ${alistandoAtrasada ? 'ring-2 ring-rose-400 shadow-rose-300' : ''}`}
             >
+              {/* Foto de fondo (si existe) */}
+              {h.fotos && h.fotos.length > 0 && (
+                <div
+                  className="absolute inset-0 opacity-15 group-hover:opacity-25 transition-opacity pointer-events-none"
+                  style={{
+                    backgroundImage: `url(${h.fotos[0].path})`,
+                    backgroundSize: 'cover',
+                    backgroundPosition: 'center',
+                  }}
+                />
+              )}
+
               {/* Badge de atraso para ALISTANDO */}
               {alistandoAtrasada && (
                 <div className="absolute -top-2 -right-2 z-10 bg-rose-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-lg animate-bounce">

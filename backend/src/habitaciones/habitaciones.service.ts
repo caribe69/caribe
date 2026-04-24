@@ -36,6 +36,10 @@ export class HabitacionesService {
       },
       include: {
         piso: true,
+        fotos: {
+          orderBy: [{ orden: 'asc' }, { id: 'asc' }],
+          take: 10,
+        },
         // Alquiler activo (si está OCUPADA)
         alquileres: {
           where: {
@@ -185,5 +189,77 @@ export class HabitacionesService {
       where: { id: h.id },
       data: { activa: false },
     });
+  }
+
+  // ────────── FOTOS ──────────
+
+  async listarFotos(habitacionId: number, user: JwtPayload) {
+    const h = await this.findOne(habitacionId, user);
+    return this.prisma.fotoHabitacion.findMany({
+      where: { habitacionId: h.id },
+      orderBy: [{ orden: 'asc' }, { id: 'asc' }],
+    });
+  }
+
+  async subirFoto(
+    habitacionId: number,
+    filename: string,
+    user: JwtPayload,
+  ) {
+    const h = await this.findOne(habitacionId, user);
+    // Orden: si hay menos de 4 fotos, va como principal (el siguiente hueco)
+    // si ya hay 4+, va como extra (orden creciente desde 5)
+    const total = await this.prisma.fotoHabitacion.count({
+      where: { habitacionId: h.id },
+    });
+    const orden = total < 4 ? total + 1 : 5 + (total - 4);
+    return this.prisma.fotoHabitacion.create({
+      data: {
+        habitacionId: h.id,
+        path: `/uploads/habitaciones/${filename}`,
+        orden,
+      },
+    });
+  }
+
+  async eliminarFoto(
+    habitacionId: number,
+    fotoId: number,
+    user: JwtPayload,
+  ) {
+    const h = await this.findOne(habitacionId, user);
+    const foto = await this.prisma.fotoHabitacion.findUnique({
+      where: { id: fotoId },
+    });
+    if (!foto || foto.habitacionId !== h.id)
+      throw new NotFoundException('Foto no encontrada');
+    await this.prisma.fotoHabitacion.delete({ where: { id: fotoId } });
+    return { ok: true };
+  }
+
+  async reordenarFotos(
+    habitacionId: number,
+    orden: number[],
+    user: JwtPayload,
+  ) {
+    const h = await this.findOne(habitacionId, user);
+    // orden es un array de ids en el orden deseado
+    const fotos = await this.prisma.fotoHabitacion.findMany({
+      where: { habitacionId: h.id },
+    });
+    const ids = new Set(fotos.map((f) => f.id));
+    for (const id of orden) {
+      if (!ids.has(id))
+        throw new BadRequestException('Foto no pertenece a esta habitación');
+    }
+    await this.prisma.$transaction(
+      orden.map((fotoId, idx) =>
+        this.prisma.fotoHabitacion.update({
+          where: { id: fotoId },
+          data: { orden: idx + 1 },
+        }),
+      ),
+    );
+    return this.listarFotos(habitacionId, user);
   }
 }

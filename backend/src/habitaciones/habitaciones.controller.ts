@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Delete,
@@ -8,8 +9,11 @@ import {
   Patch,
   Post,
   Query,
+  UploadedFile,
   UseGuards,
+  UseInterceptors,
 } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 import { EstadoHabitacion, Rol } from '@prisma/client';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../auth/roles.guard';
@@ -82,5 +86,47 @@ export class HabitacionesController {
     @CurrentUser() user: JwtPayload,
   ) {
     return this.service.remove(id, user);
+  }
+
+  // ────────── FOTOS ──────────
+
+  @Get(':id/fotos')
+  listarFotos(
+    @Param('id', ParseIntPipe) id: number,
+    @CurrentUser() user: JwtPayload,
+  ) {
+    return this.service.listarFotos(id, user);
+  }
+
+  @Roles(Rol.SUPERADMIN, Rol.ADMIN_SEDE)
+  @Post(':id/fotos')
+  @UseInterceptors(FileInterceptor('foto'))
+  async subirFoto(
+    @Param('id', ParseIntPipe) id: number,
+    @UploadedFile() file: Express.Multer.File,
+    @CurrentUser() user: JwtPayload,
+  ) {
+    if (!file) throw new BadRequestException('Archivo requerido');
+    return this.service.subirFoto(id, file.filename, user);
+  }
+
+  @Roles(Rol.SUPERADMIN, Rol.ADMIN_SEDE)
+  @Delete(':id/fotos/:fotoId')
+  eliminarFoto(
+    @Param('id', ParseIntPipe) id: number,
+    @Param('fotoId', ParseIntPipe) fotoId: number,
+    @CurrentUser() user: JwtPayload,
+  ) {
+    return this.service.eliminarFoto(id, fotoId, user);
+  }
+
+  @Roles(Rol.SUPERADMIN, Rol.ADMIN_SEDE)
+  @Patch(':id/fotos/reorder')
+  reordenar(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() body: { orden: number[] },
+    @CurrentUser() user: JwtPayload,
+  ) {
+    return this.service.reordenarFotos(id, body.orden, user);
   }
 }

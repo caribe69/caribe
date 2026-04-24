@@ -117,9 +117,23 @@ model Habitacion {
 
   alquileres      Alquiler[]
   tareasLimpieza  TareaLimpieza[]
+  fotos           FotoHabitacion[]
 
   @@unique([sedeId, numero])
   @@index([sedeId, estado])
+}
+
+// Fotos de habitación. orden 1-4 = principales (se muestran en tarjeta),
+// orden 5+ = extras (solo galería).
+model FotoHabitacion {
+  id            Int        @id @default(autoincrement())
+  habitacionId  Int
+  habitacion    Habitacion @relation(fields: [habitacionId], references: [id], onDelete: Cascade)
+  path          String
+  orden         Int        @default(99)
+  creadoEn      DateTime   @default(now())
+
+  @@index([habitacionId, orden])
 }
 
 // ============================================================

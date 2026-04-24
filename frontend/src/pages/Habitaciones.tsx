@@ -11,8 +11,10 @@ import {
   Ban,
   CheckCircle2,
   Settings2,
+  Camera,
 } from 'lucide-react';
 import { api } from '@/lib/api';
+import FotosHabitacionModal from '@/components/FotosHabitacionModal';
 
 interface Habitacion {
   id: number;
@@ -23,6 +25,7 @@ interface Habitacion {
   precioHora: string;
   precioNoche: string;
   piso: { id: number; numero: number; nombre?: string };
+  fotos?: Array<{ id: number; path: string; orden: number }>;
 }
 
 interface Piso {
@@ -138,6 +141,7 @@ export default function Habitaciones() {
   const [showHabModal, setShowHabModal] = useState(false);
   const [showPisoModal, setShowPisoModal] = useState(false);
   const [cambiandoEstado, setCambiandoEstado] = useState<Habitacion | null>(null);
+  const [fotosHab, setFotosHab] = useState<Habitacion | null>(null);
 
   const { data: habs, isLoading } = useQuery({
     queryKey: ['habitaciones'],
@@ -243,24 +247,55 @@ export default function Habitaciones() {
           return (
             <div
               key={h.id}
-              className={`group relative bg-gradient-to-br ${theme.gradient} border border-white/80 rounded-2xl p-5 border-l-4 ${theme.accent} shadow-sm hover:shadow-xl transition-all duration-300 hover:-translate-y-1`}
+              className={`group relative bg-gradient-to-br ${theme.gradient} border border-white/80 rounded-2xl overflow-hidden border-l-4 ${theme.accent} shadow-sm hover:shadow-xl transition-all duration-300 hover:-translate-y-1`}
             >
-              {/* Badge estado */}
-              <div className="flex items-start justify-between mb-3">
+              {/* Foto principal como cabecera si hay */}
+              {h.fotos && h.fotos.length > 0 ? (
                 <div
-                  className={`inline-flex items-center gap-1.5 ${theme.badgeBg} ${theme.badgeText} text-[10px] uppercase tracking-widest font-semibold px-2.5 py-1 rounded-full`}
+                  className="relative h-32 w-full bg-slate-200 overflow-hidden cursor-pointer"
+                  onClick={() => setFotosHab(h)}
                 >
-                  <span
-                    className={`w-1.5 h-1.5 rounded-full ${theme.iconBg}`}
+                  <img
+                    src={h.fotos[0].path}
+                    alt=""
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                   />
-                  {theme.label}
+                  <div className="absolute inset-0 bg-gradient-to-t from-slate-900/60 via-transparent to-transparent" />
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setFotosHab(h);
+                    }}
+                    className="absolute top-2 right-2 bg-white/90 hover:bg-white rounded-lg px-2 py-1 text-[10px] font-semibold text-slate-700 flex items-center gap-1 shadow-sm backdrop-blur"
+                  >
+                    <Camera size={11} /> {h.fotos.length}
+                  </button>
+                  <div
+                    className={`absolute bottom-2 left-2 inline-flex items-center gap-1.5 ${theme.badgeBg} ${theme.badgeText} text-[10px] uppercase tracking-widest font-semibold px-2.5 py-1 rounded-full shadow-sm`}
+                  >
+                    <span className={`w-1.5 h-1.5 rounded-full ${theme.iconBg}`} />
+                    {theme.label}
+                  </div>
                 </div>
+              ) : (
+                /* Placeholder cuando no hay fotos */
                 <div
-                  className={`w-11 h-11 rounded-xl ${theme.iconBg} flex items-center justify-center shadow-sm`}
+                  className="relative h-32 w-full bg-slate-100 border-b border-slate-200 flex flex-col items-center justify-center cursor-pointer hover:bg-slate-50 transition"
+                  onClick={() => setFotosHab(h)}
                 >
-                  <BedDouble size={22} className="text-white" />
+                  <Camera size={22} className="text-slate-400 mb-1" />
+                  <div className="text-[10px] text-slate-400 font-medium uppercase tracking-widest">
+                    Agregar fotos
+                  </div>
+                  <div
+                    className={`absolute bottom-2 left-2 inline-flex items-center gap-1.5 ${theme.badgeBg} ${theme.badgeText} text-[10px] uppercase tracking-widest font-semibold px-2.5 py-1 rounded-full shadow-sm`}
+                  >
+                    <span className={`w-1.5 h-1.5 rounded-full ${theme.iconBg}`} />
+                    {theme.label}
+                  </div>
                 </div>
-              </div>
+              )}
+              <div className="p-5">
 
               {/* Número */}
               <div className="font-hotel text-3xl font-bold text-slate-900 leading-none">
@@ -303,13 +338,22 @@ export default function Habitaciones() {
                 </div>
               </div>
 
-              {/* Acción cambiar estado */}
-              <button
-                onClick={() => setCambiandoEstado(h)}
-                className="mt-4 w-full flex items-center justify-center gap-2 bg-white/80 hover:bg-white text-slate-700 py-2 rounded-lg text-xs font-medium border border-white shadow-sm transition"
-              >
-                <Settings2 size={13} /> Cambiar estado
-              </button>
+              {/* Acciones */}
+              <div className="mt-4 grid grid-cols-2 gap-2">
+                <button
+                  onClick={() => setCambiandoEstado(h)}
+                  className="flex items-center justify-center gap-1.5 bg-white/80 hover:bg-white text-slate-700 py-2 rounded-lg text-xs font-medium border border-white shadow-sm transition"
+                >
+                  <Settings2 size={12} /> Estado
+                </button>
+                <button
+                  onClick={() => setFotosHab(h)}
+                  className="flex items-center justify-center gap-1.5 bg-white/80 hover:bg-white text-slate-700 py-2 rounded-lg text-xs font-medium border border-white shadow-sm transition"
+                >
+                  <Camera size={12} /> Fotos
+                </button>
+              </div>
+              </div>
             </div>
           );
         })}
@@ -341,6 +385,13 @@ export default function Habitaciones() {
             setCambiandoEstado(null);
             qc.invalidateQueries({ queryKey: ['habitaciones'] });
           }}
+        />
+      )}
+      {fotosHab && (
+        <FotosHabitacionModal
+          habitacionId={fotosHab.id}
+          numero={fotosHab.numero}
+          onClose={() => setFotosHab(null)}
         />
       )}
     </div>

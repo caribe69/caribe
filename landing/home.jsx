@@ -44,22 +44,36 @@ function amenityIcon(label) {
 function HotelHero({ onNavigate }) {
   return (
     <>
-      {/* Foto grande de hero con carrusel */}
+      {/* Video hero + 2 fotos laterales */}
       <div style={{ position: 'relative', height: 420, overflow: 'hidden' }}>
         <div style={{ position: 'absolute', inset: 0, display: 'grid', gridTemplateColumns: '2fr 1fr 1fr', gap: 4 }}>
-          <PhotoCarousel
-            images={[
-              'https://images.unsplash.com/photo-1582719508461-905c673771fd?w=2000&q=80',
-              'https://images.unsplash.com/photo-1540541338287-41700207dee6?w=2000&q=80',
-              'https://images.unsplash.com/photo-1571896349842-33c89424de2d?w=2000&q=80',
-              'https://images.unsplash.com/photo-1602002418082-a4443e081dd1?w=2000&q=80',
-            ]}
-            autoplay={true}
-            interval={5000}
-            height="100%"
-            showDots={true}
-            showArrows={true}
-          />
+          <div style={{ position: 'relative', overflow: 'hidden', background: '#000' }}>
+            <video
+              src="assets/caribevideo.mp4"
+              autoPlay
+              muted
+              loop
+              playsInline
+              preload="auto"
+              style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+            />
+            {/* Degradado sutil inferior para legibilidad si se superpone texto */}
+            <div style={{
+              position: 'absolute', inset: 0,
+              background: 'linear-gradient(to top, rgba(0,0,0,0.25), transparent 35%)',
+              pointerEvents: 'none',
+            }}/>
+            {/* Badge "Tour virtual" */}
+            <div style={{
+              position: 'absolute', top: 16, left: 16,
+              background: 'rgba(0,0,0,0.55)', color: '#fff', backdropFilter: 'blur(6px)',
+              padding: '6px 12px', fontSize: 11, fontWeight: 600, borderRadius: 4,
+              display: 'inline-flex', alignItems: 'center', gap: 6, letterSpacing: '0.05em',
+            }}>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="10"/><path d="M10 8l6 4-6 4V8z" fill="#fff"/></svg>
+              TOUR EN VIVO
+            </div>
+          </div>
           <div className="ch-img-wrap ch-hover-zoom" style={{ borderRadius: 0 }}>
             <img src="https://images.unsplash.com/photo-1566073771259-6a8506099945?w=1200&q=80" alt=""/>
           </div>

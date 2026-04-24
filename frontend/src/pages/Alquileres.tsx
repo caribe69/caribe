@@ -16,6 +16,7 @@ import {
   Clock3,
   CalendarPlus,
   Briefcase,
+  Package,
 } from 'lucide-react';
 import { api } from '@/lib/api';
 import { useDialog } from '@/components/ConfirmProvider';
@@ -1446,21 +1447,43 @@ function AgregarProductoModal({
   onClose: () => void;
 }) {
   const qc = useQueryClient();
-  const [productoId, setProductoId] = useState('');
-  const [cantidad, setCantidad] = useState('1');
+  const [productoId, setProductoId] = useState<number | null>(null);
+  const [cantidad, setCantidad] = useState(1);
+  const [busqueda, setBusqueda] = useState('');
   const [error, setError] = useState<string | null>(null);
 
-  const productos = useQuery({
+  const productos = useQuery<Array<{
+    id: number;
+    nombre: string;
+    precio: string;
+    stock: number;
+  }>>({
     queryKey: ['productos'],
-    queryFn: async () => (await api.get<any[]>('/productos')).data,
+    queryFn: async () => (await api.get('/productos')).data,
   });
+
+  const productosFiltrados = useMemo(() => {
+    const q = busqueda.trim().toLowerCase();
+    const lista = productos.data || [];
+    if (!q) return lista;
+    return lista.filter((p) => p.nombre.toLowerCase().includes(q));
+  }, [productos.data, busqueda]);
+
+  const seleccionado = productos.data?.find((p) => p.id === productoId);
+  const subtotal = seleccionado
+    ? Number(seleccionado.precio) * cantidad
+    : 0;
+  const valido =
+    !!seleccionado &&
+    cantidad > 0 &&
+    cantidad <= (seleccionado?.stock || 0);
 
   const add = useMutation({
     mutationFn: async () =>
       (
         await api.post(`/alquileres/${alquilerId}/consumo`, {
-          productoId: Number(productoId),
-          cantidad: Number(cantidad),
+          productoId,
+          cantidad,
         })
       ).data,
     onSuccess: () => {
@@ -1472,48 +1495,198 @@ function AgregarProductoModal({
   });
 
   return (
-    <div className="fixed inset-0 bg-violet-950/70 backdrop-blur-sm flex items-center justify-center p-4 z-[60] animate-fade-in">
-      <div className="bg-white rounded-2xl w-full max-w-md p-6 animate-scale-in shadow-2xl">
-        <div className="flex justify-between items-center mb-4">
-          <h2 className="text-lg font-bold">Agregar producto</h2>
-          <button onClick={onClose}>
-            <X size={20} />
+    <div className="fixed inset-0 bg-slate-950/60 backdrop-blur-sm flex items-center justify-center p-4 z-[60] animate-fade-in">
+      <div className="bg-white rounded-3xl w-full max-w-md max-h-[85vh] flex flex-col shadow-2xl animate-scale-in">
+        {/* Header */}
+        <div className="flex justify-between items-center p-5 border-b border-slate-100">
+          <div>
+            <h2 className="font-hotel text-lg font-bold">Agregar producto</h2>
+            <div className="text-xs text-slate-500">
+              Al alquiler · cobro inmediato en tu turno
+            </div>
+          </div>
+          <button
+            onClick={onClose}
+            className="w-8 h-8 rounded-lg hover:bg-slate-100 flex items-center justify-center"
+          >
+            <X size={18} />
           </button>
         </div>
-        <div className="space-y-3">
-          <select
-            className="w-full border rounded-lg px-3 py-2"
-            value={productoId}
-            onChange={(e) => setProductoId(e.target.value)}
-          >
-            <option value="">Selecciona producto</option>
-            {productos.data?.map((p) => (
-              <option key={p.id} value={p.id} disabled={p.stock === 0}>
-                {p.nombre} · S/ {p.precio} · stock {p.stock}
-              </option>
-            ))}
-          </select>
-          <input
-            type="number"
-            min="1"
-            placeholder="Cantidad"
-            className="w-full border rounded-lg px-3 py-2"
-            value={cantidad}
-            onChange={(e) => setCantidad(e.target.value)}
-          />
-          {error && (
-            <div className="text-sm text-red-600 bg-red-50 p-2 rounded">
-              {error}
+
+        {/* Buscador */}
+        <div className="p-4 border-b border-slate-100">
+          <div className="relative">
+            <Search
+              size={14}
+              className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
+            />
+            <input
+              autoFocus
+              value={busqueda}
+              onChange={(e) => setBusqueda(e.target.value)}
+              placeholder="Buscar producto..."
+              className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-9 pr-8 py-2.5 text-sm focus:outline-none focus:border-violet-400 focus:ring-2 focus:ring-violet-100"
+            />
+            {busqueda && (
+              <button
+                onClick={() => setBusqueda('')}
+                className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-slate-700"
+              >
+                <X size={13} />
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* Lista de productos */}
+        <div className="flex-1 overflow-y-auto scroll-premium max-h-64">
+          {productos.isLoading && (
+            <div className="text-center text-slate-400 text-sm py-6">
+              Cargando productos...
             </div>
           )}
-          <button
-            onClick={() => add.mutate()}
-            disabled={add.isPending || !productoId || !cantidad}
-            className="w-full bg-brand-500 hover:bg-brand-600 text-white py-2.5 rounded-lg disabled:opacity-50"
-          >
-            {add.isPending ? 'Agregando...' : 'Agregar'}
-          </button>
+          {!productos.isLoading && productosFiltrados.length === 0 && (
+            <div className="text-center text-slate-400 text-sm py-6 px-4">
+              {busqueda ? (
+                <>
+                  Sin resultados para <b>"{busqueda}"</b>
+                </>
+              ) : (
+                'Sin productos en esta sede'
+              )}
+            </div>
+          )}
+          {productosFiltrados.map((p) => {
+            const sel = productoId === p.id;
+            const sinStock = p.stock === 0;
+            return (
+              <button
+                key={p.id}
+                disabled={sinStock}
+                onClick={() => {
+                  setProductoId(p.id);
+                  setCantidad(1);
+                }}
+                className={`w-full flex items-center gap-3 px-4 py-2.5 text-left border-l-2 transition ${
+                  sel
+                    ? 'bg-violet-50 border-violet-500'
+                    : 'border-transparent hover:bg-slate-50'
+                } ${sinStock ? 'opacity-40 cursor-not-allowed' : ''}`}
+              >
+                <div
+                  className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 ${
+                    sel ? 'bg-violet-600 text-white' : 'bg-slate-100 text-slate-500'
+                  }`}
+                >
+                  <Package size={16} />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="font-semibold text-sm text-slate-800 truncate">
+                    {p.nombre}
+                  </div>
+                  <div className="text-[11px] text-slate-500 flex items-center gap-1.5">
+                    <span className="tabular-nums">S/ {Number(p.precio).toFixed(2)}</span>
+                    <span>·</span>
+                    <span
+                      className={
+                        p.stock === 0
+                          ? 'text-rose-600'
+                          : p.stock < 5
+                            ? 'text-amber-600'
+                            : 'text-emerald-600'
+                      }
+                    >
+                      {p.stock === 0 ? 'sin stock' : `stock ${p.stock}`}
+                    </span>
+                  </div>
+                </div>
+                {sel && (
+                  <CheckCircle size={16} className="text-violet-600 shrink-0" />
+                )}
+              </button>
+            );
+          })}
         </div>
+
+        {/* Footer con cantidad + subtotal + botón */}
+        {seleccionado && (
+          <div className="border-t border-slate-100 p-4 bg-slate-50 space-y-3">
+            {/* Cantidad con stepper */}
+            <div className="flex items-center justify-between">
+              <div className="text-[10px] font-semibold text-slate-500 uppercase tracking-widest">
+                Cantidad
+              </div>
+              <div className="flex items-center gap-1">
+                <button
+                  onClick={() => setCantidad(Math.max(1, cantidad - 1))}
+                  disabled={cantidad <= 1}
+                  className="w-8 h-8 rounded-lg bg-white border border-slate-200 hover:bg-rose-50 hover:text-rose-700 disabled:opacity-40"
+                >
+                  −
+                </button>
+                <input
+                  type="number"
+                  min="1"
+                  max={seleccionado.stock}
+                  value={cantidad}
+                  onChange={(e) =>
+                    setCantidad(
+                      Math.min(
+                        seleccionado.stock,
+                        Math.max(1, parseInt(e.target.value) || 1),
+                      ),
+                    )
+                  }
+                  className="w-14 text-center border border-slate-200 rounded-lg py-1.5 text-sm font-semibold tabular-nums focus:outline-none focus:border-violet-400"
+                />
+                <button
+                  onClick={() =>
+                    setCantidad(Math.min(seleccionado.stock, cantidad + 1))
+                  }
+                  disabled={cantidad >= seleccionado.stock}
+                  className="w-8 h-8 rounded-lg bg-white border border-slate-200 hover:bg-emerald-50 hover:text-emerald-700 disabled:opacity-40"
+                >
+                  +
+                </button>
+              </div>
+            </div>
+
+            {/* Subtotal destacado */}
+            <div className="flex items-center justify-between bg-white rounded-xl px-3 py-2 border border-slate-200">
+              <div>
+                <div className="text-[10px] text-slate-500 uppercase tracking-widest font-semibold">
+                  {seleccionado.nombre}
+                </div>
+                <div className="text-[10px] text-slate-400">
+                  {cantidad} × S/ {Number(seleccionado.precio).toFixed(2)}
+                </div>
+              </div>
+              <div className="text-2xl font-hotel font-bold text-violet-700 tabular-nums">
+                S/ {subtotal.toFixed(2)}
+              </div>
+            </div>
+
+            {error && (
+              <div className="text-xs text-rose-700 bg-rose-50 border border-rose-200 rounded-lg p-2">
+                {error}
+              </div>
+            )}
+
+            <button
+              onClick={() => add.mutate()}
+              disabled={add.isPending || !valido}
+              className="w-full bg-gradient-to-r from-violet-600 to-violet-500 hover:from-violet-700 hover:to-violet-600 text-white py-3 rounded-xl font-semibold shadow-md shadow-violet-500/30 disabled:opacity-40 btn-press flex items-center justify-center gap-2"
+            >
+              {add.isPending ? 'Agregando...' : `Agregar · S/ ${subtotal.toFixed(2)}`}
+            </button>
+          </div>
+        )}
+
+        {!seleccionado && productosFiltrados.length > 0 && (
+          <div className="border-t border-slate-100 p-4 bg-slate-50 text-center text-xs text-slate-500">
+            Elige un producto arriba para continuar
+          </div>
+        )}
       </div>
     </div>
   );

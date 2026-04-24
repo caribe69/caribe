@@ -49,6 +49,7 @@ const HERO_VIDEOS = [
 
 function VideoCarousel({ videos, interval = 5000 }) {
   const [idx, setIdx] = React.useState(0);
+  const refs = React.useRef([]);
 
   // Rotación automática
   React.useEffect(() => {
@@ -56,13 +57,38 @@ function VideoCarousel({ videos, interval = 5000 }) {
     return () => clearInterval(id);
   }, [videos.length, interval]);
 
+  // Cada vez que cambia el índice activo:
+  //  - el video activo vuelve al segundo 0 y se reproduce desde ahí
+  //  - los demás se pausan (ahorra CPU y evita que corran simultáneamente)
+  React.useEffect(() => {
+    refs.current.forEach((v, i) => {
+      if (!v) return;
+      if (i === idx) {
+        try {
+          v.currentTime = 0;
+          const p = v.play();
+          if (p && typeof p.catch === 'function') p.catch(() => {});
+        } catch (_) {}
+      } else {
+        try {
+          v.pause();
+          // También bajamos el cursor al inicio para que el próximo "entrar" no muestre un frame cacheado
+          v.currentTime = 0;
+        } catch (_) {}
+      }
+    });
+  }, [idx]);
+
   return (
     <div className="ed-vcarousel">
       {videos.map((v, i) => (
         <video
           key={v.src}
+          ref={(el) => { refs.current[i] = el; }}
           src={v.src}
-          autoPlay muted loop playsInline preload="auto"
+          muted
+          playsInline
+          preload="auto"
           className={`ed-vcarousel-slide ${i === idx ? 'active' : ''}`}
         />
       ))}

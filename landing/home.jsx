@@ -99,13 +99,35 @@ function HotelHero({ onNavigate }) {
               PRESENTACIÓN
             </div>
           </div>
-          <div className="ch-img-wrap ch-hover-zoom" style={{ borderRadius: 0, position: 'relative' }}>
-            <img src="https://images.unsplash.com/photo-1540518614846-7eded433c457?w=1200&q=80" alt=""/>
+          <div style={{ position: 'relative', overflow: 'hidden', background: '#000' }}>
+            <video
+              src="assets/decoracion.mp4"
+              autoPlay
+              muted
+              loop
+              playsInline
+              preload="auto"
+              style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+            />
+            <div style={{
+              position: 'absolute', inset: 0,
+              background: 'linear-gradient(to top, rgba(0,0,0,0.35), transparent 40%)',
+              pointerEvents: 'none',
+            }}/>
+            <div style={{
+              position: 'absolute', top: 12, left: 12,
+              background: 'rgba(0,0,0,0.55)', color: '#fff', backdropFilter: 'blur(6px)',
+              padding: '5px 10px', fontSize: 10, fontWeight: 600, borderRadius: 4,
+              display: 'inline-flex', alignItems: 'center', gap: 5, letterSpacing: '0.05em',
+            }}>
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="10"/><path d="M10 8l6 4-6 4V8z" fill="#fff"/></svg>
+              DECORACIÓN
+            </div>
             <button style={{
               position: 'absolute', bottom: 16, right: 16,
               background: 'rgba(255,255,255,0.95)', border: '1px solid var(--line)',
               padding: '8px 14px', fontSize: 12, fontWeight: 600, borderRadius: 4, cursor: 'pointer',
-              display: 'inline-flex', alignItems: 'center', gap: 6,
+              display: 'inline-flex', alignItems: 'center', gap: 6, zIndex: 2,
             }} onClick={() => onNavigate('gallery')}>
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
               Ver todas las fotos

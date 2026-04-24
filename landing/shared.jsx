@@ -74,139 +74,106 @@ function Field({ label, value }) {
 // ─────────────────────────────────────────────────────────────
 function Nav({ current, onNavigate }) {
   const tabs = [
-    { id: 'home', label: 'Descripción general' },
+    { id: 'home', label: 'Inicio' },
     { id: 'rooms', label: 'Habitaciones' },
+    { id: 'sedes', label: 'Sedes' },
     { id: 'amenities', label: 'Servicios' },
     { id: 'gallery', label: 'Galería' },
-    { id: 'sedes', label: 'Sedes' },
     { id: 'contact', label: 'Contacto' },
   ];
 
   const [scrolled, setScrolled] = React.useState(false);
   React.useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 24);
+    const onScroll = () => setScrolled(window.scrollY > 40);
     onScroll();
     window.addEventListener('scroll', onScroll, { passive: true });
     return () => window.removeEventListener('scroll', onScroll);
   }, []);
 
   return (
-    <header
-      className={scrolled ? 'ch-nav-scrolled' : ''}
-      style={{
-        position: 'sticky',
-        top: 0,
-        zIndex: 50,
-        background: scrolled ? 'rgba(255,255,255,0.92)' : '#fff',
-        transition: 'background 0.3s ease, box-shadow 0.3s ease',
-      }}>
-      {/* Top dark bar */}
-      <div style={{ background: 'var(--navy)', color: '#fff', padding: '10px 48px' }}>
-        <div style={{ maxWidth: 1400, margin: '0 auto', display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: 12 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 24 }}>
-            <span style={{ opacity: 0.75 }}>🇪🇸 Español</span>
-          </div>
-          <Logo size={28} onClick={() => onNavigate('home')} showText={false} inverted/>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 24, opacity: 0.85 }}>
-            <a className="ch-link" style={{ fontSize: 12 }}>Administrar reservas</a>
-            <a className="ch-link" style={{ fontSize: 12 }}>Ubicaciones</a>
-            <a className="ch-link" style={{ fontSize: 12 }}>Ayuda</a>
-          </div>
-        </div>
-      </div>
-
-      {/* Booking summary bar */}
-      <BookingSummaryBar onEdit={() => onNavigate('sedes')}/>
-
-      {/* Hotel brand bar */}
-      <div style={{ padding: '18px 48px', borderBottom: '1px solid var(--line)' }}>
-        <div style={{ maxWidth: 1400, margin: '0 auto', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 24 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-            <img src={HOTEL.logo} alt="Hs Sol Caribe"
-              style={{ width: 44, height: 44, objectFit: 'contain', borderRadius: '50%', background: '#0a0a0a' }}/>
-            <div style={{ height: 32, width: 1, background: 'var(--line)' }}/>
-            <div style={{ fontSize: 20, fontWeight: 700, color: 'var(--ink)', letterSpacing: '-0.01em' }}>Hotel Sol Caribe</div>
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 20 }}>
-            <div style={{ textAlign: 'right' }}>
-              <div style={{ fontSize: 13 }}>
-                <span className="ch-price-strike">S/ 320</span>
-                <span style={{ fontSize: 22, fontWeight: 700, color: 'var(--ink)' }}>S/ 165</span>
-                <span style={{ color: 'var(--text-soft)', fontSize: 12, marginLeft: 4 }}>PEN/noche</span>
-              </div>
-              <div style={{ fontSize: 11, color: 'var(--text-soft)' }}>Tarifa para socios</div>
-            </div>
-            <button className="ch-btn cta" onClick={() => onNavigate('rooms')}>
-              Ver las habitaciones
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {/* Tabs */}
-      <nav style={{ padding: '10px 48px', borderBottom: '1px solid var(--line)', background: '#fff' }}>
-        <div style={{ maxWidth: 1400, margin: '0 auto', display: 'flex', gap: 6, overflowX: 'auto' }}>
+    <header className={`ed-nav ${scrolled ? 'ed-nav-scrolled' : ''}`}>
+      <div className="ed-nav-row">
+        <a className="ed-nav-logo" onClick={() => onNavigate('home')} style={{ cursor: 'pointer' }}>
+          <span className="ed-nav-logo-mark">S</span>
+          <span>Sol <em style={{ color: 'var(--ed-gold)' }}>Caribe</em></span>
+        </a>
+        <nav className="ed-nav-tabs" aria-label="Main">
           {tabs.map(t => (
-            <button key={t.id} className={`ch-tab ${current === t.id ? 'active' : ''}`} onClick={() => onNavigate(t.id)}>
+            <button
+              key={t.id}
+              className={`ed-nav-tab ${current === t.id ? 'active' : ''}`}
+              onClick={() => onNavigate(t.id)}
+            >
               {t.label}
             </button>
           ))}
+        </nav>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 20 }}>
+          <span className="ed-nav-lang">ES / EN</span>
+          <button className="ed-btn ed-btn-dark" style={{ padding: '12px 22px', fontSize: 11 }} onClick={() => onNavigate('rooms')}>
+            Reservar
+            <svg className="ed-btn-arrow" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M5 12h14M13 5l7 7-7 7"/></svg>
+          </button>
         </div>
-      </nav>
+      </div>
     </header>
   );
 }
 
 function Footer() {
   return (
-    <footer style={{ background: 'var(--navy)', color: '#fff', padding: '60px 48px 30px' }}>
-      <div style={{ maxWidth: 1400, margin: '0 auto' }}>
-        <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1fr', gap: 50, marginBottom: 50 }}>
-          <div>
-            <Logo size={44} inverted/>
-            <p style={{ fontSize: 14, lineHeight: 1.6, marginTop: 20, maxWidth: 360, opacity: 0.8 }}>
-              Tu hogar fuera de casa en el caribe colombiano. Cuatro sedes, once habitaciones, 17 años de historia.
+    <footer className="ed-footer">
+      <div className="ed-footer-inner">
+        <div className="ed-footer-top">
+          <div className="ed-footer-brand">
+            <h3>Sol <em style={{ fontStyle: 'italic', color: 'var(--ed-gold-soft)' }}>Caribe</em></h3>
+            <p>
+              Tu hogar fuera de casa en el Caribe colombiano. Cuatro sedes
+              frente al mar, once habitaciones y 39 años ininterrumpidos
+              recibiendo a quienes buscan mar, sol y calma.
             </p>
-            <div style={{ marginTop: 20, display: 'flex', alignItems: 'center', gap: 10 }}>
-              <Stars count={3} size={13}/>
-              <div style={{ fontSize: 11, opacity: 0.7 }}>Hotel tres estrellas · RNT 84719</div>
+            <div style={{ marginTop: 24, display: 'flex', alignItems: 'center', gap: 10 }}>
+              <Stars count={3} size={12} color="var(--ed-gold-soft)"/>
+              <div style={{ fontFamily: 'var(--ed-fs-mono)', fontSize: 10, letterSpacing: '0.14em', color: 'rgba(248,244,237,0.5)', textTransform: 'uppercase' }}>
+                Hotel tres estrellas · RNT 84719
+              </div>
             </div>
           </div>
 
           <div>
-            <div style={{ fontSize: 11, opacity: 0.65, marginBottom: 16, fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase' }}>Sedes</div>
-            <div style={{ fontSize: 13, lineHeight: 2.1, opacity: 0.9 }}>
-              <div><a className="ch-link">Rodadero · Santa Marta</a></div>
-              <div><a className="ch-link">Cartagena</a></div>
-              <div><a className="ch-link">San Andrés</a></div>
-              <div><a className="ch-link">Minca</a></div>
-            </div>
+            <h4>Sedes</h4>
+            <ul>
+              <li><a>Rodadero · Santa Marta</a></li>
+              <li><a>Cartagena de Indias</a></li>
+              <li><a>San Andrés Isla</a></li>
+              <li><a>Minca · Sierra Nevada</a></li>
+            </ul>
           </div>
 
           <div>
-            <div style={{ fontSize: 11, opacity: 0.65, marginBottom: 16, fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase' }}>Reserva</div>
-            <div style={{ fontSize: 13, lineHeight: 2.1, opacity: 0.9 }}>
-              <div><a className="ch-link">Habitaciones</a></div>
-              <div><a className="ch-link">Ofertas</a></div>
-              <div><a className="ch-link">Administrar reserva</a></div>
-              <div><a className="ch-link">Club de socios</a></div>
-            </div>
+            <h4>Reserva</h4>
+            <ul>
+              <li><a>Habitaciones</a></li>
+              <li><a>Ofertas y tarifas</a></li>
+              <li><a>Club de socios</a></li>
+              <li><a>Administrar reserva</a></li>
+            </ul>
           </div>
 
           <div>
-            <div style={{ fontSize: 11, opacity: 0.65, marginBottom: 16, fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase' }}>Contacto</div>
-            <div style={{ fontSize: 13, lineHeight: 2, opacity: 0.9 }}>
-              <div>+57 305 · 284 · 9123</div>
-              <div>hola@solcaribe.co</div>
-              <div style={{ marginTop: 12 }}><a className="ch-link">Instagram</a> · <a className="ch-link">WhatsApp</a></div>
-            </div>
+            <h4>Contacto</h4>
+            <ul>
+              <li><a>+57 305 · 284 · 9123</a></li>
+              <li><a>hola@solcaribe.co</a></li>
+              <li><a>Instagram</a></li>
+              <li><a>WhatsApp</a></li>
+            </ul>
           </div>
         </div>
-
-        <hr style={{ border: 'none', height: 1, background: 'rgba(255,255,255,0.1)', margin: 0 }}/>
-        <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 24, fontSize: 11, opacity: 0.6 }}>
-          <div>© 2025 Hs Sol Caribe</div>
+        <div className="ed-footer-bottom">
+          <div>© 2026 Hs Sol Caribe · Todos los derechos reservados</div>
           <div>Santa Marta · Cartagena · San Andrés · Minca</div>
+          <div>Diseñado con cariño en el Caribe ✦</div>
         </div>
       </div>
     </footer>

@@ -41,157 +41,205 @@ function amenityIcon(label) {
 // ─────────────────────────────────────────────────────────────
 // HotelHero — foto grande + info del "hotel" (las 4 sedes como uno)
 // ─────────────────────────────────────────────────────────────
+const HERO_VIDEOS = [
+  { src: 'assets/caribevideo.mp4',  num: '01', label: 'En vivo · Cartagena' },
+  { src: 'assets/presentacion2.mp4', num: '02', label: 'Interiores · Rodadero' },
+  { src: 'assets/decoracion.mp4',    num: '03', label: 'Decoración · Minca' },
+];
+
+function VideoCarousel({ videos, interval = 5000 }) {
+  const [idx, setIdx] = React.useState(0);
+
+  // Rotación automática
+  React.useEffect(() => {
+    const id = setInterval(() => setIdx((i) => (i + 1) % videos.length), interval);
+    return () => clearInterval(id);
+  }, [videos.length, interval]);
+
+  return (
+    <div className="ed-vcarousel">
+      {videos.map((v, i) => (
+        <video
+          key={v.src}
+          src={v.src}
+          autoPlay muted loop playsInline preload="auto"
+          className={`ed-vcarousel-slide ${i === idx ? 'active' : ''}`}
+        />
+      ))}
+      {/* Label del slide activo — re-renderiza con key para relanzar animación */}
+      <div className="ed-vcarousel-label" key={idx}>
+        <span className="ed-vcarousel-label-num">{videos[idx].num} · {videos.length}</span>
+        <div className="ed-vcarousel-label-title">{videos[idx].label}</div>
+      </div>
+      {/* Progress ticks + click to jump */}
+      <div className="ed-vcarousel-progress">
+        {videos.map((_, i) => (
+          <button
+            key={i}
+            className={`ed-vcarousel-tick ${i === idx ? 'active' : (i < idx ? 'done' : '')}`}
+            onClick={() => setIdx(i)}
+            aria-label={`Video ${i + 1}`}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function HotelHero({ onNavigate }) {
   return (
     <>
-      {/* Video hero — 3 videos con hover lift */}
-      <div style={{ position: 'relative', height: 480, overflow: 'hidden' }}>
-        <div style={{ position: 'absolute', inset: 0, display: 'grid', gridTemplateColumns: '2fr 1fr 1fr', gap: 4 }}>
-          <div className="ch-hero-cell">
-            <video
-              src="assets/caribevideo.mp4"
-              autoPlay muted loop playsInline preload="auto"
-              style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
-            />
-            <div style={{
-              position: 'absolute', inset: 0,
-              background: 'linear-gradient(to top, rgba(0,0,0,0.35) 0%, transparent 40%, rgba(0,0,0,0.15) 100%)',
-              pointerEvents: 'none', zIndex: 1,
-            }}/>
-            <div style={{ position: 'absolute', top: 20, left: 20, zIndex: 2 }}>
-              <span className="ch-badge-premium">
-                <span style={{
-                  width: 6, height: 6, borderRadius: '50%',
-                  background: '#ff4757', boxShadow: '0 0 12px #ff4757',
-                  animation: 'pulse-dot 1.6s ease-in-out infinite',
-                }}/>
-                TOUR EN VIVO
-              </span>
-            </div>
-            <div style={{ position: 'absolute', bottom: 24, left: 24, zIndex: 2, color: '#fff', maxWidth: 420 }}>
-              <div style={{
-                fontFamily: 'var(--f-display)',
-                fontSize: 34,
-                fontWeight: 500,
-                fontStyle: 'italic',
-                letterSpacing: '-0.01em',
-                lineHeight: 1.05,
-                textShadow: '0 2px 20px rgba(0,0,0,0.4)',
-              }}>
-                Vive el Caribe
-              </div>
-              <div style={{ fontSize: 13, opacity: 0.9, marginTop: 6, textShadow: '0 1px 8px rgba(0,0,0,0.5)' }}>
-                4 sedes · playa · piscina · desayuno incluido
-              </div>
-            </div>
+      {/* Hero editorial asimétrico: carrusel de 3 videos (crossfade 5s) + tarjeta */}
+      <section className="ed-hero">
+        <div className="ed-hero-grid">
+          <div className="ed-hero-video-wrap" style={{ position: 'relative' }}>
+            <VideoCarousel videos={HERO_VIDEOS} interval={5000}/>
+            <span className="ed-hero-live">En vivo desde el Caribe</span>
           </div>
-          <div className="ch-hero-cell">
-            <video
-              src="assets/presentacion2.mp4"
-              autoPlay muted loop playsInline preload="auto"
-              style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
-            />
-            <div style={{
-              position: 'absolute', inset: 0,
-              background: 'linear-gradient(to top, rgba(0,0,0,0.3), transparent 40%)',
-              pointerEvents: 'none', zIndex: 1,
-            }}/>
-            <div style={{ position: 'absolute', top: 14, left: 14, zIndex: 2 }}>
-              <span className="ch-badge-premium" style={{ fontSize: 10, padding: '6px 11px' }}>
-                <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="10"/><path d="M10 8l6 4-6 4V8z" fill="#fff"/></svg>
-                PRESENTACIÓN
-              </span>
+          <div className="ed-hero-card">
+            <div className="ed-hero-meta">
+              <span className="ed-number">01</span>
+              <span className="ed-eyebrow">Hs Sol Caribe · Est. 1986</span>
             </div>
-          </div>
-          <div className="ch-hero-cell">
-            <video
-              src="assets/decoracion.mp4"
-              autoPlay muted loop playsInline preload="auto"
-              style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
-            />
-            <div style={{
-              position: 'absolute', inset: 0,
-              background: 'linear-gradient(to top, rgba(0,0,0,0.4), transparent 45%)',
-              pointerEvents: 'none', zIndex: 1,
-            }}/>
-            <div style={{ position: 'absolute', top: 14, left: 14, zIndex: 2 }}>
-              <span className="ch-badge-premium" style={{ fontSize: 10, padding: '6px 11px' }}>
-                <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="10"/><path d="M10 8l6 4-6 4V8z" fill="#fff"/></svg>
-                DECORACIÓN
-              </span>
-            </div>
-            <button
-              className="ch-cta-glass"
-              style={{ position: 'absolute', bottom: 20, right: 20, zIndex: 3 }}
-              onClick={() => onNavigate('gallery')}
-            >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
-              Ver galería
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {/* Título del hotel + info */}
-      <section style={{ padding: '36px 48px 20px', background: '#fff' }}>
-        <div style={{ maxWidth: 1400, margin: '0 auto', display: 'grid', gridTemplateColumns: '1fr auto', gap: 30, alignItems: 'flex-start' }}>
-          <div data-reveal>
-            <div style={{ marginBottom: 14 }}>
-              <span className="ch-badge-brand">EXPERIENCIA CARIBE · 4 SEDES</span>
-            </div>
-            <h1 style={{
-              fontFamily: 'var(--f-display)',
-              fontSize: 48,
-              fontWeight: 500,
-              margin: 0,
-              color: 'var(--ink)',
-              letterSpacing: '-0.02em',
-              lineHeight: 1.05,
-              fontStyle: 'italic',
-            }}>
-              Hs Sol Caribe
-              <span style={{
-                display: 'block',
-                fontFamily: 'var(--f-sans)',
-                fontStyle: 'normal',
-                fontSize: 18,
-                fontWeight: 500,
-                color: 'var(--text-soft)',
-                letterSpacing: '0.02em',
-                marginTop: 8,
-              }}>
-                4 sedes en el Caribe colombiano
-              </span>
+            <h1 className="ed-hero-title">
+              Vive el <em>Caribe</em><br/>
+              como pocos.
             </h1>
-            <div style={{ marginTop: 18, display: 'flex', alignItems: 'center', gap: 20, flexWrap: 'wrap', fontSize: 13, color: 'var(--text)' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <Stars count={5} size={14}/>
-                <span style={{ fontWeight: 700 }}>4.8</span>
-                <span style={{ color: 'var(--text-soft)' }}>2,019 reseñas</span>
+            <p className="ed-hero-sub">
+              Cuatro sedes frente al mar en Colombia — Rodadero, Cartagena,
+              San Andrés y Minca — con amenidades cuidadas al detalle y la
+              calidez de siempre.
+            </p>
+            <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap' }}>
+              <button className="ed-btn ed-btn-dark" onClick={() => onNavigate('rooms')}>
+                Ver habitaciones
+                <svg className="ed-btn-arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M5 12h14M13 5l7 7-7 7"/></svg>
+              </button>
+              <button className="ed-btn ed-btn-outline" onClick={() => onNavigate('sedes')}>
+                Explorar sedes
+              </button>
+            </div>
+            <div className="ed-hero-stats">
+              <div className="ed-hero-stat">
+                <div className="ed-hero-stat-n">4.8<span style={{ fontSize: 18, color: 'var(--ed-gold)' }}> ★</span></div>
+                <div className="ed-hero-stat-l">2,019 Reseñas</div>
               </div>
-              <Sep/>
-              <span>📍 Rodadero · Cartagena · San Andrés · Minca</span>
-              <Sep/>
-              <span>📞 +57 305 · 284 · 9123</span>
+              <div className="ed-hero-stat">
+                <div className="ed-hero-stat-n">04</div>
+                <div className="ed-hero-stat-l">Sedes</div>
+              </div>
+              <div className="ed-hero-stat">
+                <div className="ed-hero-stat-n">39<span style={{ fontSize: 18, color: 'var(--ed-gold)' }}> yrs</span></div>
+                <div className="ed-hero-stat-l">Hospitalidad</div>
+              </div>
             </div>
-          </div>
-          <div style={{ textAlign: 'right' }} data-reveal data-reveal-delay="1">
-            <div style={{ fontSize: 13 }}>
-              <span className="ch-price-strike">S/ 320</span>
-              <span className="ch-price">S/ 165</span>
-              <span className="ch-price-unit"> PEN/noche</span>
-            </div>
-            <div style={{ fontSize: 11, color: 'var(--text-soft)', marginTop: 2 }}>
-              <a className="ch-link" style={{ color: 'var(--mar)' }}>Tarifa para socios</a>
-              <div style={{ marginTop: 2 }}>S/ 190 total</div>
-            </div>
-            <button className="ch-btn cta" onClick={() => onNavigate('rooms')} style={{ marginTop: 12, padding: '13px 28px' }}>
-              Ver las habitaciones
-            </button>
           </div>
         </div>
       </section>
+
+      {/* Marquee editorial — tira infinita de palabras clave */}
+      <div className="ed-marquee">
+        <div className="ed-marquee-track">
+          <span>Playas privadas</span>
+          <span>Desayuno incluido</span>
+          <span>Piscina frente al mar</span>
+          <span>WiFi cortesía</span>
+          <span>Cuatro sedes</span>
+          <span>Atención 24/7</span>
+          <span>Playas privadas</span>
+          <span>Desayuno incluido</span>
+          <span>Piscina frente al mar</span>
+          <span>WiFi cortesía</span>
+          <span>Cuatro sedes</span>
+          <span>Atención 24/7</span>
+        </div>
+      </div>
+
     </>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────
+// SedesShowcase — las 4 sedes rotando con entrada/salida cinemática
+// ─────────────────────────────────────────────────────────────
+function SedesShowcase({ onSedeClick }) {
+  const sedes = (typeof window !== 'undefined' && window.SEDES) ? window.SEDES : [];
+  const [idx, setIdx] = React.useState(0);
+  const [phase, setPhase] = React.useState('enter'); // 'enter' | 'exit'
+
+  // Auto-rotate: cada 6s, exit → cambio → enter
+  React.useEffect(() => {
+    if (sedes.length === 0) return;
+    const EXIT_MS = 600;
+    const TOTAL_MS = 6500;
+    const t1 = setTimeout(() => setPhase('exit'), TOTAL_MS - EXIT_MS);
+    const t2 = setTimeout(() => {
+      setIdx((i) => (i + 1) % sedes.length);
+      setPhase('enter');
+    }, TOTAL_MS);
+    return () => { clearTimeout(t1); clearTimeout(t2); };
+  }, [idx, sedes.length]);
+
+  const go = (i) => {
+    if (i === idx) return;
+    setPhase('exit');
+    setTimeout(() => { setIdx(i); setPhase('enter'); }, 500);
+  };
+
+  if (sedes.length === 0) return null;
+  const sede = sedes[idx];
+
+  return (
+    <section className="ed-sedes-show">
+      <div className="ed-sedes-show-inner">
+        <div className={`ed-sedes-show-text ${phase}`} key={`text-${idx}-${phase}`}>
+          <div className="ed-sedes-show-pillnum">Capítulo 03 · Sedes</div>
+          <div className="ed-sedes-show-eyebrow">
+            Destino 0{idx + 1} de 0{sedes.length}
+          </div>
+          <h2 className="ed-sedes-show-h">
+            {sede.name?.split(' ')[0] || sede.short}
+            <em> {sede.name?.split(' ').slice(1).join(' ') || sede.city || ''}</em>
+          </h2>
+          <p className="ed-sedes-show-desc">
+            {sede.desc || `Sede de ${sede.short || sede.name} — ${sede.roomCount || 0} habitaciones, playa, piscina y la calidez de siempre.`}
+          </p>
+          <div className="ed-sedes-show-stats">
+            <div>
+              <div className="ed-sedes-show-stat-n">{sede.roomCount || 0}</div>
+              <div className="ed-sedes-show-stat-l">Habitaciones</div>
+            </div>
+            <div>
+              <div className="ed-sedes-show-stat-n">{sede.rating ? sede.rating.toFixed(1) : '4.8'}<span style={{fontSize: 16, color: 'var(--ed-gold)'}}> ★</span></div>
+              <div className="ed-sedes-show-stat-l">Rating</div>
+            </div>
+            <div>
+              <div className="ed-sedes-show-stat-n">S/ {sede.priceFrom || '—'}</div>
+              <div className="ed-sedes-show-stat-l">Desde</div>
+            </div>
+          </div>
+          <button className="ed-btn ed-btn-light" onClick={() => onSedeClick && onSedeClick(sede.id)}>
+            Ver sede {sede.short}
+            <svg className="ed-btn-arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M5 12h14M13 5l7 7-7 7"/></svg>
+          </button>
+        </div>
+        <div className={`ed-sedes-show-img-wrap ${phase}`} key={`img-${idx}-${phase}`}>
+          <img className="ed-sedes-show-img" src={sede.cover || sede.img} alt={sede.name}/>
+        </div>
+      </div>
+      <div className="ed-sedes-show-nav">
+        {sedes.map((s, i) => (
+          <button
+            key={s.id || i}
+            className={`ed-sedes-show-nav-item ${i === idx ? 'active' : ''}`}
+            onClick={() => go(i)}
+          >
+            <div className="ed-sedes-show-nav-num">0{i + 1}</div>
+            <div className="ed-sedes-show-nav-name">{s.short || s.name}</div>
+          </button>
+        ))}
+      </div>
+    </section>
   );
 }
 
@@ -229,56 +277,49 @@ const REVIEWS = [
 ];
 
 function ReviewsSection() {
+  const [idx, setIdx] = React.useState(0);
+
+  // Auto-rotate cada 7s
+  React.useEffect(() => {
+    const id = setInterval(() => setIdx((i) => (i + 1) % REVIEWS.length), 7000);
+    return () => clearInterval(id);
+  }, []);
+
+  const r = REVIEWS[idx];
+
   return (
-    <section style={{ padding: '56px 48px 48px', background: 'var(--cream-2)' }}>
-      <div className="ch-divider-title" data-reveal>
-        <h2>Lo que dicen nuestros huéspedes</h2>
+    <section className="ed-section" style={{ paddingTop: 140, paddingBottom: 140 }}>
+      <div style={{ textAlign: 'center', marginBottom: 60 }} data-reveal>
+        <div className="ed-eyebrow" style={{ marginBottom: 14 }}>Testimonios · 04</div>
+        <h2 className="ed-display" style={{ fontSize: 'clamp(36px, 4.2vw, 62px)', margin: 0 }}>
+          Historias de <em style={{ fontStyle: 'italic', color: 'var(--ed-gold)' }}>huéspedes</em> reales.
+        </h2>
       </div>
-      <div style={{ textAlign: 'center', fontSize: 13, color: 'var(--text-soft)', marginBottom: 32, maxWidth: 560, margin: '-12px auto 36px' }} data-reveal data-reveal-delay="1">
-        Promedio 4.8 de 5 estrellas · basado en 2,019 reseñas verificadas
-      </div>
-      <div className="ch-reviews-grid">
-        {REVIEWS.map((r, i) => (
-          <div key={r.name} className="ch-review-card ch-lift" data-reveal data-reveal-delay={String(i + 1)}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 14, position: 'relative' }}>
-              <div className="ch-review-avatar">{r.initials}</div>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--ink)' }}>{r.name}</div>
-                <div style={{ fontSize: 11, color: 'var(--text-soft)' }}>{r.location} · {r.date}</div>
-              </div>
-            </div>
-            <div style={{ marginBottom: 10 }}>
-              <Stars count={r.rating} size={13}/>
-            </div>
-            <p style={{ fontSize: 14, lineHeight: 1.65, color: 'var(--text)', margin: 0, position: 'relative' }}>
-              {r.text}
-            </p>
-            <div style={{ marginTop: 16, paddingTop: 12, borderTop: '1px solid var(--line-soft)', fontSize: 11, color: 'var(--text-soft)', display: 'flex', alignItems: 'center', gap: 6 }}>
-              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
-              {r.sede}
-            </div>
-          </div>
-        ))}
-      </div>
-      <div style={{ textAlign: 'center', marginTop: 36 }} data-reveal data-reveal-delay="4">
-        <button
-          style={{
-            background: 'transparent',
-            border: '1px solid var(--ink)',
-            color: 'var(--ink)',
-            padding: '12px 28px',
-            fontSize: 13,
-            fontWeight: 600,
-            borderRadius: 100,
-            cursor: 'pointer',
-            letterSpacing: '0.02em',
-            transition: 'all 0.3s ease',
-          }}
-          onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--ink)'; e.currentTarget.style.color = '#fff'; }}
-          onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--ink)'; }}
-        >
-          Ver todas las reseñas →
-        </button>
+
+      <div className="ed-quote" data-reveal data-reveal-delay="1" key={idx}>
+        <span className="ed-quote-mark">"</span>
+        <blockquote className="ed-quote-body">
+          {r.text}
+        </blockquote>
+        <div style={{ display: 'inline-flex', gap: 4, marginBottom: 14 }}>
+          {[...Array(r.rating)].map((_, i) => (
+            <svg key={i} width="14" height="14" viewBox="0 0 24 24" fill="var(--ed-gold)">
+              <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01z"/>
+            </svg>
+          ))}
+        </div>
+        <div className="ed-quote-author">{r.name}</div>
+        <div className="ed-quote-author-sub">{r.location} · {r.date} · {r.sede}</div>
+        <div className="ed-quote-dots">
+          {REVIEWS.map((_, i) => (
+            <button
+              key={i}
+              className={`ed-quote-dot ${i === idx ? 'active' : ''}`}
+              onClick={() => setIdx(i)}
+              aria-label={`Reseña ${i + 1}`}
+            />
+          ))}
+        </div>
       </div>
     </section>
   );
@@ -292,21 +333,34 @@ function Sep() {
 // BenefitBanner — "Los socios ahorran 10%"
 // ─────────────────────────────────────────────────────────────
 function BenefitBanner() {
+  const benefits = [
+    {
+      num: '01',
+      title: 'Socios ahorran 10%',
+      body: 'Regístrate gratis en el club Sol Caribe y accede a tarifas exclusivas permanentes en nuestras cuatro sedes.',
+    },
+    {
+      num: '02',
+      title: 'Puntos por cada noche',
+      body: 'Gana puntos canjeables en restaurantes, tours y upgrades. Hasta 1,080 puntos por estadía completa.',
+    },
+    {
+      num: '03',
+      title: 'Desayuno incluido',
+      body: 'Buffet tropical con frutas frescas, pan recién horneado y café colombiano en todas las sedes.',
+    },
+  ];
+
   return (
-    <section style={{ padding: '16px 48px', background: '#fff', borderTop: '1px solid var(--line)', borderBottom: '1px solid var(--line)' }}>
-      <div style={{ maxWidth: 1400, margin: '0 auto', display: 'flex', gap: 24, flexWrap: 'wrap', justifyContent: 'center' }}>
-        <div className="ch-badge-benefit">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="10"/><path d="M9 12l2 2 4-4" stroke="#fff" strokeWidth="2" fill="none" strokeLinecap="round"/></svg>
-          Los socios ahorran un 10 %
-        </div>
-        <div className="ch-badge-benefit">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="10"/><path d="M9 12l2 2 4-4" stroke="#fff" strokeWidth="2" fill="none" strokeLinecap="round"/></svg>
-          Podrías ganar 1.080 puntos después de esta estancia
-        </div>
-        <div className="ch-badge-benefit">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="10"/><path d="M9 12l2 2 4-4" stroke="#fff" strokeWidth="2" fill="none" strokeLinecap="round"/></svg>
-          Desayuno incluido en todas las sedes
-        </div>
+    <section className="ed-benefits">
+      <div className="ed-benefits-grid">
+        {benefits.map((b, i) => (
+          <div key={b.num} className="ed-benefit" data-reveal data-reveal-delay={String(i + 1)}>
+            <span className="ed-benefit-num">{b.num} · Ventaja</span>
+            <h3>{b.title}</h3>
+            <p>{b.body}</p>
+          </div>
+        ))}
       </div>
     </section>
   );
@@ -583,23 +637,32 @@ function TestimonialsSection() {
 
 function CTASection({ onNavigate }) {
   return (
-    <section style={{ padding: '50px 48px', background: 'var(--navy)', color: '#fff' }}>
-      <div style={{ maxWidth: 1000, margin: '0 auto', textAlign: 'center' }}>
-        <h2 style={{ fontSize: 32, fontWeight: 700, margin: 0, letterSpacing: '-0.01em' }}>
-          Reserva directo y ahorra 10%
+    <section className="ed-cta-bleed">
+      <div className="ed-cta-bleed-bg">
+        <video
+          src="assets/caribevideo.mp4"
+          autoPlay muted loop playsInline preload="auto"
+        />
+      </div>
+      <div className="ed-cta-bleed-inner" data-reveal>
+        <div className="ed-eyebrow" style={{ color: 'var(--ed-gold-soft)', marginBottom: 20 }}>
+          Reserva directa · 10% descuento
+        </div>
+        <h2>
+          Tu <em>Caribe</em> empieza<br/>con una sola llamada.
         </h2>
-        <p style={{ fontSize: 15, lineHeight: 1.6, opacity: 0.85, maxWidth: 560, margin: '14px auto 0' }}>
-          Mejor precio garantizado. Desayuno incluido. Cancelación gratis hasta 72h antes, en cualquiera de nuestras cuatro sedes.
+        <p>
+          Mejor precio garantizado · Desayuno incluido · Cancelación
+          gratis hasta 72h antes · Cuatro sedes, una misma calidez.
         </p>
-        <div style={{ marginTop: 24, display: 'flex', gap: 12, justifyContent: 'center' }}>
-          <button className="ch-btn cta" onClick={() => onNavigate('booking')} style={{ padding: '14px 28px' }}>
+        <div style={{ display: 'flex', gap: 14, justifyContent: 'center', flexWrap: 'wrap' }}>
+          <button className="ed-btn ed-btn-gold" onClick={() => onNavigate('rooms')}>
             Reservar ahora
+            <svg className="ed-btn-arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M5 12h14M13 5l7 7-7 7"/></svg>
           </button>
-          <button onClick={() => onNavigate('sedes')} style={{
-            background: 'transparent', color: '#fff', border: '1px solid rgba(255,255,255,0.4)',
-            padding: '14px 28px', borderRadius: 4, cursor: 'pointer', fontWeight: 600, fontSize: 14,
-          }}>
-            Ver sedes
+          <button className="ed-btn ed-btn-light" onClick={() => onNavigate('sedes')}
+            style={{ background: 'transparent', color: 'var(--ed-ivory)', borderColor: 'rgba(255,255,255,0.5)' }}>
+            Ver las 4 sedes
           </button>
         </div>
       </div>
@@ -777,5 +840,5 @@ Object.assign(window, {
   Hero, HotelHero, HeroCompact, BenefitBanner, SedeTabs,
   IntroSection, RoomsPreview, RoomCard, AmenitiesSection, TestimonialsSection,
   LocationSection, CTASection, SedesSection, SedeCard, SedePage, SedesPage, RoomsBySede,
-  AmenIcon, Sep, RoomRowChoice, ReviewsSection,
+  AmenIcon, Sep, RoomRowChoice, ReviewsSection, SedesShowcase, VideoCarousel,
 });

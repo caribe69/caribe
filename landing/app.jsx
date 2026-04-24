@@ -69,12 +69,17 @@ function VariationB({ onNavigateExternal }) {
   };
 
   return (
-    <div className="ch-root" style={{ minHeight: '100%' }}>
+    <div className="ch-root ed-page" style={{ minHeight: '100%' }}>
       <Nav current={section} onNavigate={(s) => go(s)} />
       {section === 'home' && (
         <>
           <HotelHero onNavigate={go}/>
           <BenefitBanner/>
+          <SedesShowcase onSedeClick={(id) => go('sede', id)}/>
+          <div className="ed-chapter" data-reveal>
+            <div className="ed-chapter-num">Capítulo 04 · Habitaciones</div>
+            <h2>Cada sede, <em>un carácter</em>.</h2>
+          </div>
           <RoomsBySede onRoomClick={(id) => go('room', id)} onSedeClick={(id) => go('sede', id)}/>
           <ReviewsSection/>
           <CTASection onNavigate={go}/>

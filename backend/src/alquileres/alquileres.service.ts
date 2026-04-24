@@ -273,6 +273,7 @@ export class AlquileresService {
         habitacion: { include: { piso: true } },
         consumos: { include: { producto: true } },
         creadoPor: { select: { id: true, nombre: true, username: true } },
+        cobradoPor: { select: { id: true, nombre: true, username: true } },
       },
       orderBy: { creadoEn: 'desc' },
       take: 200,
@@ -308,6 +309,7 @@ export class AlquileresService {
         sede: { select: { nombre: true } },
         consumos: { include: { producto: true } },
         creadoPor: { select: { nombre: true, username: true } },
+        cobradoPor: { select: { id: true, nombre: true, username: true } },
       },
       orderBy: { creadoEn: 'desc' },
       take: 5000,
@@ -322,6 +324,7 @@ export class AlquileresService {
         consumos: { include: { producto: true } },
         creadoPor: { select: { id: true, nombre: true, username: true } },
         anuladoPor: { select: { id: true, nombre: true, username: true } },
+        cobradoPor: { select: { id: true, nombre: true, username: true } },
       },
     });
     if (!a) throw new NotFoundException('Alquiler no encontrado');

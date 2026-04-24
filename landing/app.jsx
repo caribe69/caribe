@@ -259,16 +259,6 @@ function VariationB({ onNavigateExternal }) {
 
   return (
     <div className="ch-root ed-page" style={{ minHeight: '100%' }}>
-      <SplashLoader key={splashKey} forceShow={splashForce}/>
-      <button
-        type="button"
-        className="ed-splash-replay"
-        onClick={replaySplash}
-        title="Reproducir intro"
-      >
-        <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
-        Ver intro
-      </button>
       <Nav current={section} onNavigate={(s) => go(s)} />
       {section === 'home' && (
         <>

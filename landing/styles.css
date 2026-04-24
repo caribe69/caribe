@@ -980,6 +980,31 @@ a[style*="border-radius: 32px"]:hover {
 @media (max-width: 960px) {
   .ed-hero-card { padding: 40px 28px; }
 }
+.ed-hero-intro-video {
+  position: relative;
+  margin-bottom: 28px;
+  height: 140px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  pointer-events: none;
+}
+.ed-hero-intro-video video {
+  height: 100%;
+  width: auto;
+  max-width: 100%;
+  object-fit: contain;
+  /* Hace que el fondo negro del video se vuelva transparente sobre el cream */
+  mix-blend-mode: screen;
+  filter: contrast(1.05) saturate(1.1);
+}
+@media (max-width: 960px) {
+  .ed-hero-intro-video {
+    height: 110px;
+    justify-content: center;
+  }
+}
+
 .ed-hero-meta {
   display: flex;
   align-items: center;

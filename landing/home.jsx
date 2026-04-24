@@ -106,6 +106,12 @@ function HotelHero({ onNavigate }) {
             <span className="ed-hero-live">En vivo · Tour del hotel</span>
           </div>
           <div className="ed-hero-card">
+            <div className="ed-hero-intro-video">
+              <video
+                src="assets/inicio.mp4"
+                autoPlay muted loop playsInline preload="auto"
+              />
+            </div>
             <div className="ed-hero-meta">
               <span className="ed-number">01</span>
               <span className="ed-eyebrow">Hs Sol Caribe · Hospedaje</span>

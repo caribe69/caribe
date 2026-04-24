@@ -74,8 +74,30 @@ function HotelHero({ onNavigate }) {
               TOUR EN VIVO
             </div>
           </div>
-          <div className="ch-img-wrap ch-hover-zoom" style={{ borderRadius: 0 }}>
-            <img src="https://images.unsplash.com/photo-1566073771259-6a8506099945?w=1200&q=80" alt=""/>
+          <div style={{ position: 'relative', overflow: 'hidden', background: '#000' }}>
+            <video
+              src="assets/presentacion2.mp4"
+              autoPlay
+              muted
+              loop
+              playsInline
+              preload="auto"
+              style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+            />
+            <div style={{
+              position: 'absolute', inset: 0,
+              background: 'linear-gradient(to top, rgba(0,0,0,0.25), transparent 35%)',
+              pointerEvents: 'none',
+            }}/>
+            <div style={{
+              position: 'absolute', top: 12, left: 12,
+              background: 'rgba(0,0,0,0.55)', color: '#fff', backdropFilter: 'blur(6px)',
+              padding: '5px 10px', fontSize: 10, fontWeight: 600, borderRadius: 4,
+              display: 'inline-flex', alignItems: 'center', gap: 5, letterSpacing: '0.05em',
+            }}>
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="10"/><path d="M10 8l6 4-6 4V8z" fill="#fff"/></svg>
+              PRESENTACIÓN
+            </div>
           </div>
           <div className="ch-img-wrap ch-hover-zoom" style={{ borderRadius: 0, position: 'relative' }}>
             <img src="https://images.unsplash.com/photo-1540518614846-7eded433c457?w=1200&q=80" alt=""/>

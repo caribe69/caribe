@@ -71,6 +71,7 @@ model Usuario {
   transferenciasCreadas   TransferenciaSede[] @relation("TransferenciaCreada")
   transferenciasRecibidas TransferenciaSede[] @relation("TransferenciaRecibida")
   reservasGrupalesCreadas  ReservaGrupal[] @relation("ReservaGrupalCreadaPor")
+  auditLogs                AuditLog[]
 
   @@index([sedeId])
 }
@@ -614,4 +615,35 @@ model AppConfig {
   sessionTtlDays    Int      @default(30)
   actualizadoEn     DateTime @updatedAt
   creadoEn          DateTime @default(now())
+}
+
+// ============================================================
+// AUDITORIA — registro de acciones y logins
+// ============================================================
+model AuditLog {
+  id          BigInt   @id @default(autoincrement())
+  usuarioId   Int?
+  usuario     Usuario? @relation(fields: [usuarioId], references: [id], onDelete: SetNull)
+  username    String?  // desnormalizado (por si borran el usuario)
+  rol         String?
+  sedeId      Int?
+
+  accion      String   // LOGIN, LOGOUT, LOGIN_FAIL, CREATE, UPDATE, DELETE, CUSTOM, etc
+  recurso     String?  // 'producto', 'habitacion', 'alquiler', 'caja', ...
+  recursoId   String?  // id del recurso afectado (stringify)
+  metodo      String?  // GET, POST, PATCH, PUT, DELETE
+  path        String?  // /api/productos/:id
+  ip          String?
+  userAgent   String?
+  detalle     Json?    // body de la request u otros detalles (opcional)
+  ok          Boolean  @default(true)
+  statusCode  Int?
+  duracionMs  Int?
+
+  creadoEn    DateTime @default(now())
+
+  @@index([usuarioId, creadoEn])
+  @@index([accion, creadoEn])
+  @@index([recurso, recursoId])
+  @@index([creadoEn])
 }

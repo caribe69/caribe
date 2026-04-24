@@ -7,6 +7,7 @@ import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcryptjs';
 import { PrismaService } from '../prisma/prisma.service';
 import { LoginDto } from './dto/login.dto';
+import { AuditService } from '../audit/audit.service';
 
 export interface JwtPayload {
   sub: number;
@@ -15,22 +16,59 @@ export interface JwtPayload {
   sedeId: number | null;
 }
 
+export interface LoginContext {
+  ip?: string;
+  userAgent?: string;
+}
+
 @Injectable()
 export class AuthService {
   constructor(
     private prisma: PrismaService,
     private jwt: JwtService,
+    private audit: AuditService,
   ) {}
 
-  async login(dto: LoginDto) {
+  async login(dto: LoginDto, ctx: LoginContext = {}) {
     const user = await this.prisma.usuario.findUnique({
       where: { username: dto.username },
       include: { sede: true },
     });
-    if (!user || !user.activo) throw new UnauthorizedException('Credenciales inválidas');
+    if (!user || !user.activo) {
+      // Registrar intento fallido (si es que el usuario existe o no)
+      this.audit.record({
+        usuarioId: null,
+        username: dto.username,
+        accion: 'LOGIN_FAIL',
+        metodo: 'POST',
+        path: '/api/auth/login',
+        ip: ctx.ip ?? null,
+        userAgent: ctx.userAgent ?? null,
+        detalle: { motivo: !user ? 'usuario_no_existe' : 'inactivo' },
+        ok: false,
+        statusCode: 401,
+      });
+      throw new UnauthorizedException('Credenciales inválidas');
+    }
 
     const ok = await bcrypt.compare(dto.password, user.passwordHash);
-    if (!ok) throw new UnauthorizedException('Credenciales inválidas');
+    if (!ok) {
+      this.audit.record({
+        usuarioId: user.id,
+        username: user.username,
+        rol: user.rol,
+        sedeId: user.sedeId,
+        accion: 'LOGIN_FAIL',
+        metodo: 'POST',
+        path: '/api/auth/login',
+        ip: ctx.ip ?? null,
+        userAgent: ctx.userAgent ?? null,
+        detalle: { motivo: 'password_incorrecto' },
+        ok: false,
+        statusCode: 401,
+      });
+      throw new UnauthorizedException('Credenciales inválidas');
+    }
 
     // SUPERADMIN sin sede asignada: usar la primera sede activa como sede por defecto
     let sedeEfectiva = user.sede;
@@ -64,6 +102,22 @@ export class AuthService {
     } catch {
       // Si falla la lectura, usamos el default; no bloquear el login
     }
+
+    // Registrar login exitoso
+    this.audit.record({
+      usuarioId: user.id,
+      username: user.username,
+      rol: user.rol,
+      sedeId: sedeIdEfectivo,
+      accion: 'LOGIN',
+      metodo: 'POST',
+      path: '/api/auth/login',
+      ip: ctx.ip ?? null,
+      userAgent: ctx.userAgent ?? null,
+      detalle: { ttlDays },
+      ok: true,
+      statusCode: 201,
+    });
 
     return {
       access_token: this.jwt.sign(payload, { expiresIn: `${ttlDays}d` }),

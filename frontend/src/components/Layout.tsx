@@ -26,6 +26,7 @@ import {
   Warehouse,
   BarChart3,
   UserCog,
+  Shield,
 } from 'lucide-react';
 import { useAuthStore, Rol } from '@/store/auth';
 import TopBar from './TopBar';
@@ -179,6 +180,12 @@ const groups: Group[] = [
         label: 'Configuración',
         icon: Settings,
         roles: ['SUPERADMIN', 'ADMIN_SEDE'],
+      },
+      {
+        to: '/auditoria',
+        label: 'Auditoría',
+        icon: Shield,
+        roles: ['SUPERADMIN'],
       },
     ],
   },

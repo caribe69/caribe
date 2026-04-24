@@ -2,6 +2,69 @@
 // Hs Sol Caribe — router principal
 // ─────────────────────────────────────────────────────────────
 
+// Splash loader: reproduce assets/inicio.mp4 fullscreen al cargar.
+// Solo una vez por sesión (sessionStorage). Fade-out al terminar el video
+// o al pasar 6s como máximo. Click o tecla cualquiera = saltarlo.
+function SplashLoader() {
+  const [fading, setFading] = React.useState(false);
+  const [hidden, setHidden] = React.useState(false);
+  const videoRef = React.useRef(null);
+
+  // No mostrar si ya se vio en esta sesión
+  const [show] = React.useState(() => {
+    try { return !sessionStorage.getItem('splash-seen'); } catch { return true; }
+  });
+
+  React.useEffect(() => {
+    if (!show) { setHidden(true); return; }
+    try { sessionStorage.setItem('splash-seen', '1'); } catch {}
+
+    // Bloquear scroll mientras está visible
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+
+    // Timeout de seguridad (6s máximo)
+    const safetyTimer = setTimeout(() => triggerFade(), 6000);
+
+    // Saltar al click o tecla
+    const skip = () => triggerFade();
+    window.addEventListener('click', skip, { once: true });
+    window.addEventListener('keydown', skip, { once: true });
+
+    return () => {
+      clearTimeout(safetyTimer);
+      window.removeEventListener('click', skip);
+      window.removeEventListener('keydown', skip);
+      document.body.style.overflow = prevOverflow;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const triggerFade = () => {
+    if (fading) return;
+    setFading(true);
+    setTimeout(() => setHidden(true), 850);
+    document.body.style.overflow = '';
+  };
+
+  if (!show || hidden) return null;
+
+  return (
+    <div className={`ed-splash ${fading ? 'fading' : ''}`}>
+      <video
+        ref={videoRef}
+        src="assets/inicio.mp4"
+        autoPlay muted playsInline
+        preload="auto"
+        onEnded={triggerFade}
+        className="ed-splash-video"
+      />
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────
+
 // SEO dinámico — actualiza <title>, <meta description> y <link canonical>
 // según la sección activa. Ejecutado desde dentro del router principal.
 const SEO_BY_SECTION = {
@@ -180,6 +243,7 @@ function VariationB({ onNavigateExternal }) {
 
   return (
     <div className="ch-root ed-page" style={{ minHeight: '100%' }}>
+      <SplashLoader/>
       <Nav current={section} onNavigate={(s) => go(s)} />
       {section === 'home' && (
         <>

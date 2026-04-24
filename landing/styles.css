@@ -585,6 +585,38 @@ a[style*="border-radius: 32px"]:hover {
   50% { opacity: 0.4; transform: scale(0.7); }
 }
 
+/* ─── Splash loader fullscreen (intro con logo en video) ─── */
+.ed-splash {
+  position: fixed;
+  inset: 0;
+  z-index: 99999;
+  background: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  /* El fade-out lo hace la animación, no transición — es one-shot */
+}
+.ed-splash.fading {
+  animation: ed-splash-out 0.8s cubic-bezier(0.76, 0, 0.24, 1) forwards;
+  pointer-events: none;
+}
+@keyframes ed-splash-out {
+  0%   { opacity: 1; transform: scale(1); }
+  100% { opacity: 0; transform: scale(1.04); visibility: hidden; }
+}
+.ed-splash-video {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  background: #fff;
+  display: block;
+}
+/* En pantallas pequeñas, ajusta al ancho */
+@media (max-width: 700px) {
+  .ed-splash-video { object-fit: contain; }
+}
+
 /* ═══════════════════════════════════════════════════════════════
  * EDITORIAL REDESIGN — "Caribe Editorial"
  * Sistema de diseño nuevo con prefijo .ed-

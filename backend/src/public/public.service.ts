@@ -69,38 +69,47 @@ export class PublicService {
         : 0,
     }));
 
-    const roomsFmt = habitaciones.map((h) => ({
-      id: h.id,
-      num: h.numero,
-      name: h.descripcion || `Habitación ${h.numero}`,
-      descripcion: h.descripcion,
-      caracteristicas: h.caracteristicas,
-      tier: (h.descripcion || '').toUpperCase() || 'ESTÁNDAR',
-      precioHora: Number(h.precioHora),
-      precioNoche: Number(h.precioNoche),
-      price: Number(h.precioNoche),
-      currency: 'PEN',
-      estado: h.estado,
-      disponible: h.estado === EstadoHabitacion.DISPONIBLE,
-      sedeId: h.sedeId,
-      sede: h.sede.nombre,
-      sedeShort: h.sede.nombre.split(' ').slice(-1)[0],
-      piso: h.piso.numero,
-      fotos: h.fotos.map((f) => f.path),
-      img: h.fotos[0]?.path || null,
-      gallery: h.fotos.map((f) => f.path),
-      // Defaults razonables para campos que la landing usa pero no tenemos en DB aún
-      size: 0,
-      capacity: 2,
-      beds: h.descripcion || '',
-      view: '',
-      amenities: h.caracteristicas
-        ? h.caracteristicas.split(',').map((s) => s.trim()).filter(Boolean)
-        : [],
-      features: h.caracteristicas
-        ? h.caracteristicas.split(',').map((s) => s.trim()).filter(Boolean)
-        : [],
-    }));
+    // Placeholder servido por la landing (/var/www/landing/assets/...)
+    const PLACEHOLDER = '/assets/room-placeholder.jpg';
+
+    const roomsFmt = habitaciones.map((h) => {
+      const paths = h.fotos.map((f) => f.path);
+      // Si no hay fotos, usar placeholder para no romper la landing
+      const gallery = paths.length > 0 ? paths : [PLACEHOLDER];
+      return {
+        id: h.id,
+        num: h.numero,
+        name: h.descripcion || `Habitación ${h.numero}`,
+        descripcion: h.descripcion,
+        caracteristicas: h.caracteristicas,
+        tier: (h.descripcion || '').toUpperCase() || 'ESTÁNDAR',
+        precioHora: Number(h.precioHora),
+        precioNoche: Number(h.precioNoche),
+        price: Number(h.precioNoche),
+        currency: 'PEN',
+        estado: h.estado,
+        disponible: h.estado === EstadoHabitacion.DISPONIBLE,
+        sedeId: h.sedeId,
+        sede: h.sede.nombre,
+        sedeShort: h.sede.nombre.split(' ').slice(-1)[0],
+        piso: h.piso.numero,
+        fotos: gallery,
+        img: gallery[0],
+        gallery,
+        hasRealPhotos: paths.length > 0,
+        // Defaults razonables para campos que la landing usa pero no tenemos en DB aún
+        size: 0,
+        capacity: 2,
+        beds: h.descripcion || '',
+        view: '',
+        amenities: h.caracteristicas
+          ? h.caracteristicas.split(',').map((s) => s.trim()).filter(Boolean)
+          : [],
+        features: h.caracteristicas
+          ? h.caracteristicas.split(',').map((s) => s.trim()).filter(Boolean)
+          : [],
+      };
+    });
 
     return {
       sedes: sedesFmt,

@@ -44,112 +44,129 @@ function amenityIcon(label) {
 function HotelHero({ onNavigate }) {
   return (
     <>
-      {/* Video hero + 2 fotos laterales */}
-      <div style={{ position: 'relative', height: 420, overflow: 'hidden' }}>
+      {/* Video hero — 3 videos con hover lift */}
+      <div style={{ position: 'relative', height: 480, overflow: 'hidden' }}>
         <div style={{ position: 'absolute', inset: 0, display: 'grid', gridTemplateColumns: '2fr 1fr 1fr', gap: 4 }}>
-          <div style={{ position: 'relative', overflow: 'hidden', background: '#000' }}>
+          <div className="ch-hero-cell">
             <video
               src="assets/caribevideo.mp4"
-              autoPlay
-              muted
-              loop
-              playsInline
-              preload="auto"
+              autoPlay muted loop playsInline preload="auto"
               style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
             />
-            {/* Degradado sutil inferior para legibilidad si se superpone texto */}
             <div style={{
               position: 'absolute', inset: 0,
-              background: 'linear-gradient(to top, rgba(0,0,0,0.25), transparent 35%)',
-              pointerEvents: 'none',
+              background: 'linear-gradient(to top, rgba(0,0,0,0.35) 0%, transparent 40%, rgba(0,0,0,0.15) 100%)',
+              pointerEvents: 'none', zIndex: 1,
             }}/>
-            {/* Badge "Tour virtual" */}
-            <div style={{
-              position: 'absolute', top: 16, left: 16,
-              background: 'rgba(0,0,0,0.55)', color: '#fff', backdropFilter: 'blur(6px)',
-              padding: '6px 12px', fontSize: 11, fontWeight: 600, borderRadius: 4,
-              display: 'inline-flex', alignItems: 'center', gap: 6, letterSpacing: '0.05em',
-            }}>
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="10"/><path d="M10 8l6 4-6 4V8z" fill="#fff"/></svg>
-              TOUR EN VIVO
+            <div style={{ position: 'absolute', top: 20, left: 20, zIndex: 2 }}>
+              <span className="ch-badge-premium">
+                <span style={{
+                  width: 6, height: 6, borderRadius: '50%',
+                  background: '#ff4757', boxShadow: '0 0 12px #ff4757',
+                  animation: 'pulse-dot 1.6s ease-in-out infinite',
+                }}/>
+                TOUR EN VIVO
+              </span>
+            </div>
+            <div style={{ position: 'absolute', bottom: 24, left: 24, zIndex: 2, color: '#fff', maxWidth: 420 }}>
+              <div style={{
+                fontFamily: 'var(--f-display)',
+                fontSize: 34,
+                fontWeight: 500,
+                fontStyle: 'italic',
+                letterSpacing: '-0.01em',
+                lineHeight: 1.05,
+                textShadow: '0 2px 20px rgba(0,0,0,0.4)',
+              }}>
+                Vive el Caribe
+              </div>
+              <div style={{ fontSize: 13, opacity: 0.9, marginTop: 6, textShadow: '0 1px 8px rgba(0,0,0,0.5)' }}>
+                4 sedes · playa · piscina · desayuno incluido
+              </div>
             </div>
           </div>
-          <div style={{ position: 'relative', overflow: 'hidden', background: '#000' }}>
+          <div className="ch-hero-cell">
             <video
               src="assets/presentacion2.mp4"
-              autoPlay
-              muted
-              loop
-              playsInline
-              preload="auto"
+              autoPlay muted loop playsInline preload="auto"
               style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
             />
             <div style={{
               position: 'absolute', inset: 0,
-              background: 'linear-gradient(to top, rgba(0,0,0,0.25), transparent 35%)',
-              pointerEvents: 'none',
+              background: 'linear-gradient(to top, rgba(0,0,0,0.3), transparent 40%)',
+              pointerEvents: 'none', zIndex: 1,
             }}/>
-            <div style={{
-              position: 'absolute', top: 12, left: 12,
-              background: 'rgba(0,0,0,0.55)', color: '#fff', backdropFilter: 'blur(6px)',
-              padding: '5px 10px', fontSize: 10, fontWeight: 600, borderRadius: 4,
-              display: 'inline-flex', alignItems: 'center', gap: 5, letterSpacing: '0.05em',
-            }}>
-              <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="10"/><path d="M10 8l6 4-6 4V8z" fill="#fff"/></svg>
-              PRESENTACIÓN
+            <div style={{ position: 'absolute', top: 14, left: 14, zIndex: 2 }}>
+              <span className="ch-badge-premium" style={{ fontSize: 10, padding: '6px 11px' }}>
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="10"/><path d="M10 8l6 4-6 4V8z" fill="#fff"/></svg>
+                PRESENTACIÓN
+              </span>
             </div>
           </div>
-          <div style={{ position: 'relative', overflow: 'hidden', background: '#000' }}>
+          <div className="ch-hero-cell">
             <video
               src="assets/decoracion.mp4"
-              autoPlay
-              muted
-              loop
-              playsInline
-              preload="auto"
+              autoPlay muted loop playsInline preload="auto"
               style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
             />
             <div style={{
               position: 'absolute', inset: 0,
-              background: 'linear-gradient(to top, rgba(0,0,0,0.35), transparent 40%)',
-              pointerEvents: 'none',
+              background: 'linear-gradient(to top, rgba(0,0,0,0.4), transparent 45%)',
+              pointerEvents: 'none', zIndex: 1,
             }}/>
-            <div style={{
-              position: 'absolute', top: 12, left: 12,
-              background: 'rgba(0,0,0,0.55)', color: '#fff', backdropFilter: 'blur(6px)',
-              padding: '5px 10px', fontSize: 10, fontWeight: 600, borderRadius: 4,
-              display: 'inline-flex', alignItems: 'center', gap: 5, letterSpacing: '0.05em',
-            }}>
-              <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="10"/><path d="M10 8l6 4-6 4V8z" fill="#fff"/></svg>
-              DECORACIÓN
+            <div style={{ position: 'absolute', top: 14, left: 14, zIndex: 2 }}>
+              <span className="ch-badge-premium" style={{ fontSize: 10, padding: '6px 11px' }}>
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="10"/><path d="M10 8l6 4-6 4V8z" fill="#fff"/></svg>
+                DECORACIÓN
+              </span>
             </div>
-            <button style={{
-              position: 'absolute', bottom: 16, right: 16,
-              background: 'rgba(255,255,255,0.95)', border: '1px solid var(--line)',
-              padding: '8px 14px', fontSize: 12, fontWeight: 600, borderRadius: 4, cursor: 'pointer',
-              display: 'inline-flex', alignItems: 'center', gap: 6, zIndex: 2,
-            }} onClick={() => onNavigate('gallery')}>
+            <button
+              className="ch-cta-glass"
+              style={{ position: 'absolute', bottom: 20, right: 20, zIndex: 3 }}
+              onClick={() => onNavigate('gallery')}
+            >
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
-              Ver todas las fotos
+              Ver galería
             </button>
           </div>
         </div>
       </div>
 
       {/* Título del hotel + info */}
-      <section style={{ padding: '26px 48px 14px', background: '#fff' }}>
+      <section style={{ padding: '36px 48px 20px', background: '#fff' }}>
         <div style={{ maxWidth: 1400, margin: '0 auto', display: 'grid', gridTemplateColumns: '1fr auto', gap: 30, alignItems: 'flex-start' }}>
-          <div>
-            <div style={{ marginBottom: 12 }}>
-              <span className="ch-badge-brand">VENTA RÁPIDA DEL HOTEL</span>
+          <div data-reveal>
+            <div style={{ marginBottom: 14 }}>
+              <span className="ch-badge-brand">EXPERIENCIA CARIBE · 4 SEDES</span>
             </div>
-            <h1 style={{ fontSize: 34, fontWeight: 700, margin: 0, color: 'var(--ink)', letterSpacing: '-0.02em', lineHeight: 1.1 }}>
-              Hs Sol Caribe <span style={{ color: 'var(--text-soft)', fontWeight: 500, fontSize: 24 }}>— 4 sedes en el Caribe colombiano</span>
+            <h1 style={{
+              fontFamily: 'var(--f-display)',
+              fontSize: 48,
+              fontWeight: 500,
+              margin: 0,
+              color: 'var(--ink)',
+              letterSpacing: '-0.02em',
+              lineHeight: 1.05,
+              fontStyle: 'italic',
+            }}>
+              Hs Sol Caribe
+              <span style={{
+                display: 'block',
+                fontFamily: 'var(--f-sans)',
+                fontStyle: 'normal',
+                fontSize: 18,
+                fontWeight: 500,
+                color: 'var(--text-soft)',
+                letterSpacing: '0.02em',
+                marginTop: 8,
+              }}>
+                4 sedes en el Caribe colombiano
+              </span>
             </h1>
-            <div style={{ marginTop: 14, display: 'flex', alignItems: 'center', gap: 20, flexWrap: 'wrap', fontSize: 13, color: 'var(--text)' }}>
+            <div style={{ marginTop: 18, display: 'flex', alignItems: 'center', gap: 20, flexWrap: 'wrap', fontSize: 13, color: 'var(--text)' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                 <Stars count={5} size={14}/>
-                <span style={{ fontWeight: 600 }}>4.8</span>
+                <span style={{ fontWeight: 700 }}>4.8</span>
                 <span style={{ color: 'var(--text-soft)' }}>2,019 reseñas</span>
               </div>
               <Sep/>
@@ -158,7 +175,7 @@ function HotelHero({ onNavigate }) {
               <span>📞 +57 305 · 284 · 9123</span>
             </div>
           </div>
-          <div style={{ textAlign: 'right' }}>
+          <div style={{ textAlign: 'right' }} data-reveal data-reveal-delay="1">
             <div style={{ fontSize: 13 }}>
               <span className="ch-price-strike">S/ 320</span>
               <span className="ch-price">S/ 165</span>
@@ -175,6 +192,95 @@ function HotelHero({ onNavigate }) {
         </div>
       </section>
     </>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────
+// ReviewsSection — testimonios con estrellas, estilo editorial
+// ─────────────────────────────────────────────────────────────
+const REVIEWS = [
+  {
+    name: 'María Fernanda',
+    initials: 'MF',
+    location: 'Medellín',
+    date: 'Marzo 2026',
+    rating: 5,
+    text: 'La mejor experiencia del Caribe. La decoración, la limpieza y el desayuno fueron excepcionales. Repetimos cada año con la familia.',
+    sede: 'Sede Cartagena',
+  },
+  {
+    name: 'Andrés Ramírez',
+    initials: 'AR',
+    location: 'Bogotá',
+    date: 'Febrero 2026',
+    rating: 5,
+    text: 'Atención impecable y playas privadas. Sol Caribe superó mis expectativas — sobre todo la sede de San Andrés. El personal, 10/10.',
+    sede: 'Sede San Andrés',
+  },
+  {
+    name: 'Laura Suárez',
+    initials: 'LS',
+    location: 'Cali',
+    date: 'Enero 2026',
+    rating: 5,
+    text: 'Todo cuidado al detalle. Camas cómodas, buen WiFi, piscina hermosa y la atención en recepción de otro nivel. 100 % recomendado.',
+    sede: 'Sede Rodadero',
+  },
+];
+
+function ReviewsSection() {
+  return (
+    <section style={{ padding: '56px 48px 48px', background: 'var(--cream-2)' }}>
+      <div className="ch-divider-title" data-reveal>
+        <h2>Lo que dicen nuestros huéspedes</h2>
+      </div>
+      <div style={{ textAlign: 'center', fontSize: 13, color: 'var(--text-soft)', marginBottom: 32, maxWidth: 560, margin: '-12px auto 36px' }} data-reveal data-reveal-delay="1">
+        Promedio 4.8 de 5 estrellas · basado en 2,019 reseñas verificadas
+      </div>
+      <div className="ch-reviews-grid">
+        {REVIEWS.map((r, i) => (
+          <div key={r.name} className="ch-review-card ch-lift" data-reveal data-reveal-delay={String(i + 1)}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 14, position: 'relative' }}>
+              <div className="ch-review-avatar">{r.initials}</div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--ink)' }}>{r.name}</div>
+                <div style={{ fontSize: 11, color: 'var(--text-soft)' }}>{r.location} · {r.date}</div>
+              </div>
+            </div>
+            <div style={{ marginBottom: 10 }}>
+              <Stars count={r.rating} size={13}/>
+            </div>
+            <p style={{ fontSize: 14, lineHeight: 1.65, color: 'var(--text)', margin: 0, position: 'relative' }}>
+              {r.text}
+            </p>
+            <div style={{ marginTop: 16, paddingTop: 12, borderTop: '1px solid var(--line-soft)', fontSize: 11, color: 'var(--text-soft)', display: 'flex', alignItems: 'center', gap: 6 }}>
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+              {r.sede}
+            </div>
+          </div>
+        ))}
+      </div>
+      <div style={{ textAlign: 'center', marginTop: 36 }} data-reveal data-reveal-delay="4">
+        <button
+          style={{
+            background: 'transparent',
+            border: '1px solid var(--ink)',
+            color: 'var(--ink)',
+            padding: '12px 28px',
+            fontSize: 13,
+            fontWeight: 600,
+            borderRadius: 100,
+            cursor: 'pointer',
+            letterSpacing: '0.02em',
+            transition: 'all 0.3s ease',
+          }}
+          onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--ink)'; e.currentTarget.style.color = '#fff'; }}
+          onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--ink)'; }}
+        >
+          Ver todas las reseñas →
+        </button>
+      </div>
+    </section>
   );
 }
 
@@ -671,5 +777,5 @@ Object.assign(window, {
   Hero, HotelHero, HeroCompact, BenefitBanner, SedeTabs,
   IntroSection, RoomsPreview, RoomCard, AmenitiesSection, TestimonialsSection,
   LocationSection, CTASection, SedesSection, SedeCard, SedePage, SedesPage, RoomsBySede,
-  AmenIcon, Sep, RoomRowChoice,
+  AmenIcon, Sep, RoomRowChoice, ReviewsSection,
 });

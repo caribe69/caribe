@@ -82,8 +82,24 @@ function Nav({ current, onNavigate }) {
     { id: 'contact', label: 'Contacto' },
   ];
 
+  const [scrolled, setScrolled] = React.useState(false);
+  React.useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > 24);
+    onScroll();
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => window.removeEventListener('scroll', onScroll);
+  }, []);
+
   return (
-    <header style={{ position: 'sticky', top: 0, zIndex: 50, background: '#fff' }}>
+    <header
+      className={scrolled ? 'ch-nav-scrolled' : ''}
+      style={{
+        position: 'sticky',
+        top: 0,
+        zIndex: 50,
+        background: scrolled ? 'rgba(255,255,255,0.92)' : '#fff',
+        transition: 'background 0.3s ease, box-shadow 0.3s ease',
+      }}>
       {/* Top dark bar */}
       <div style={{ background: 'var(--navy)', color: '#fff', padding: '10px 48px' }}>
         <div style={{ maxWidth: 1400, margin: '0 auto', display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: 12 }}>

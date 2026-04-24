@@ -403,3 +403,238 @@ a[style*="border-radius: 32px"]:hover {
   }
   body { background: white !important; }
 }
+
+/* ═══════════════════════════════════════════════════════════════
+ * PREMIUM POLISH — Opción B (estilo Airbnb Plus / Selina)
+ * ═══════════════════════════════════════════════════════════════ */
+
+/* Scroll reveal: los elementos con data-reveal empiezan ocultos
+   y se revelan con fade + translateY al entrar en viewport */
+[data-reveal] {
+  opacity: 0;
+  transform: translateY(24px);
+  transition: opacity 0.8s cubic-bezier(0.22, 1, 0.36, 1),
+              transform 0.8s cubic-bezier(0.22, 1, 0.36, 1);
+  will-change: opacity, transform;
+}
+[data-reveal].is-inview {
+  opacity: 1;
+  transform: translateY(0);
+}
+[data-reveal-delay="1"] { transition-delay: 0.08s; }
+[data-reveal-delay="2"] { transition-delay: 0.16s; }
+[data-reveal-delay="3"] { transition-delay: 0.24s; }
+[data-reveal-delay="4"] { transition-delay: 0.32s; }
+[data-reveal-delay="5"] { transition-delay: 0.40s; }
+
+/* Glass nav shadow cuando scrollea */
+.ch-nav-scrolled {
+  box-shadow: 0 6px 24px -8px rgba(30, 20, 16, 0.12),
+              0 2px 8px -2px rgba(30, 20, 16, 0.06);
+  backdrop-filter: saturate(180%) blur(10px);
+  -webkit-backdrop-filter: saturate(180%) blur(10px);
+}
+
+/* Hover zoom sutil en los videos del hero (cada columna) */
+.ch-hero-cell {
+  position: relative;
+  overflow: hidden;
+  background: #000;
+}
+.ch-hero-cell video,
+.ch-hero-cell img {
+  transition: transform 1.4s cubic-bezier(0.22, 1, 0.36, 1),
+              filter 0.6s ease;
+  will-change: transform;
+}
+.ch-hero-cell:hover video,
+.ch-hero-cell:hover img {
+  transform: scale(1.05);
+  filter: brightness(1.08) saturate(1.1);
+}
+.ch-hero-cell::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse at center,
+                              transparent 40%,
+                              rgba(0, 0, 0, 0.25) 100%);
+  opacity: 0;
+  transition: opacity 0.6s ease;
+  pointer-events: none;
+}
+.ch-hero-cell:hover::after {
+  opacity: 1;
+}
+
+/* Badge premium (glass) para overlays sobre video */
+.ch-badge-premium {
+  background: rgba(255, 255, 255, 0.18);
+  color: #fff;
+  backdrop-filter: blur(12px) saturate(160%);
+  -webkit-backdrop-filter: blur(12px) saturate(160%);
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  padding: 7px 14px;
+  font-size: 11px;
+  font-weight: 600;
+  border-radius: 100px;
+  letter-spacing: 0.08em;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  text-transform: uppercase;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+  transition: transform 0.3s ease, background 0.3s ease;
+}
+.ch-badge-premium:hover {
+  background: rgba(255, 255, 255, 0.28);
+  transform: translateY(-1px);
+}
+
+/* CTA premium (pill blanco sobre video/oscuro) */
+.ch-cta-glass {
+  background: rgba(255, 255, 255, 0.96);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  color: var(--ink);
+  padding: 10px 18px;
+  font-size: 12px;
+  font-weight: 600;
+  border-radius: 100px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  box-shadow: 0 6px 20px -4px rgba(0, 0, 0, 0.35);
+  transition: transform 0.25s ease, box-shadow 0.25s ease, background 0.25s ease;
+}
+.ch-cta-glass:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 28px -6px rgba(0, 0, 0, 0.45);
+  background: #fff;
+}
+
+/* Lift card (reseñas, cualquier card editorial) */
+.ch-lift {
+  transition: transform 0.4s cubic-bezier(0.22, 1, 0.36, 1),
+              box-shadow 0.4s cubic-bezier(0.22, 1, 0.36, 1);
+  will-change: transform;
+}
+.ch-lift:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 24px 48px -16px rgba(30, 20, 16, 0.18),
+              0 12px 20px -8px rgba(30, 20, 16, 0.1);
+}
+
+/* Sección reseñas */
+.ch-reviews-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 20px;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+@media (max-width: 900px) {
+  .ch-reviews-grid {
+    grid-template-columns: 1fr;
+  }
+}
+.ch-review-card {
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  padding: 26px 24px;
+  position: relative;
+  overflow: hidden;
+}
+.ch-review-card::before {
+  content: '"';
+  position: absolute;
+  top: -10px;
+  left: 12px;
+  font-family: var(--f-display);
+  font-size: 140px;
+  line-height: 1;
+  color: var(--sand-warm);
+  opacity: 0.35;
+  pointer-events: none;
+  user-select: none;
+}
+.ch-review-avatar {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--sand-warm), var(--terracotta));
+  color: #fff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 17px;
+  flex-shrink: 0;
+}
+
+/* Parallax hero — el título "sube" levemente al scroll */
+.ch-parallax-up {
+  transition: transform 0.08s linear;
+}
+
+/* Pulse dot (LIVE indicator del badge TOUR EN VIVO) */
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.4; transform: scale(0.7); }
+}
+
+/* Hover magnético para CTAs principales (amarillo) */
+.ch-btn.cta {
+  position: relative;
+  overflow: hidden;
+}
+.ch-btn.cta::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    110deg,
+    transparent 35%,
+    rgba(255, 255, 255, 0.5) 50%,
+    transparent 65%
+  );
+  transform: translateX(-100%);
+  transition: transform 0.8s ease;
+  pointer-events: none;
+}
+.ch-btn.cta:hover::after {
+  transform: translateX(100%);
+}
+
+/* Divisor de sección elegante (tipografía serif + líneas) */
+.ch-divider-title {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  margin: 0 auto 28px;
+  max-width: 1400px;
+  padding: 0 48px;
+}
+.ch-divider-title::before,
+.ch-divider-title::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(to right, transparent, var(--line), transparent);
+}
+.ch-divider-title h2 {
+  margin: 0;
+  font-family: var(--f-display);
+  font-size: 36px;
+  font-weight: 500;
+  font-style: italic;
+  color: var(--ink);
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+}
+@media (max-width: 700px) {
+  .ch-divider-title h2 { font-size: 26px; }
+  .ch-divider-title { padding: 0 24px; gap: 14px; }
+}

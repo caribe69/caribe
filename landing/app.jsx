@@ -2,12 +2,40 @@
 // Hs Sol Caribe — router principal
 // ─────────────────────────────────────────────────────────────
 
+// Observer global para elementos [data-reveal] — se activan al entrar en viewport
+function useScrollReveal() {
+  React.useEffect(() => {
+    if (typeof IntersectionObserver === 'undefined') {
+      document.querySelectorAll('[data-reveal]').forEach((el) => el.classList.add('is-inview'));
+      return;
+    }
+    const io = new IntersectionObserver((entries) => {
+      entries.forEach((entry) => {
+        if (entry.isIntersecting) {
+          entry.target.classList.add('is-inview');
+          io.unobserve(entry.target);
+        }
+      });
+    }, { threshold: 0.12, rootMargin: '0px 0px -80px 0px' });
+
+    const attach = () => {
+      document.querySelectorAll('[data-reveal]:not(.is-inview)').forEach((el) => io.observe(el));
+    };
+    attach();
+    // Re-escanear cuando el DOM cambie (cambios de sección)
+    const mo = new MutationObserver(() => attach());
+    mo.observe(document.body, { childList: true, subtree: true });
+    return () => { io.disconnect(); mo.disconnect(); };
+  }, []);
+}
+
 function VariationB({ onNavigateExternal }) {
   const [section, setSection] = React.useState('home');
   const [roomId, setRoomId] = React.useState(null);
   const [sedeId, setSedeId] = React.useState(null);
   const [booking, setBooking] = React.useState(null);
   const [liveData, setLiveData] = React.useState({ loaded: false });
+  useScrollReveal();
 
   // Cargar datos reales desde el backend (sedes + habitaciones con fotos)
   React.useEffect(() => {
@@ -48,7 +76,7 @@ function VariationB({ onNavigateExternal }) {
           <HotelHero onNavigate={go}/>
           <BenefitBanner/>
           <RoomsBySede onRoomClick={(id) => go('room', id)} onSedeClick={(id) => go('sede', id)}/>
-          <TestimonialsSection/>
+          <ReviewsSection/>
           <CTASection onNavigate={go}/>
         </>
       )}

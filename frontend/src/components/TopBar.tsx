@@ -20,8 +20,12 @@ import {
   MessageSquare,
   TrendingUp,
   Truck,
+  Sun,
+  Moon,
+  Monitor,
 } from 'lucide-react';
 import { useAuthStore, UsuarioInfo } from '@/store/auth';
+import { useThemeStore, ThemeMode } from '@/store/theme';
 import { api } from '@/lib/api';
 import SedeSwitchOverlay from './SedeSwitchOverlay';
 import { useSocketStatus } from '@/hooks/useSocketStatus';
@@ -174,7 +178,7 @@ export default function TopBar({ usuario }: { usuario: UsuarioInfo | null }) {
 
   return (
     <>
-      <div className="bg-white rounded-3xl px-5 py-3 shadow-sm flex items-center gap-4 flex-wrap animate-fade-in">
+      <div className="bg-white dark:bg-slate-900 dark:ring-1 dark:ring-slate-800 rounded-3xl px-5 py-3 shadow-sm flex items-center gap-4 flex-wrap animate-fade-in">
         {/* Page identifier con ícono premium */}
         <div className="flex items-center gap-3 mr-auto">
           <div
@@ -186,10 +190,10 @@ export default function TopBar({ usuario }: { usuario: UsuarioInfo | null }) {
             </span>
           </div>
           <div className="leading-tight">
-            <div className="text-[10px] uppercase tracking-[0.2em] text-slate-400 font-semibold">
+            <div className="text-[10px] uppercase tracking-[0.2em] text-slate-400 dark:text-slate-500 font-semibold">
               {meta.eyebrow}
             </div>
-            <h1 className="font-hotel text-2xl font-bold text-slate-900">
+            <h1 className="font-hotel text-2xl font-bold text-slate-900 dark:text-slate-100">
               {meta.title}
             </h1>
           </div>
@@ -203,7 +207,7 @@ export default function TopBar({ usuario }: { usuario: UsuarioInfo | null }) {
           />
           <input
             placeholder="Buscar..."
-            className="pl-9 pr-4 py-2 bg-slate-50 rounded-xl text-sm border border-slate-200 focus:outline-none focus:border-violet-400 focus:ring-2 focus:ring-violet-100 focus:bg-white w-48 lg:w-56 transition-all"
+            className="pl-9 pr-4 py-2 bg-slate-50 dark:bg-slate-800 dark:text-slate-200 dark:placeholder-slate-500 rounded-xl text-sm border border-slate-200 dark:border-slate-700 focus:outline-none focus:border-violet-400 focus:ring-2 focus:ring-violet-100 dark:focus:ring-violet-900/30 focus:bg-white dark:focus:bg-slate-800 w-48 lg:w-56 transition-all"
           />
         </div>
 
@@ -216,7 +220,7 @@ export default function TopBar({ usuario }: { usuario: UsuarioInfo | null }) {
                 const id = Number(e.target.value);
                 if (id && id !== activeSedeId) handleSedeChange(id);
               }}
-              className="appearance-none bg-slate-50 hover:bg-white rounded-xl text-sm pl-8 pr-8 py-2 border border-slate-200 focus:outline-none focus:border-violet-400 focus:ring-2 focus:ring-violet-100 font-medium cursor-pointer btn-press transition"
+              className="appearance-none bg-slate-50 dark:bg-slate-800 dark:text-slate-200 hover:bg-white dark:hover:bg-slate-700 rounded-xl text-sm pl-8 pr-8 py-2 border border-slate-200 dark:border-slate-700 focus:outline-none focus:border-violet-400 focus:ring-2 focus:ring-violet-100 dark:focus:ring-violet-900/30 font-medium cursor-pointer btn-press transition"
             >
               {sedes.map((s: any) => (
                 <option key={s.id} value={s.id}>
@@ -234,18 +238,21 @@ export default function TopBar({ usuario }: { usuario: UsuarioInfo | null }) {
             />
           </div>
         ) : sedeActual ? (
-          <div className="hidden sm:flex items-center gap-1.5 bg-slate-50 rounded-xl px-3 py-2 border border-slate-200 text-sm font-medium text-slate-700">
+          <div className="hidden sm:flex items-center gap-1.5 bg-slate-50 dark:bg-slate-800 rounded-xl px-3 py-2 border border-slate-200 dark:border-slate-700 text-sm font-medium text-slate-700 dark:text-slate-300">
             <MapPin size={13} className="text-violet-500" />
             {sedeActual.nombre}
           </div>
         ) : null}
 
+        {/* Theme toggle día/noche/auto */}
+        <ThemeToggle />
+
         {/* Notifications + indicador de conexión en vivo */}
         <button
-          className="relative w-10 h-10 rounded-xl bg-slate-50 hover:bg-slate-100 border border-slate-200 flex items-center justify-center btn-press transition"
+          className="relative w-10 h-10 rounded-xl bg-slate-50 hover:bg-slate-100 dark:bg-slate-800 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 flex items-center justify-center btn-press transition"
           title={wsConnected ? 'Notificaciones en vivo activas' : 'Sin conexión en vivo'}
         >
-          <Bell size={15} className="text-slate-600" />
+          <Bell size={15} className="text-slate-600 dark:text-slate-300" />
           <span
             className={`absolute top-1.5 right-1.5 w-2 h-2 rounded-full ${
               wsConnected
@@ -259,20 +266,20 @@ export default function TopBar({ usuario }: { usuario: UsuarioInfo | null }) {
         <div className="relative">
           <button
             onClick={() => setShowMenu((s) => !s)}
-            className="flex items-center gap-2.5 bg-slate-50 hover:bg-white rounded-xl pl-1 pr-3 py-1 border border-slate-200 btn-press cursor-pointer transition"
+            className="flex items-center gap-2.5 bg-slate-50 dark:bg-slate-800 hover:bg-white dark:hover:bg-slate-700 rounded-xl pl-1 pr-3 py-1 border border-slate-200 dark:border-slate-700 btn-press cursor-pointer transition"
           >
             <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-violet-500 to-violet-700 flex items-center justify-center text-white font-bold text-sm">
               {usuario?.nombre?.[0]?.toUpperCase() || '?'}
             </div>
             <div className="hidden sm:block leading-tight text-left">
-              <div className="text-xs font-semibold text-slate-800">
+              <div className="text-xs font-semibold text-slate-800 dark:text-slate-200">
                 {usuario?.nombre?.split(' ')[0]}
               </div>
-              <div className="text-[10px] text-slate-400 uppercase tracking-wider">
+              <div className="text-[10px] text-slate-400 dark:text-slate-500 uppercase tracking-wider">
                 {usuario?.rol?.replace('_', ' ')}
               </div>
             </div>
-            <ChevronDown size={13} className="text-slate-400 hidden sm:block" />
+            <ChevronDown size={13} className="text-slate-400 dark:text-slate-500 hidden sm:block" />
           </button>
 
           {showMenu && (
@@ -281,16 +288,16 @@ export default function TopBar({ usuario }: { usuario: UsuarioInfo | null }) {
                 className="fixed inset-0 z-[50]"
                 onClick={() => setShowMenu(false)}
               />
-              <div className="absolute right-0 top-full mt-2 w-64 bg-white rounded-2xl shadow-xl border border-slate-100 z-[51] overflow-hidden animate-scale-in">
-                <div className="p-4 border-b border-slate-100 flex items-center gap-3">
+              <div className="absolute right-0 top-full mt-2 w-64 bg-white dark:bg-slate-800 rounded-2xl shadow-xl border border-slate-100 dark:border-slate-700 z-[51] overflow-hidden animate-scale-in">
+                <div className="p-4 border-b border-slate-100 dark:border-slate-700 flex items-center gap-3">
                   <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-500 to-violet-700 flex items-center justify-center text-white font-bold">
                     {usuario?.nombre?.[0]?.toUpperCase() || '?'}
                   </div>
                   <div className="min-w-0">
-                    <div className="text-sm font-semibold text-slate-900 truncate">
+                    <div className="text-sm font-semibold text-slate-900 dark:text-slate-100 truncate">
                       {usuario?.nombre}
                     </div>
-                    <div className="text-[10px] text-slate-400 uppercase tracking-wider">
+                    <div className="text-[10px] text-slate-400 dark:text-slate-500 uppercase tracking-wider">
                       {usuario?.rol?.replace('_', ' ')}
                     </div>
                   </div>
@@ -301,9 +308,9 @@ export default function TopBar({ usuario }: { usuario: UsuarioInfo | null }) {
                       setShowMenu(false);
                       setShowChangePwd(true);
                     }}
-                    className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-violet-50 text-sm text-slate-700 transition"
+                    className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-violet-50 dark:hover:bg-violet-900/30 text-sm text-slate-700 dark:text-slate-300 transition"
                   >
-                    <KeyRound size={15} className="text-violet-600" />
+                    <KeyRound size={15} className="text-violet-600 dark:text-violet-400" />
                     Cambiar contraseña
                   </button>
                   <button
@@ -312,9 +319,9 @@ export default function TopBar({ usuario }: { usuario: UsuarioInfo | null }) {
                       logout();
                       navigate('/login');
                     }}
-                    className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-rose-50 text-sm text-slate-700 transition"
+                    className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-rose-50 dark:hover:bg-rose-900/30 text-sm text-slate-700 dark:text-slate-300 transition"
                   >
-                    <LogOut size={15} className="text-rose-600" />
+                    <LogOut size={15} className="text-rose-600 dark:text-rose-400" />
                     Cerrar sesión
                   </button>
                 </div>
@@ -329,5 +336,62 @@ export default function TopBar({ usuario }: { usuario: UsuarioInfo | null }) {
         <ChangePasswordModal onClose={() => setShowChangePwd(false)} />
       )}
     </>
+  );
+}
+
+function ThemeToggle() {
+  const mode = useThemeStore((s) => s.mode);
+  const resolved = useThemeStore((s) => s.resolved);
+  const setMode = useThemeStore((s) => s.setMode);
+  const [open, setOpen] = useState(false);
+
+  const Icon = mode === 'auto' ? Monitor : mode === 'dark' ? Moon : Sun;
+
+  return (
+    <div className="relative">
+      <button
+        onClick={() => setOpen((v) => !v)}
+        title={`Tema: ${mode === 'auto' ? `Auto (${resolved})` : mode}`}
+        className="relative w-10 h-10 rounded-xl bg-slate-50 hover:bg-slate-100 dark:bg-slate-800 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 flex items-center justify-center btn-press transition"
+      >
+        <Icon size={15} className="text-slate-600 dark:text-slate-300" />
+      </button>
+      {open && (
+        <>
+          <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
+          <div className="absolute right-0 top-12 z-50 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-xl py-1.5 min-w-[160px] animate-scale-in">
+            {([
+              ['light', 'Día', Sun],
+              ['dark', 'Noche', Moon],
+              ['auto', 'Automático', Monitor],
+            ] as const).map(([val, label, Ico]) => (
+              <button
+                key={val}
+                onClick={() => {
+                  setMode(val as ThemeMode);
+                  setOpen(false);
+                }}
+                className={`w-full flex items-center gap-2.5 px-3 py-2 text-xs font-medium transition ${
+                  mode === val
+                    ? 'bg-violet-50 dark:bg-violet-900/30 text-violet-700 dark:text-violet-300'
+                    : 'text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700'
+                }`}
+              >
+                <Ico size={14} />
+                <span className="flex-1 text-left">{label}</span>
+                {mode === val && (
+                  <span className="text-[10px] text-violet-500">●</span>
+                )}
+              </button>
+            ))}
+            <div className="border-t border-slate-100 dark:border-slate-700 mt-1 pt-1 px-3 py-1.5 text-[10px] text-slate-400">
+              {mode === 'auto'
+                ? `Auto · ahora: ${resolved === 'dark' ? '🌙 noche' : '☀️ día'}`
+                : `Manual`}
+            </div>
+          </div>
+        </>
+      )}
+    </div>
   );
 }

@@ -6,6 +6,7 @@ import '@fontsource-variable/inter';
 import App from './App';
 import { ConfirmProvider } from './components/ConfirmProvider';
 import { ToastProvider } from './components/ToastProvider';
+import './store/theme'; // inicializa theme según hora de Perú
 import './index.css';
 
 const queryClient = new QueryClient({

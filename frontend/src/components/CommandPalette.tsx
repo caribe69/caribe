@@ -158,21 +158,21 @@ export default function CommandPalette() {
       onClick={() => setOpen(false)}
     >
       <div
-        className="bg-white rounded-2xl w-full max-w-xl shadow-2xl overflow-hidden animate-scale-in"
+        className="bg-white dark:bg-slate-900 dark:ring-1 dark:ring-slate-700 rounded-2xl w-full max-w-xl shadow-2xl overflow-hidden animate-scale-in"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Input */}
-        <div className="flex items-center gap-3 px-4 py-3 border-b border-slate-100">
-          <Search size={18} className="text-slate-400" />
+        <div className="flex items-center gap-3 px-4 py-3 border-b border-slate-100 dark:border-slate-800">
+          <Search size={18} className="text-slate-400 dark:text-slate-500" />
           <input
             autoFocus
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={onKeyDown}
             placeholder="Busca una acción o página..."
-            className="flex-1 text-sm bg-transparent focus:outline-none"
+            className="flex-1 text-sm bg-transparent dark:text-slate-100 dark:placeholder-slate-500 focus:outline-none"
           />
-          <kbd className="hidden sm:inline text-[10px] bg-slate-100 text-slate-500 border border-slate-200 rounded px-1.5 py-0.5 font-mono">
+          <kbd className="hidden sm:inline text-[10px] bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-slate-700 rounded px-1.5 py-0.5 font-mono">
             ESC
           </kbd>
         </div>
@@ -183,13 +183,13 @@ export default function CommandPalette() {
           className="max-h-[50vh] overflow-y-auto scroll-premium py-2"
         >
           {flat.length === 0 && (
-            <div className="text-center text-slate-400 text-sm py-10">
+            <div className="text-center text-slate-400 dark:text-slate-500 text-sm py-10">
               Sin resultados para <b>"{query}"</b>
             </div>
           )}
           {Object.entries(grouped).map(([groupName, cmds]) => (
             <div key={groupName}>
-              <div className="px-4 py-1.5 text-[10px] font-bold uppercase tracking-widest text-slate-400">
+              <div className="px-4 py-1.5 text-[10px] font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500">
                 {groupName}
               </div>
               {cmds.map((c) => {
@@ -206,24 +206,24 @@ export default function CommandPalette() {
                     }
                     className={`w-full flex items-center gap-3 px-4 py-2.5 text-left text-sm transition ${
                       isSel
-                        ? 'bg-violet-50 text-violet-900'
-                        : 'text-slate-700 hover:bg-slate-50'
+                        ? 'bg-violet-50 dark:bg-violet-900/30 text-violet-900 dark:text-violet-200'
+                        : 'text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800'
                     }`}
                   >
                     <Icon
                       size={15}
-                      className={isSel ? 'text-violet-600' : 'text-slate-400'}
+                      className={isSel ? 'text-violet-600 dark:text-violet-400' : 'text-slate-400 dark:text-slate-500'}
                     />
                     <div className="flex-1 min-w-0">
                       <div className="truncate">{c.label}</div>
                       {c.description && (
-                        <div className="text-[11px] text-slate-400 truncate">
+                        <div className="text-[11px] text-slate-400 dark:text-slate-500 truncate">
                           {c.description}
                         </div>
                       )}
                     </div>
                     {isSel && (
-                      <kbd className="text-[10px] bg-white text-slate-500 border border-slate-200 rounded px-1.5 py-0.5 font-mono">
+                      <kbd className="text-[10px] bg-white dark:bg-slate-800 text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-slate-700 rounded px-1.5 py-0.5 font-mono">
                         ↵
                       </kbd>
                     )}
@@ -235,23 +235,23 @@ export default function CommandPalette() {
         </div>
 
         {/* Footer con hints */}
-        <div className="flex items-center justify-between px-4 py-2 bg-slate-50 border-t border-slate-100 text-[10px] text-slate-500">
+        <div className="flex items-center justify-between px-4 py-2 bg-slate-50 dark:bg-slate-800 border-t border-slate-100 dark:border-slate-700 text-[10px] text-slate-500 dark:text-slate-400">
           <div className="flex items-center gap-3">
             <span>
-              <kbd className="bg-white border border-slate-200 rounded px-1 py-0.5 font-mono">
+              <kbd className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded px-1 py-0.5 font-mono">
                 ↑↓
               </kbd>{' '}
               navegar
             </span>
             <span>
-              <kbd className="bg-white border border-slate-200 rounded px-1 py-0.5 font-mono">
+              <kbd className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded px-1 py-0.5 font-mono">
                 ↵
               </kbd>{' '}
               seleccionar
             </span>
           </div>
           <div>
-            <kbd className="bg-white border border-slate-200 rounded px-1 py-0.5 font-mono">
+            <kbd className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded px-1 py-0.5 font-mono">
               Ctrl+K
             </kbd>{' '}
             toggle

@@ -1,5 +1,8 @@
 @import "tailwindcss";
 
+/* Dark mode activado por la clase .dark en <html> (controlado por ThemeStore) */
+@custom-variant dark (&:where(.dark, .dark *));
+
 @theme {
   /* Paleta Violeta (primary estilo Dabang) */
   --color-violet-50: #f5f3ff;
@@ -61,7 +64,74 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   font-feature-settings: 'ss01', 'cv11', 'liga';
+  transition: background 0.3s, color 0.3s;
 }
+
+.dark body {
+  background: linear-gradient(135deg, #020617 0%, #0f172a 100%);
+  color: #e2e8f0;
+}
+
+/* Scrollbar en dark */
+.dark ::-webkit-scrollbar-track { background: transparent; }
+.dark ::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, #475569 0%, #334155 100%);
+}
+
+/* ============================================================
+ * Fallback auto-dark: mapea utilidades claras a sus equivalentes
+ * oscuros cuando la página no tiene `dark:` explícito.
+ * :where() = specificity 0 → cualquier `dark:` explícito gana.
+ * ============================================================ */
+.dark :where(.bg-white) {
+  background-color: #0f172a;
+  color: #e2e8f0;
+}
+.dark :where(.bg-slate-50) { background-color: #0f172a; }
+.dark :where(.bg-slate-100) { background-color: #1e293b; }
+.dark :where(.bg-slate-200) { background-color: #334155; }
+.dark :where(.hover\:bg-slate-50:hover) { background-color: #1e293b; }
+.dark :where(.hover\:bg-slate-100:hover) { background-color: #334155; }
+.dark :where(.hover\:bg-white:hover) { background-color: #1e293b; }
+
+.dark :where(.text-slate-900) { color: #f1f5f9; }
+.dark :where(.text-slate-800) { color: #e2e8f0; }
+.dark :where(.text-slate-700) { color: #cbd5e1; }
+.dark :where(.text-slate-600) { color: #94a3b8; }
+.dark :where(.text-slate-500) { color: #94a3b8; }
+.dark :where(.text-slate-400) { color: #64748b; }
+
+.dark :where(.border-slate-200) { border-color: #334155; }
+.dark :where(.border-slate-100) { border-color: #1e293b; }
+.dark :where(.border-slate-300) { border-color: #475569; }
+.dark :where(.divide-slate-100 > * + *) { border-color: #1e293b; }
+.dark :where(.divide-slate-200 > * + *) { border-color: #334155; }
+
+/* Tabs suaves comunes */
+.dark :where(.bg-violet-50) { background-color: rgb(76 29 149 / 0.3); }
+.dark :where(.bg-emerald-50) { background-color: rgb(6 78 59 / 0.3); }
+.dark :where(.bg-rose-50) { background-color: rgb(136 19 55 / 0.3); }
+.dark :where(.bg-amber-50) { background-color: rgb(120 53 15 / 0.3); }
+.dark :where(.bg-blue-50) { background-color: rgb(30 58 138 / 0.3); }
+
+/* Inputs */
+.dark :where(input:not([type='checkbox']):not([type='radio']),
+             textarea,
+             select) {
+  background-color: #1e293b;
+  color: #e2e8f0;
+  border-color: #334155;
+}
+.dark :where(input::placeholder, textarea::placeholder) {
+  color: #64748b;
+}
+
+/* Estados de habitación — versiones oscuras */
+.dark .estado-DISPONIBLE { background-color: rgb(6 78 59 / 0.35); color: #6ee7b7; }
+.dark .estado-OCUPADA { background-color: rgb(136 19 55 / 0.35); color: #fda4af; }
+.dark .estado-ALISTANDO { background-color: rgb(120 53 15 / 0.35); color: #fcd34d; }
+.dark .estado-MANTENIMIENTO { background-color: rgb(30 58 138 / 0.35); color: #93c5fd; }
+.dark .estado-FUERA_SERVICIO { background-color: rgb(51 65 85 / 0.6); color: #cbd5e1; }
 
 h1,
 h2,

@@ -272,20 +272,20 @@ export default function Dashboard() {
           </div>
 
           {/* Chart ocupación + ingresos */}
-          <div className="bg-white rounded-3xl p-5 shadow-sm">
+          <div className="bg-white dark:bg-slate-900 dark:ring-1 dark:ring-slate-800 rounded-3xl p-5 shadow-sm">
             <div className="flex items-center justify-between mb-3">
               <div>
-                <h2 className="font-hotel text-lg font-bold text-slate-900">
+                <h2 className="font-hotel text-lg font-bold text-slate-900 dark:text-slate-100">
                   Últimos 7 días
                 </h2>
-                <div className="text-xs text-slate-500">
+                <div className="text-xs text-slate-500 dark:text-slate-400">
                   Ocupación % e ingresos diarios
                 </div>
               </div>
               {isAdmin && (
                 <button
                   onClick={() => navigate('/reportes')}
-                  className="text-xs text-violet-600 font-semibold flex items-center gap-1 hover:gap-2 transition-all"
+                  className="text-xs text-violet-600 dark:text-violet-400 font-semibold flex items-center gap-1 hover:gap-2 transition-all"
                 >
                   Ver reportes <ArrowRight size={12} />
                 </button>
@@ -355,7 +355,7 @@ export default function Dashboard() {
                 </ResponsiveContainer>
               </div>
             ) : (
-              <div className="h-40 flex items-center justify-center text-slate-400 text-sm">
+              <div className="h-40 flex items-center justify-center text-slate-400 dark:text-slate-500 text-sm">
                 Aún no hay datos del periodo
               </div>
             )}
@@ -363,9 +363,9 @@ export default function Dashboard() {
 
           {/* Top habitaciones mini */}
           {kpisQ.data && kpisQ.data.topHabitaciones.length > 0 && (
-            <div className="bg-white rounded-3xl p-5 shadow-sm">
+            <div className="bg-white dark:bg-slate-900 dark:ring-1 dark:ring-slate-800 rounded-3xl p-5 shadow-sm">
               <div className="flex items-center justify-between mb-3">
-                <h2 className="font-hotel text-lg font-bold text-slate-900">
+                <h2 className="font-hotel text-lg font-bold text-slate-900 dark:text-slate-100">
                   Habitaciones más vendidas
                 </h2>
               </div>
@@ -401,8 +401,8 @@ export default function Dashboard() {
         {/* Columna derecha: Estado de habitaciones + tareas */}
         <div className="space-y-4">
           {/* Estado de habitaciones */}
-          <div className="bg-white rounded-3xl p-5 shadow-sm">
-            <h2 className="font-hotel text-lg font-bold text-slate-900 mb-4">
+          <div className="bg-white dark:bg-slate-900 dark:ring-1 dark:ring-slate-800 rounded-3xl p-5 shadow-sm">
+            <h2 className="font-hotel text-lg font-bold text-slate-900 dark:text-slate-100 mb-4">
               Estado actual
             </h2>
             <div className="space-y-2.5">
@@ -427,15 +427,15 @@ export default function Dashboard() {
             </div>
             <button
               onClick={() => navigate('/alquileres')}
-              className="mt-4 w-full text-xs text-violet-600 font-semibold flex items-center justify-center gap-1 hover:gap-2 transition-all py-2"
+              className="mt-4 w-full text-xs text-violet-600 dark:text-violet-400 font-semibold flex items-center justify-center gap-1 hover:gap-2 transition-all py-2"
             >
               Ver mapa completo <ArrowRight size={12} />
             </button>
           </div>
 
           {/* Tareas de hoy */}
-          <div className="bg-white rounded-3xl p-5 shadow-sm">
-            <h2 className="font-hotel text-lg font-bold text-slate-900 mb-3">
+          <div className="bg-white dark:bg-slate-900 dark:ring-1 dark:ring-slate-800 rounded-3xl p-5 shadow-sm">
+            <h2 className="font-hotel text-lg font-bold text-slate-900 dark:text-slate-100 mb-3">
               Hoy
             </h2>
             <div className="space-y-2">
@@ -564,14 +564,14 @@ function EstadoRow({
       <div className="flex justify-between items-baseline mb-1 text-sm">
         <span className="flex items-center gap-2">
           <span className={`w-2 h-2 rounded-full ${color}`} />
-          <span className="text-slate-700">{label}</span>
+          <span className="text-slate-700 dark:text-slate-300">{label}</span>
         </span>
-        <span className="font-bold tabular-nums">
+        <span className="font-bold tabular-nums text-slate-900 dark:text-slate-100">
           {value}
-          <span className="text-slate-400 text-xs">/{total}</span>
+          <span className="text-slate-400 dark:text-slate-500 text-xs">/{total}</span>
         </span>
       </div>
-      <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
+      <div className="h-1.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
         <div
           className={`h-full ${color} transition-all`}
           style={{ width: `${pct}%` }}
@@ -592,10 +592,10 @@ function TaskRow({
 }) {
   return (
     <div className="flex items-center justify-between text-sm">
-      <span className="flex items-center gap-2.5 text-slate-700">
+      <span className="flex items-center gap-2.5 text-slate-700 dark:text-slate-300">
         {icon} {label}
       </span>
-      <span className="font-bold tabular-nums text-slate-900">{value}</span>
+      <span className="font-bold tabular-nums text-slate-900 dark:text-slate-100">{value}</span>
     </div>
   );
 }

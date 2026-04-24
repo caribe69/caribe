@@ -301,10 +301,10 @@ export default function Layout() {
   };
 
   return (
-    <div className="flex h-screen overflow-hidden p-4 gap-4 bg-gradient-to-br from-slate-50 via-violet-50/30 to-emerald-50/20">
+    <div className="flex h-screen overflow-hidden p-4 gap-4 bg-gradient-to-br from-slate-50 via-violet-50/30 to-emerald-50/20 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950">
       {/* Sidebar FIJO */}
       <aside
-        className={`${collapsed ? 'w-[72px]' : 'w-60'} shrink-0 bg-white rounded-3xl shadow-sm flex flex-col h-full overflow-hidden transition-all duration-300`}
+        className={`${collapsed ? 'w-[72px]' : 'w-60'} shrink-0 bg-white dark:bg-slate-900 dark:ring-1 dark:ring-slate-800 rounded-3xl shadow-sm flex flex-col h-full overflow-hidden transition-all duration-300`}
       >
         {/* Logo + toggle colapsar */}
         <div
@@ -317,10 +317,10 @@ export default function Layout() {
           />
           {!collapsed && (
             <div className="min-w-0 flex-1">
-              <div className="font-hotel text-lg font-bold text-slate-900 leading-none truncate">
+              <div className="font-hotel text-lg font-bold text-slate-900 dark:text-slate-100 leading-none truncate">
                 Sol Caribe
               </div>
-              <div className="text-[10px] uppercase tracking-widest text-slate-400 mt-1">
+              <div className="text-[10px] uppercase tracking-widest text-slate-400 dark:text-slate-500 mt-1">
                 Hotel
               </div>
             </div>
@@ -328,7 +328,7 @@ export default function Layout() {
           {/* Botón colapsar */}
           <button
             onClick={() => setCollapsed((v) => !v)}
-            className={`${collapsed ? 'absolute -right-2 top-10 bg-white border border-slate-200 shadow-md' : 'bg-slate-100 hover:bg-slate-200'} w-6 h-6 rounded-full flex items-center justify-center text-slate-500 hover:text-violet-700 transition z-10`}
+            className={`${collapsed ? 'absolute -right-2 top-10 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-md' : 'bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700'} w-6 h-6 rounded-full flex items-center justify-center text-slate-500 dark:text-slate-400 hover:text-violet-700 dark:hover:text-violet-400 transition z-10`}
             title={collapsed ? 'Expandir menú' : 'Colapsar menú'}
           >
             {collapsed ? <ChevronsRight size={13} /> : <ChevronsLeft size={13} />}
@@ -349,7 +349,7 @@ export default function Layout() {
                 `flex items-center ${collapsed ? 'justify-center' : 'gap-3 px-3'} py-2.5 rounded-xl text-sm font-semibold transition-all ${
                   isActive
                     ? 'bg-gradient-to-r from-violet-600 to-violet-500 text-white shadow-md shadow-violet-500/30'
-                    : 'text-slate-700 hover:bg-slate-50'
+                    : 'text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800'
                 }`
               }
             >
@@ -373,7 +373,7 @@ export default function Layout() {
                 <div key={g.key} className="mt-1 space-y-0.5">
                   {/* Separador con icono de grupo (decorativo) */}
                   <div
-                    className="flex items-center justify-center py-1.5 text-slate-300"
+                    className="flex items-center justify-center py-1.5 text-slate-300 dark:text-slate-600"
                     title={g.label}
                   >
                     <GroupIcon size={12} />
@@ -390,7 +390,7 @@ export default function Layout() {
                           `relative flex items-center justify-center py-2.5 rounded-xl transition ${
                             isActive
                               ? 'bg-gradient-to-r from-violet-600 to-violet-500 text-white shadow-md shadow-violet-500/30'
-                              : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900'
+                              : 'text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-100'
                           }`
                         }
                       >
@@ -417,8 +417,8 @@ export default function Layout() {
                   onClick={() => toggleGroup(g.key)}
                   className={`w-full flex items-center gap-2 px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.12em] transition ${
                     hasActiveChild
-                      ? 'text-violet-700'
-                      : 'text-slate-400 hover:text-slate-600'
+                      ? 'text-violet-700 dark:text-violet-300'
+                      : 'text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300'
                   }`}
                 >
                   <GroupIcon size={12} className="shrink-0 opacity-80" />
@@ -443,7 +443,7 @@ export default function Layout() {
                   }`}
                 >
                   {/* Línea vertical guía a la izquierda */}
-                  <div className="ml-4 pl-2 border-l border-slate-200 space-y-0.5">
+                  <div className="ml-4 pl-2 border-l border-slate-200 dark:border-slate-700 space-y-0.5">
                     {g.items.map((it) => {
                       const Icon = it.icon;
                       const badge = badgeFor(it.to);
@@ -455,7 +455,7 @@ export default function Layout() {
                             `flex items-center gap-2.5 px-3 py-2 rounded-lg text-[13px] transition ${
                               isActive
                                 ? 'bg-gradient-to-r from-violet-600 to-violet-500 text-white shadow-md shadow-violet-500/30 font-semibold'
-                                : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900 font-normal'
+                                : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-100 font-normal'
                             }`
                           }
                         >

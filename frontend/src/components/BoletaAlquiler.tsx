@@ -1,6 +1,8 @@
 import { useQuery } from '@tanstack/react-query';
-import { Printer, X } from 'lucide-react';
+import { Printer, X, Download } from 'lucide-react';
+import { PDFDownloadLink } from '@react-pdf/renderer';
 import { api } from '@/lib/api';
+import { BoletaPDFDoc, boletaFileName } from './BoletaPDF';
 
 interface Consumo {
   id?: number;
@@ -65,9 +67,22 @@ export default function BoletaAlquiler({
               {String(alquiler.id).padStart(7, '0')}
             </h2>
             <div className="flex gap-2">
+              <PDFDownloadLink
+                document={<BoletaPDFDoc alquiler={alquiler as any} empresa={empresa} />}
+                fileName={boletaFileName(alquiler as any)}
+                className="flex items-center gap-1 bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-700 hover:to-emerald-600 text-white px-3 py-1.5 rounded-lg text-xs btn-press no-underline"
+              >
+                {({ loading }) => (
+                  <>
+                    <Download size={13} />
+                    {loading ? 'Generando…' : 'Descargar PDF'}
+                  </>
+                )}
+              </PDFDownloadLink>
               <button
                 onClick={() => window.print()}
-                className="flex items-center gap-1 bg-gradient-to-r from-violet-600 to-violet-500 text-white px-3 py-1.5 rounded-lg text-xs btn-press"
+                className="flex items-center gap-1 bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1.5 rounded-lg text-xs btn-press"
+                title="Imprimir directo a impresora térmica"
               >
                 <Printer size={13} /> Imprimir
               </button>

@@ -1409,14 +1409,37 @@ a[style*="border-radius: 32px"]:hover {
   border-color: var(--ed-ink);
 }
 
-/* ─── Video carousel hero (crossfade cada 5s) ─── */
+/* ─── Video carousel hero — transiciones cinematográficas ─── */
 .ed-vcarousel {
   position: relative;
   width: 100%;
   height: 100%;
   overflow: hidden;
   background: var(--ed-ink);
+  isolation: isolate;
 }
+/* Viñeta sutil alrededor para dar profundidad de cine */
+.ed-vcarousel::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+  box-shadow: inset 0 0 160px rgba(0,0,0,0.45),
+              inset 0 -80px 160px rgba(0,0,0,0.25);
+}
+/* Grano de película muy sutil */
+.ed-vcarousel::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  pointer-events: none;
+  opacity: 0.05;
+  mix-blend-mode: overlay;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.8 0'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
 .ed-vcarousel-slide {
   position: absolute;
   inset: 0;
@@ -1424,14 +1447,42 @@ a[style*="border-radius: 32px"]:hover {
   height: 100%;
   object-fit: cover;
   opacity: 0;
-  transform: scale(1.08);
-  transition: opacity 1.4s cubic-bezier(0.22, 1, 0.36, 1),
-              transform 7s cubic-bezier(0.22, 1, 0.36, 1);
-  will-change: opacity, transform;
+  clip-path: inset(50% 0 50% 0);
+  transform: scale(1.15);
+  filter: blur(12px) brightness(0.75);
+  transition:
+    opacity 1.5s cubic-bezier(0.76, 0, 0.24, 1),
+    clip-path 1.5s cubic-bezier(0.76, 0, 0.24, 1),
+    filter 1.2s cubic-bezier(0.33, 1, 0.68, 1),
+    transform 8s cubic-bezier(0.22, 1, 0.36, 1);
+  will-change: opacity, clip-path, transform, filter;
+  z-index: 0;
 }
 .ed-vcarousel-slide.active {
   opacity: 1;
-  transform: scale(1);
+  clip-path: inset(0 0 0 0);
+  transform: scale(1.02);
+  filter: blur(0) brightness(1);
+  z-index: 1;
+  /* Ken burns lento durante los 5s que está activo */
+  animation: ed-kenburns 8s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+/* Variantes de Ken Burns según índice (cada slide tiene movimiento distinto) */
+.ed-vcarousel-slide.active:nth-of-type(1) { animation-name: ed-kenburns-1; }
+.ed-vcarousel-slide.active:nth-of-type(2) { animation-name: ed-kenburns-2; }
+.ed-vcarousel-slide.active:nth-of-type(3) { animation-name: ed-kenburns-3; }
+
+@keyframes ed-kenburns-1 {
+  0%   { transform: scale(1.08) translate(0, 0); }
+  100% { transform: scale(1.15) translate(-1.5%, -1%); }
+}
+@keyframes ed-kenburns-2 {
+  0%   { transform: scale(1.08) translate(0, 0); }
+  100% { transform: scale(1.14) translate(1.5%, 1%); }
+}
+@keyframes ed-kenburns-3 {
+  0%   { transform: scale(1.1) translate(-1%, 0); }
+  100% { transform: scale(1.18) translate(1%, -1.5%); }
 }
 .ed-vcarousel-label {
   position: absolute;

@@ -984,27 +984,43 @@ a[style*="border-radius: 32px"]:hover {
 .ed-hero-card { position: relative; }
 .ed-hero-intro-video {
   position: absolute;
-  top: 40px;
-  right: 40px;
-  width: 170px;
-  height: 170px;
+  top: 36px;
+  right: 36px;
+  width: 180px;
+  height: 180px;
   z-index: 2;
+  pointer-events: none;
+  border-radius: 50%;
+  overflow: hidden;
+  background: #000;
+  box-shadow:
+    0 0 0 1px rgba(184,148,78,0.25),
+    0 0 0 8px rgba(248,244,237,1),
+    0 0 0 9px rgba(184,148,78,0.2),
+    0 16px 40px -12px rgba(20,24,31,0.35);
+}
+.ed-hero-intro-video::after {
+  /* Halo dorado suave por fuera para integrarlo con el estilo editorial */
+  content: '';
+  position: absolute;
+  inset: -20px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(184,148,78,0.18), transparent 65%);
+  z-index: -1;
   pointer-events: none;
 }
 .ed-hero-intro-video video {
   width: 100%;
   height: 100%;
-  object-fit: contain;
-  /* Fondo negro del video se vuelve transparente sobre el cream */
-  mix-blend-mode: screen;
-  filter: contrast(1.05) saturate(1.1);
+  object-fit: cover;
+  filter: contrast(1.08) saturate(1.15) brightness(1.05);
 }
 @media (max-width: 960px) {
   .ed-hero-intro-video {
     position: relative;
     top: auto; right: auto;
-    width: 120px; height: 120px;
-    margin: 0 0 20px auto;
+    width: 140px; height: 140px;
+    margin: 0 0 24px auto;
   }
 }
 

@@ -94,35 +94,39 @@ const ESTADO_CARD: Record<
   }
 > = {
   DISPONIBLE: {
-    gradient: 'from-emerald-50 to-emerald-100/50',
+    gradient:
+      'from-emerald-50 to-emerald-100/50 dark:from-emerald-950/50 dark:to-emerald-900/30',
     accent: 'border-l-emerald-500',
     iconBg: 'bg-emerald-500',
-    badgeBg: 'bg-emerald-100',
-    badgeText: 'text-emerald-700',
+    badgeBg: 'bg-emerald-100 dark:bg-emerald-900/50',
+    badgeText: 'text-emerald-700 dark:text-emerald-300',
     label: 'Disponible',
   },
   OCUPADA: {
-    gradient: 'from-rose-50 to-rose-100/50',
+    gradient:
+      'from-rose-50 to-rose-100/50 dark:from-rose-950/50 dark:to-rose-900/30',
     accent: 'border-l-rose-500',
     iconBg: 'bg-rose-500',
-    badgeBg: 'bg-rose-100',
-    badgeText: 'text-rose-700',
+    badgeBg: 'bg-rose-100 dark:bg-rose-900/50',
+    badgeText: 'text-rose-700 dark:text-rose-300',
     label: 'Ocupada',
   },
   ALISTANDO: {
-    gradient: 'from-amber-50 to-amber-100/50',
+    gradient:
+      'from-amber-50 to-amber-100/50 dark:from-amber-950/50 dark:to-amber-900/30',
     accent: 'border-l-amber-500',
     iconBg: 'bg-amber-500',
-    badgeBg: 'bg-amber-100',
-    badgeText: 'text-amber-800',
+    badgeBg: 'bg-amber-100 dark:bg-amber-900/50',
+    badgeText: 'text-amber-800 dark:text-amber-300',
     label: 'Limpieza',
   },
   MANTENIMIENTO: {
-    gradient: 'from-blue-50 to-blue-100/50',
+    gradient:
+      'from-blue-50 to-blue-100/50 dark:from-blue-950/50 dark:to-blue-900/30',
     accent: 'border-l-blue-500',
     iconBg: 'bg-blue-500',
-    badgeBg: 'bg-blue-100',
-    badgeText: 'text-blue-700',
+    badgeBg: 'bg-blue-100 dark:bg-blue-900/50',
+    badgeText: 'text-blue-700 dark:text-blue-300',
     label: 'Mantenimiento',
   },
   FUERA_SERVICIO: {

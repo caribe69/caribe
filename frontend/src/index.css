@@ -138,6 +138,41 @@ body {
 
 /* Focus rings (focus:ring-*-100) se mantienen igual para visibilidad */
 
+/* Gradient stops claros → dark (from-X-50, via-white, to-X-100).
+   Tailwind usa CSS vars --tw-gradient-from/via/to, hay que re-asignarlas. */
+.dark :where(.via-white) { --tw-gradient-via: rgb(15 23 42); }
+.dark :where(.from-white) { --tw-gradient-from: rgb(15 23 42); --tw-gradient-from-color: rgb(15 23 42); }
+.dark :where(.to-white) { --tw-gradient-to: rgb(15 23 42); --tw-gradient-to-color: rgb(15 23 42); }
+
+.dark :where(.from-slate-50) { --tw-gradient-from: #1e293b; }
+.dark :where(.from-slate-100) { --tw-gradient-from: #1e293b; }
+.dark :where(.to-slate-50) { --tw-gradient-to: #1e293b; }
+.dark :where(.to-slate-100) { --tw-gradient-to: #1e293b; }
+.dark :where(.via-slate-50) { --tw-gradient-via: #1e293b; }
+.dark :where(.via-slate-100) { --tw-gradient-via: #1e293b; }
+
+/* Gradient stops coloridos claros (X-50/100) → oscuros translúcidos */
+.dark :where(.from-emerald-50) { --tw-gradient-from: rgb(6 78 59 / 0.5); }
+.dark :where(.from-emerald-100) { --tw-gradient-from: rgb(6 78 59 / 0.6); }
+.dark :where(.to-emerald-50) { --tw-gradient-to: rgb(6 78 59 / 0.5); }
+.dark :where(.to-emerald-100) { --tw-gradient-to: rgb(6 78 59 / 0.6); }
+.dark :where(.from-rose-50) { --tw-gradient-from: rgb(136 19 55 / 0.5); }
+.dark :where(.from-rose-100) { --tw-gradient-from: rgb(136 19 55 / 0.6); }
+.dark :where(.to-rose-50) { --tw-gradient-to: rgb(136 19 55 / 0.5); }
+.dark :where(.to-rose-100) { --tw-gradient-to: rgb(136 19 55 / 0.6); }
+.dark :where(.from-amber-50) { --tw-gradient-from: rgb(120 53 15 / 0.5); }
+.dark :where(.from-amber-100) { --tw-gradient-from: rgb(120 53 15 / 0.6); }
+.dark :where(.to-amber-50) { --tw-gradient-to: rgb(120 53 15 / 0.5); }
+.dark :where(.to-amber-100) { --tw-gradient-to: rgb(120 53 15 / 0.6); }
+.dark :where(.from-blue-50) { --tw-gradient-from: rgb(30 58 138 / 0.5); }
+.dark :where(.from-blue-100) { --tw-gradient-from: rgb(30 58 138 / 0.6); }
+.dark :where(.to-blue-50) { --tw-gradient-to: rgb(30 58 138 / 0.5); }
+.dark :where(.to-blue-100) { --tw-gradient-to: rgb(30 58 138 / 0.6); }
+.dark :where(.from-violet-50) { --tw-gradient-from: rgb(76 29 149 / 0.5); }
+.dark :where(.from-violet-100) { --tw-gradient-from: rgb(76 29 149 / 0.6); }
+.dark :where(.to-violet-50) { --tw-gradient-to: rgb(76 29 149 / 0.5); }
+.dark :where(.to-violet-100) { --tw-gradient-to: rgb(76 29 149 / 0.6); }
+
 /* Inputs */
 .dark :where(input:not([type='checkbox']):not([type='radio']),
              textarea,

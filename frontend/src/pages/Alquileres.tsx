@@ -656,7 +656,7 @@ function AlquilerActivoModal({
   const total = Number(alquiler?.total ?? 0);
   const precioHab = Number(alquiler?.precioHabitacion ?? 0);
   const totalProductos = Number(alquiler?.totalProductos ?? 0);
-  const montoPagado = Number(alquiler?.montoPagado ?? (alquiler?.pagado ? total : 0));
+  const montoPagado = Number(alquiler?.montoPagado ?? 0);
   const saldo = total - montoPagado;
   const pctPagado = total > 0 ? Math.min(100, (montoPagado / total) * 100) : 0;
   const estadoPago: 'pagado' | 'parcial' | 'pendiente' =
@@ -1955,7 +1955,7 @@ function AgregarProductoModal({
           <div>
             <h2 className="font-hotel text-lg font-bold">Agregar producto</h2>
             <div className="text-xs text-slate-500">
-              Al alquiler · cobro inmediato en tu turno
+              Suma al saldo · cobra después con "Cobrar productos"
             </div>
           </div>
           <button
@@ -2668,9 +2668,7 @@ function CobrarAlquilerModal({
   loading: boolean;
 }) {
   const total = Number(alquiler.total);
-  const pagadoGlobal = Number(
-    alquiler.montoPagado ?? (alquiler.pagado ? total : 0),
-  );
+  const pagadoGlobal = Number(alquiler.montoPagado ?? 0);
   const saldoGlobal = total - pagadoGlobal;
   const saldoCategoria =
     typeof montoSugerido === 'number' && montoSugerido > 0

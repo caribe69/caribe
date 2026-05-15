@@ -504,9 +504,9 @@ export class AlquileresService {
     const precioUnit = Number(producto.precio);
     const subtotal = precioUnit * dto.cantidad;
 
-    // Turno actual del cajero que agrega el producto: el ingreso del
-    // consumo va a ESTA caja (política: productos se contabilizan en el
-    // turno donde se agregan, no en el turno de apertura del alquiler).
+    // Solo verificamos que tenga turno abierto para registrar el consumo,
+    // pero NO cobramos automáticamente: el producto suma al saldo pendiente
+    // y se cobra después con marcarPagado (botón "Cobrar productos").
     const turnoActual = await this.prisma.turnoCaja.findFirst({
       where: {
         sedeId: alquiler.sedeId,
@@ -549,31 +549,19 @@ export class AlquileresService {
         Number(alquiler.totalProductos) + subtotal;
       const totalGeneral =
         Number(alquiler.precioHabitacion) + totalProductosActual;
-      const nuevoMontoPagado = Number(alquiler.montoPagado) + subtotal;
-      const completo = nuevoMontoPagado >= totalGeneral - 0.001;
+      const yaPagado = Number(alquiler.montoPagado);
+      // pagado=true solo si lo ya cobrado cubre el nuevo total.
+      // Si antes estaba "pagado" pero ahora subió el total, pasa a false
+      // para que aparezca el botón "Cobrar productos".
+      const completo = yaPagado >= totalGeneral - 0.001;
 
       await tx.alquiler.update({
         where: { id: alquiler.id },
         data: {
           totalProductos: totalProductosActual,
           total: totalGeneral,
-          // El consumo se cobra inmediatamente en el turno del cajero actual
-          montoPagado: nuevoMontoPagado,
           pagado: completo,
-          pagadoEn: completo ? new Date() : alquiler.pagadoEn,
-          cobradoPorId: user.sub,
-          turnoPagoId: turnoActual.id,
-        },
-      });
-
-      // Registrar el cobro del producto en el turno actual (no el de apertura)
-      await tx.pagoAlquiler.create({
-        data: {
-          alquilerId: alquiler.id,
-          turnoCajaId: turnoActual.id,
-          usuarioId: user.sub,
-          monto: subtotal,
-          metodoPago: alquiler.metodoPago,
+          pagadoEn: completo ? alquiler.pagadoEn : null,
         },
       });
 

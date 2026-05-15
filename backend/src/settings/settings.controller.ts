@@ -47,6 +47,15 @@ class UpdateSettingsDto {
   @IsOptional() @IsUrl() apiDniUrl?: string;
   @IsOptional() @IsUrl() apiRucUrl?: string;
   @IsOptional() @Type(() => Number) @IsInt() @Min(1) @Max(365) sessionTtlDays?: number;
+
+  @IsOptional() @IsString() @MaxLength(500) nubefactRuta?: string;
+  @IsOptional() @IsString() @MaxLength(500) nubefactToken?: string;
+  @IsOptional() @IsString() @MaxLength(4) nubefactSerieFactura?: string;
+  @IsOptional() @IsString() @MaxLength(4) nubefactSerieBoleta?: string;
+  @IsOptional() @IsString() @MaxLength(4) nubefactSerieNotaCred?: string;
+  @IsOptional() @IsString() @MaxLength(4) nubefactSerieNotaDeb?: string;
+  @IsOptional() @Type(() => Number) nubefactIgvHospedaje?: number;
+  @IsOptional() @Type(() => Number) nubefactIgvProductos?: number;
 }
 
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -65,7 +74,12 @@ export class SettingsController {
   @Roles(Rol.SUPERADMIN, Rol.ADMIN_SEDE)
   @Patch()
   update(@Body() dto: UpdateSettingsDto) {
-    return this.service.update(dto);
+    // Si nubefactToken viene como '' (vacío) no lo sobrescribimos a null;
+    // si viene null lo limpiamos. Idem ruta.
+    const data: any = { ...dto };
+    if (dto.nubefactToken === '') delete data.nubefactToken;
+    if (dto.nubefactRuta === '') delete data.nubefactRuta;
+    return this.service.update(data);
   }
 
   @Roles(Rol.SUPERADMIN, Rol.ADMIN_SEDE)

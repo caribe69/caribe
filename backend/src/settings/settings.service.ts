@@ -13,6 +13,15 @@ export interface UpdateSettingsInput {
   apiDniUrl?: string;
   apiRucUrl?: string;
   sessionTtlDays?: number;
+  // NubeFact / facturación electrónica
+  nubefactRuta?: string | null;
+  nubefactToken?: string | null;
+  nubefactSerieFactura?: string;
+  nubefactSerieBoleta?: string;
+  nubefactSerieNotaCred?: string;
+  nubefactSerieNotaDeb?: string;
+  nubefactIgvHospedaje?: number | string;
+  nubefactIgvProductos?: number | string;
 }
 
 @Injectable()
@@ -37,6 +46,12 @@ export class SettingsService {
       empresaEmail: cfg.empresaEmail,
       logoPath: cfg.logoPath,
       sessionTtlDays: cfg.sessionTtlDays,
+      // Series visibles (no contienen secretos)
+      nubefactSerieFactura: cfg.nubefactSerieFactura,
+      nubefactSerieBoleta: cfg.nubefactSerieBoleta,
+      nubefactIgvHospedaje: cfg.nubefactIgvHospedaje,
+      nubefactIgvProductos: cfg.nubefactIgvProductos,
+      nubefactConfigured: !!(cfg.nubefactRuta && cfg.nubefactToken),
     };
   }
 

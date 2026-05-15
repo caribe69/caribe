@@ -10,6 +10,9 @@ import {
   CheckCircle2,
   Clock,
   ShieldCheck,
+  FileText,
+  Zap,
+  AlertCircle,
 } from 'lucide-react';
 import { api } from '@/lib/api';
 import { useToast } from '@/components/ToastProvider';
@@ -28,6 +31,14 @@ interface Config {
   apiDniUrl?: string;
   apiRucUrl?: string;
   sessionTtlDays?: number;
+  // NubeFact
+  nubefactRuta?: string | null;
+  nubefactToken?: string | null;
+  nubefactSerieFactura?: string;
+  nubefactSerieBoleta?: string;
+  nubefactIgvHospedaje?: number | string;
+  nubefactIgvProductos?: number | string;
+  nubefactConfigured?: boolean;
 }
 
 const SESSION_PRESETS = [1, 7, 14, 30, 60, 90, 180, 365];
@@ -54,11 +65,20 @@ export default function Configuracion() {
     apiDniUrl: 'https://dniruc.apisperu.com/api/v1/dni',
     apiRucUrl: 'https://dniruc.apisperu.com/api/v1/ruc',
     sessionTtlDays: 30,
+    nubefactRuta: '',
+    nubefactToken: '',
+    nubefactSerieFactura: 'F001',
+    nubefactSerieBoleta: 'B001',
+    nubefactIgvHospedaje: 10.5,
+    nubefactIgvProductos: 18,
   });
   const [showDniToken, setShowDniToken] = useState(false);
   const [showRucToken, setShowRucToken] = useState(false);
+  const [showNfToken, setShowNfToken] = useState(false);
   const [probandoDni, setProbandoDni] = useState(false);
   const [resultadoProbar, setResultadoProbar] = useState<any | null>(null);
+  const [probandoNubefact, setProbandoNubefact] = useState(false);
+  const [resultadoNubefact, setResultadoNubefact] = useState<any | null>(null);
 
   useEffect(() => {
     if (data) {
@@ -75,6 +95,13 @@ export default function Configuracion() {
         apiRucUrl: data.apiRucUrl || 'https://dniruc.apisperu.com/api/v1/ruc',
         logoPath: data.logoPath,
         sessionTtlDays: data.sessionTtlDays ?? 30,
+        nubefactRuta: (data as any).nubefactRuta || '',
+        nubefactToken: (data as any).nubefactToken || '',
+        nubefactSerieFactura: (data as any).nubefactSerieFactura || 'F001',
+        nubefactSerieBoleta: (data as any).nubefactSerieBoleta || 'B001',
+        nubefactIgvHospedaje: (data as any).nubefactIgvHospedaje ?? 10.5,
+        nubefactIgvProductos: (data as any).nubefactIgvProductos ?? 18,
+        nubefactConfigured: (data as any).nubefactConfigured,
       });
     }
   }, [data]);
@@ -93,6 +120,12 @@ export default function Configuracion() {
           apiDniUrl: form.apiDniUrl,
           apiRucUrl: form.apiRucUrl,
           sessionTtlDays: form.sessionTtlDays ?? 30,
+          nubefactRuta: form.nubefactRuta || null,
+          nubefactToken: form.nubefactToken || null,
+          nubefactSerieFactura: form.nubefactSerieFactura || 'F001',
+          nubefactSerieBoleta: form.nubefactSerieBoleta || 'B001',
+          nubefactIgvHospedaje: Number(form.nubefactIgvHospedaje ?? 10.5),
+          nubefactIgvProductos: Number(form.nubefactIgvProductos ?? 18),
         })
       ).data,
     onSuccess: () => {
@@ -126,6 +159,27 @@ export default function Configuracion() {
       toast({ type: 'success', title: 'Logo actualizado' });
     },
   });
+
+  const probarNubefact = async () => {
+    setProbandoNubefact(true);
+    setResultadoNubefact(null);
+    try {
+      // Primero guarda los datos actuales para que el backend use lo último
+      await api.patch('/settings', {
+        nubefactRuta: form.nubefactRuta || null,
+        nubefactToken: form.nubefactToken || null,
+      });
+      const r = await api.post('/nubefact/test');
+      setResultadoNubefact(r.data);
+    } catch (err: any) {
+      setResultadoNubefact({
+        ok: false,
+        mensaje: err.response?.data?.message || err.message,
+      });
+    } finally {
+      setProbandoNubefact(false);
+    }
+  };
 
   const probarDni = async () => {
     setProbandoDni(true);
@@ -432,6 +486,182 @@ export default function Configuracion() {
           </div>
         </section>
       )}
+
+      {/* ─────────── Facturación electrónica (NubeFact) ─────────── */}
+      <section className="bg-white rounded-3xl p-6 shadow-sm">
+        <div className="flex items-center gap-2 mb-1">
+          <FileText size={18} className="text-violet-600" />
+          <h2 className="font-hotel text-lg font-bold text-slate-900">
+            Facturación electrónica · NubeFact / SUNAT
+          </h2>
+          {data?.nubefactConfigured && (
+            <span className="inline-flex items-center gap-1 ml-2 text-[10px] font-bold uppercase tracking-widest text-emerald-700 dark:text-emerald-300 bg-emerald-100 dark:bg-emerald-900/40 px-2 py-1 rounded-full">
+              <CheckCircle2 size={10} /> Configurado
+            </span>
+          )}
+        </div>
+        <p className="text-sm text-slate-500 mb-4">
+          Ruta y token que entrega NubeFact al activar la integración API.
+          Estos datos se envían como <code className="text-violet-700 dark:text-violet-200 bg-violet-50 dark:bg-slate-800 px-1 rounded">Authorization</code> en cada
+          llamada al servicio de emisión.
+        </p>
+
+        <div className="space-y-4">
+          <Field label="Ruta / URL del API">
+            <input
+              type="url"
+              className={inputCls}
+              placeholder="https://api.nubefact.com/api/v1/xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+              value={form.nubefactRuta || ''}
+              onChange={(e) =>
+                setForm({ ...form, nubefactRuta: e.target.value })
+              }
+            />
+          </Field>
+
+          <Field label="Token de autenticación">
+            <div className="relative">
+              <input
+                type={showNfToken ? 'text' : 'password'}
+                className={`${inputCls} pr-10 font-mono text-xs`}
+                placeholder="UUID o JWT entregado por NubeFact"
+                value={form.nubefactToken || ''}
+                onChange={(e) =>
+                  setForm({ ...form, nubefactToken: e.target.value })
+                }
+              />
+              <button
+                type="button"
+                onClick={() => setShowNfToken((s) => !s)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700"
+              >
+                {showNfToken ? <EyeOff size={16} /> : <Eye size={16} />}
+              </button>
+            </div>
+          </Field>
+
+          <div className="grid md:grid-cols-2 gap-4">
+            <Field label="Serie para Facturas">
+              <input
+                className={inputCls}
+                maxLength={4}
+                placeholder="F001"
+                value={form.nubefactSerieFactura || ''}
+                onChange={(e) =>
+                  setForm({
+                    ...form,
+                    nubefactSerieFactura: e.target.value.toUpperCase(),
+                  })
+                }
+              />
+            </Field>
+            <Field label="Serie para Boletas">
+              <input
+                className={inputCls}
+                maxLength={4}
+                placeholder="B001"
+                value={form.nubefactSerieBoleta || ''}
+                onChange={(e) =>
+                  setForm({
+                    ...form,
+                    nubefactSerieBoleta: e.target.value.toUpperCase(),
+                  })
+                }
+              />
+            </Field>
+          </div>
+
+          <div className="grid md:grid-cols-2 gap-4">
+            <Field label="IGV Hospedaje (%)">
+              <input
+                type="number"
+                step="0.1"
+                min="0"
+                max="50"
+                className={inputCls}
+                value={form.nubefactIgvHospedaje as any}
+                onChange={(e) =>
+                  setForm({
+                    ...form,
+                    nubefactIgvHospedaje: e.target.value,
+                  })
+                }
+              />
+              <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">
+                Ley turismo: <b>10.5%</b> en líneas de alojamiento.
+              </div>
+            </Field>
+            <Field label="IGV Productos (%)">
+              <input
+                type="number"
+                step="0.1"
+                min="0"
+                max="50"
+                className={inputCls}
+                value={form.nubefactIgvProductos as any}
+                onChange={(e) =>
+                  setForm({
+                    ...form,
+                    nubefactIgvProductos: e.target.value,
+                  })
+                }
+              />
+              <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">
+                General: <b>18%</b> en consumos de productos.
+              </div>
+            </Field>
+          </div>
+
+          {/* Botón Probar conexión */}
+          <div className="flex flex-wrap items-center gap-3 pt-2 border-t border-slate-100 dark:border-slate-800">
+            <button
+              type="button"
+              onClick={probarNubefact}
+              disabled={probandoNubefact || !form.nubefactRuta || !form.nubefactToken}
+              className="inline-flex items-center gap-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 px-4 py-2 rounded-xl text-sm font-medium btn-press disabled:opacity-50"
+            >
+              <Zap size={14} />
+              {probandoNubefact ? 'Probando…' : 'Probar conexión'}
+            </button>
+            {resultadoNubefact && (
+              <div
+                className={`flex-1 min-w-[280px] text-[12px] rounded-lg p-2.5 border ${
+                  resultadoNubefact.ok
+                    ? 'bg-emerald-50 dark:bg-emerald-900/30 border-emerald-200 dark:border-emerald-800/50 text-emerald-800 dark:text-emerald-200'
+                    : 'bg-rose-50 dark:bg-rose-900/30 border-rose-200 dark:border-rose-800/50 text-rose-800 dark:text-rose-200'
+                }`}
+              >
+                <div className="flex items-start gap-2">
+                  {resultadoNubefact.ok ? (
+                    <CheckCircle2 size={14} className="mt-0.5 shrink-0" />
+                  ) : (
+                    <AlertCircle size={14} className="mt-0.5 shrink-0" />
+                  )}
+                  <div>
+                    <div className="font-semibold">
+                      {resultadoNubefact.ok
+                        ? 'Conexión correcta'
+                        : 'Conexión fallida'}
+                    </div>
+                    <div className="text-[11px] opacity-90 mt-0.5">
+                      {resultadoNubefact.mensaje}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+
+          <div className="text-[11px] text-slate-400 dark:text-slate-500 pt-2 border-t border-slate-100 dark:border-slate-800">
+            ⓘ Endpoints habilitados (aún no vinculados a flujos automáticos):
+            <span className="font-mono text-slate-500 dark:text-slate-300 ml-1">
+              POST /api/nubefact/test · POST /api/nubefact/alquileres/:id/emitir ·
+              POST /api/nubefact/ventas/:id/emitir · GET /api/nubefact/consultar ·
+              POST /api/nubefact/anular
+            </span>
+          </div>
+        </div>
+      </section>
 
       <div className="flex justify-end sticky bottom-4">
         <button

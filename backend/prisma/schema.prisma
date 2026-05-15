@@ -262,10 +262,28 @@ model Alquiler {
   anulacionRequests AnulacionRequest[]
   pagos           PagoAlquiler[]
 
+  // ── Facturación electrónica SUNAT (vía NubeFact) ─────────
+  sunatEmitido       Boolean   @default(false)
+  sunatAceptada      Boolean?
+  sunatSerie         String?
+  sunatNumero        Int?
+  sunatEnlace        String?
+  sunatEnlacePdf     String?
+  sunatEnlaceXml     String?
+  sunatEnlaceCdr     String?
+  sunatHash          String?
+  sunatQrCadena      String?
+  sunatResponseCode  String?
+  sunatDescripcion   String?
+  sunatEmitidoEn     DateTime?
+  sunatAnulada       Boolean   @default(false)
+  sunatAnuladaEn     DateTime?
+
   @@index([sedeId, estado])
   @@index([habitacionId])
   @@index([turnoCajaId])
   @@index([reservaGrupalId])
+  @@index([sunatSerie, sunatNumero])
 }
 
 model ReservaGrupal {
@@ -537,8 +555,26 @@ model Venta {
   creadoEn         DateTime    @default(now())
   items            ItemVenta[]
 
+  // ── Facturación electrónica SUNAT (vía NubeFact) ─────────
+  sunatEmitido       Boolean   @default(false)
+  sunatAceptada      Boolean?
+  sunatSerie         String?
+  sunatNumero        Int?
+  sunatEnlace        String?
+  sunatEnlacePdf     String?
+  sunatEnlaceXml     String?
+  sunatEnlaceCdr     String?
+  sunatHash          String?
+  sunatQrCadena      String?
+  sunatResponseCode  String?
+  sunatDescripcion   String?
+  sunatEmitidoEn     DateTime?
+  sunatAnulada       Boolean   @default(false)
+  sunatAnuladaEn     DateTime?
+
   @@index([sedeId, estado])
   @@index([turnoCajaId])
+  @@index([sunatSerie, sunatNumero])
 }
 
 model ItemVenta {
@@ -616,6 +652,17 @@ model AppConfig {
   apiRucUrl         String   @default("https://dniruc.apisperu.com/api/v1/ruc")
   // Duración de la sesión en días (controla expiresIn del JWT al login)
   sessionTtlDays    Int      @default(30)
+
+  // ── Facturación electrónica (NubeFact / PSE) ─────────────
+  nubefactRuta            String? // URL única del cliente (api.nubefact.com o api.pse.pe reseller)
+  nubefactToken           String? // Token de autenticación (puede ser UUID o JWT)
+  nubefactSerieFactura    String   @default("F001")
+  nubefactSerieBoleta     String   @default("B001")
+  nubefactSerieNotaCred   String   @default("F001") // mismo que la factura asociada por defecto
+  nubefactSerieNotaDeb    String   @default("F001")
+  nubefactIgvHospedaje    Decimal  @default(10.5) @db.Decimal(5, 2) // IGV reducido hospedaje
+  nubefactIgvProductos    Decimal  @default(18)   @db.Decimal(5, 2) // IGV general
+
   actualizadoEn     DateTime @updatedAt
   creadoEn          DateTime @default(now())
 }

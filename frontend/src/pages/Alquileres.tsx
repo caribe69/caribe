@@ -1066,9 +1066,16 @@ function NuevoAlquilerModal({
   // Emisión electrónica SUNAT
   const [emitirSunat, setEmitirSunat] = useState(false);
   const [confirmText, setConfirmText] = useState('');
-  const FRASE_CONFIRMACION = 'sí, sí, acepto';
+  const FRASE_CONFIRMACION = 'si acepto';
+  // Comparación case-insensitive y tolerante a tildes para evitar fricción
+  const normalizar = (s: string) =>
+    s
+      .normalize('NFD')
+      .replace(/[̀-ͯ]/g, '')
+      .trim()
+      .toLowerCase();
   const confirmacionOk = emitirSunat
-    ? confirmText.trim() === FRASE_CONFIRMACION
+    ? normalizar(confirmText) === normalizar(FRASE_CONFIRMACION)
     : true;
 
   // Debounced lookup de RUC

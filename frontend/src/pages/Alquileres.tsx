@@ -1441,22 +1441,6 @@ function NuevoAlquilerModal({
                 (desmarcar si queda pendiente)
               </span>
             </label>
-            <label className="flex items-center gap-2 cursor-pointer select-none">
-              <input
-                type="checkbox"
-                checked={form.amenitiesEntregados}
-                onChange={(e) =>
-                  setForm({
-                    ...form,
-                    amenitiesEntregados: e.target.checked,
-                  })
-                }
-                className="w-4 h-4 accent-amber-500"
-              />
-              <span className="text-sm font-medium text-slate-700">
-                🍫 Chocolates de bienvenida entregados
-              </span>
-            </label>
           </div>
 
           {/* Datos fiscales: BOLETA (default) ↔ FACTURA con RUC */}

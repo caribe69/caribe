@@ -708,6 +708,32 @@ function CrearUsuarioModal({
   const [rol, setRol] = useState<(typeof ROLES)[number]>('CAJERO');
   const [error, setError] = useState<string | null>(null);
   const [guardando, setGuardando] = useState(false);
+  const [forzarCrearNuevo, setForzarCrearNuevo] = useState(false);
+
+  // Buscar si ya existe un usuario que pueda vincularse (mismo email o DNI)
+  const candidatoQ = useQuery<any | null>({
+    queryKey: ['personal', personal.id, 'usuario-existente'],
+    queryFn: async () =>
+      (await api.get(`/personal/${personal.id}/usuario-existente`)).data,
+  });
+  const candidato = candidatoQ.data;
+  const mostrarFormularioCrear = forzarCrearNuevo || !candidato;
+
+  const vincular = async () => {
+    if (!candidato) return;
+    setGuardando(true);
+    setError(null);
+    try {
+      await api.post(`/personal/${personal.id}/vincular-usuario`, {
+        usuarioId: candidato.id,
+      });
+      onSaved();
+    } catch (err: any) {
+      setError(err.response?.data?.message || 'Error al vincular');
+    } finally {
+      setGuardando(false);
+    }
+  };
 
   const submit = async () => {
     if (password.length < 6)
@@ -733,7 +759,9 @@ function CrearUsuarioModal({
       <div className="bg-white dark:bg-slate-900 dark:ring-1 dark:ring-slate-800 rounded-2xl w-full max-w-md shadow-2xl">
         <div className="px-5 py-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
           <h2 className="font-hotel text-lg font-bold text-slate-900 dark:text-slate-100">
-            Crear usuario del sistema
+            {candidato && !forzarCrearNuevo
+              ? 'Vincular usuario existente'
+              : 'Crear usuario del sistema'}
           </h2>
           <button
             onClick={onClose}
@@ -744,41 +772,110 @@ function CrearUsuarioModal({
         </div>
         <div className="p-5 space-y-4">
           <div className="text-sm text-slate-600 dark:text-slate-300">
-            Vincular usuario a{' '}
+            Personal:{' '}
             <b className="text-slate-900 dark:text-slate-100">
               {personal.nombre} {personal.apellidoPaterno}
             </b>{' '}
             (DNI {personal.dni})
           </div>
-          <Field label="Username">
-            <input
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              placeholder={`Default: ${personal.dni}`}
-              className={inputCls}
-            />
-          </Field>
-          <Field label="Contraseña inicial (mín. 6)">
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className={inputCls}
-            />
-          </Field>
-          <Field label="Rol">
-            <select
-              value={rol}
-              onChange={(e) => setRol(e.target.value as any)}
-              className={inputCls}
-            >
-              {ROLES.map((r) => (
-                <option key={r} value={r}>
-                  {r}
-                </option>
-              ))}
-            </select>
-          </Field>
+
+          {/* Card: usuario existente detectado */}
+          {candidato && !forzarCrearNuevo && (
+            <div className="bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800/50 rounded-xl p-4">
+              <div className="flex items-start gap-3">
+                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-emerald-500 to-emerald-700 text-white font-bold flex items-center justify-center shrink-0">
+                  {candidato.nombre?.[0]?.toUpperCase() || '?'}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="text-[10px] font-bold uppercase tracking-widest text-emerald-700 dark:text-emerald-300 mb-1">
+                    Usuario encontrado
+                  </div>
+                  <div className="font-semibold text-slate-900 dark:text-slate-100 truncate">
+                    {candidato.nombre}
+                  </div>
+                  <div className="text-[12px] text-slate-600 dark:text-slate-300 font-mono">
+                    @{candidato.username} · {candidato.rol}
+                  </div>
+                  {candidato.email && (
+                    <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+                      {candidato.email}
+                    </div>
+                  )}
+                  {candidato.sede && (
+                    <div className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">
+                      Sede: {candidato.sede.nombre}
+                    </div>
+                  )}
+                </div>
+              </div>
+              <div className="text-[11px] text-emerald-800 dark:text-emerald-200 mt-3 leading-snug">
+                Detectamos un usuario ya creado que coincide por <b>email</b> o
+                por <b>DNI</b> como username. Podés vincularlo (mantiene su
+                contraseña y rol actuales) o crear uno completamente nuevo con
+                otros datos.
+              </div>
+              <div className="flex gap-2 mt-3">
+                <button
+                  onClick={vincular}
+                  disabled={guardando}
+                  className="flex-1 bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-700 hover:to-emerald-600 text-white py-2 rounded-lg text-sm font-semibold shadow-md disabled:opacity-40 inline-flex items-center justify-center gap-1.5"
+                >
+                  <UserCheck size={14} />
+                  {guardando ? 'Vinculando…' : 'Vincular este usuario'}
+                </button>
+                <button
+                  onClick={() => setForzarCrearNuevo(true)}
+                  className="px-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 py-2 rounded-lg text-xs font-medium"
+                >
+                  Crear otro
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Formulario de crear (modo normal o al apretar 'Crear otro') */}
+          {mostrarFormularioCrear && (
+            <>
+              {forzarCrearNuevo && (
+                <button
+                  onClick={() => setForzarCrearNuevo(false)}
+                  className="text-[11px] text-violet-600 dark:text-violet-300 hover:underline"
+                >
+                  ← Volver y vincular existente
+                </button>
+              )}
+              <Field label="Username">
+                <input
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                  placeholder={`Default: ${personal.dni}`}
+                  className={inputCls}
+                />
+              </Field>
+              <Field label="Contraseña inicial (mín. 6)">
+                <input
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className={inputCls}
+                />
+              </Field>
+              <Field label="Rol">
+                <select
+                  value={rol}
+                  onChange={(e) => setRol(e.target.value as any)}
+                  className={inputCls}
+                >
+                  {ROLES.map((r) => (
+                    <option key={r} value={r}>
+                      {r}
+                    </option>
+                  ))}
+                </select>
+              </Field>
+            </>
+          )}
+
           {error && (
             <div className="text-sm text-rose-700 dark:text-rose-300 bg-rose-50 dark:bg-rose-900/30 border border-rose-200 dark:border-rose-800 rounded-lg p-2.5">
               {error}
@@ -792,13 +889,15 @@ function CrearUsuarioModal({
           >
             Cancelar
           </button>
-          <button
-            onClick={submit}
-            disabled={guardando}
-            className="flex-1 bg-gradient-to-r from-violet-600 to-violet-500 hover:from-violet-700 hover:to-violet-600 text-white py-2.5 rounded-xl font-semibold shadow-md disabled:opacity-40"
-          >
-            {guardando ? 'Creando…' : 'Crear usuario'}
-          </button>
+          {mostrarFormularioCrear && (
+            <button
+              onClick={submit}
+              disabled={guardando}
+              className="flex-1 bg-gradient-to-r from-violet-600 to-violet-500 hover:from-violet-700 hover:to-violet-600 text-white py-2.5 rounded-xl font-semibold shadow-md disabled:opacity-40"
+            >
+              {guardando ? 'Creando…' : 'Crear usuario'}
+            </button>
+          )}
         </div>
       </div>
     </div>

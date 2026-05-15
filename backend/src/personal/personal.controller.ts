@@ -211,6 +211,23 @@ export class PersonalController {
     return this.service.desvincularUsuario(id);
   }
 
+  /** Busca un usuario existente que coincida con el personal (email o DNI). */
+  @Roles(Rol.SUPERADMIN, Rol.ADMIN_SEDE)
+  @Get(':id/usuario-existente')
+  usuarioExistente(@Param('id', ParseIntPipe) id: number) {
+    return this.service.usuarioExistenteParaPersonal(id);
+  }
+
+  /** Vincula un usuario ya creado (no crea uno nuevo). */
+  @Roles(Rol.SUPERADMIN, Rol.ADMIN_SEDE)
+  @Post(':id/vincular-usuario')
+  vincularUsuario(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() body: { usuarioId: number },
+  ) {
+    return this.service.vincularUsuarioExistente(id, Number(body.usuarioId));
+  }
+
   /** Transferir personal a otra sede (SUPERADMIN o ADMIN_SEDE de origen/destino). */
   @Roles(Rol.SUPERADMIN, Rol.ADMIN_SEDE)
   @Post(':id/transferir')

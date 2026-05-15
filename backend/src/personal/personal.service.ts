@@ -215,6 +215,66 @@ export class PersonalService {
     });
   }
 
+  /**
+   * Busca usuarios existentes que coincidan con los datos del personal
+   * (email o DNI como username) y que NO estén ya vinculados a otro
+   * personal. Útil para ofrecer "vincular" en vez de "crear nuevo".
+   */
+  async usuarioExistenteParaPersonal(id: number) {
+    const personal = await this.findOne(id);
+    const where: any[] = [];
+    if (personal.correo && personal.correo.trim())
+      where.push({ email: personal.correo.trim().toLowerCase() });
+    if (personal.dni) where.push({ username: personal.dni });
+    if (where.length === 0) return null;
+
+    const candidato = await this.prisma.usuario.findFirst({
+      where: {
+        OR: where,
+        personalRecord: { is: null }, // no esté ya vinculado
+      },
+      select: {
+        id: true,
+        username: true,
+        nombre: true,
+        email: true,
+        rol: true,
+        activo: true,
+        sedeId: true,
+        sede: { select: { id: true, nombre: true } },
+      },
+    });
+    return candidato;
+  }
+
+  /** Vincula un Usuario YA EXISTENTE a un Personal sin crear uno nuevo. */
+  async vincularUsuarioExistente(id: number, usuarioId: number) {
+    const personal = await this.findOne(id);
+    if (personal.usuarioId)
+      throw new ConflictException(
+        'Este personal ya tiene un usuario vinculado',
+      );
+    const usuario = await this.prisma.usuario.findUnique({
+      where: { id: usuarioId },
+      include: { personalRecord: true },
+    });
+    if (!usuario) throw new NotFoundException('Usuario no encontrado');
+    if (usuario.personalRecord)
+      throw new ConflictException(
+        `El usuario @${usuario.username} ya está vinculado a otro personal`,
+      );
+
+    return this.prisma.personal.update({
+      where: { id },
+      data: { usuarioId: usuario.id },
+      include: {
+        usuario: {
+          select: { id: true, username: true, rol: true, activo: true },
+        },
+      },
+    });
+  }
+
   // ════════════════════════════════════════════════════════════
   // TRANSFERENCIA ENTRE SEDES
   // ════════════════════════════════════════════════════════════

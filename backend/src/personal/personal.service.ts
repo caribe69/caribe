@@ -133,12 +133,25 @@ export class PersonalService {
         'La contraseña debe tener al menos 6 caracteres',
       );
 
-    const username =
-      dto.username?.trim() || personal.dni; // default: usar DNI
+    const username = (dto.username?.trim() || personal.dni).toLowerCase();
 
     const exists = await this.prisma.usuario.findUnique({ where: { username } });
     if (exists)
       throw new ConflictException(`El username '${username}' ya está en uso`);
+
+    // Normaliza el email: '' → null para no chocar con la constraint UNIQUE
+    const email = personal.correo && personal.correo.trim()
+      ? personal.correo.trim().toLowerCase()
+      : null;
+    if (email) {
+      const emailExists = await this.prisma.usuario.findUnique({
+        where: { email },
+      });
+      if (emailExists)
+        throw new ConflictException(
+          `Ya existe un usuario con el email '${email}'`,
+        );
+    }
 
     const passwordHash = await bcrypt.hash(dto.password, 10);
     const nombreCompleto = [
@@ -150,24 +163,45 @@ export class PersonalService {
       .join(' ')
       .trim();
 
-    return this.prisma.$transaction(async (tx) => {
-      const usuario = await tx.usuario.create({
-        data: {
-          username,
-          nombre: nombreCompleto,
-          email: personal.correo,
-          rol: dto.rol,
-          sedeId: personal.sedeId,
-          passwordHash,
-          activo: true,
-        },
+    try {
+      return await this.prisma.$transaction(async (tx) => {
+        const usuario = await tx.usuario.create({
+          data: {
+            username,
+            nombre: nombreCompleto,
+            email,
+            rol: dto.rol,
+            sedeId: personal.sedeId,
+            passwordHash,
+            activo: true,
+          },
+        });
+        await tx.personal.update({
+          where: { id },
+          data: { usuarioId: usuario.id },
+        });
+        return { usuario, personalId: id };
       });
-      await tx.personal.update({
-        where: { id },
-        data: { usuarioId: usuario.id },
-      });
-      return { usuario, personalId: id };
-    });
+    } catch (e: any) {
+      // Mapeo de errores Prisma conocidos a mensajes claros
+      if (e?.code === 'P2002') {
+        const target = Array.isArray(e.meta?.target)
+          ? (e.meta!.target as string[]).join(', ')
+          : String(e.meta?.target || '');
+        throw new ConflictException(
+          `Ya existe un usuario con el mismo ${target || 'campo único'}`,
+        );
+      }
+      if (e?.code === 'P2003') {
+        throw new BadRequestException(
+          'Referencia inválida (sede o relación). Revisa los datos del personal.',
+        );
+      }
+      // Cualquier otro error: propagar con el mensaje real para no devolver 500 genérico
+      throw new BadRequestException(
+        `No se pudo crear el usuario: ${e?.message || 'error desconocido'}`,
+      );
+    }
   }
 
   async desvincularUsuario(id: number) {

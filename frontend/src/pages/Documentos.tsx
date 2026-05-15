@@ -276,8 +276,9 @@ function FilaDocumento({
   onEliminar: () => void;
 }) {
   const { estado, dias } = calcularEstado(d);
-  const url = `/api${d.archivoPath.startsWith('/uploads') ? d.archivoPath : `/uploads/documentos/${d.archivoPath}`}`;
-  const downloadUrl = d.archivoPath.startsWith('/uploads')
+  // /uploads/* es servido por ServeStatic SIN el prefijo /api (nginx también
+  // tiene location ^~ /uploads/). Antes ponía /api delante y daba 404.
+  const url = d.archivoPath.startsWith('/uploads')
     ? d.archivoPath
     : `/uploads/documentos/${d.archivoPath}`;
 

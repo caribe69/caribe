@@ -43,6 +43,8 @@ model Sede {
   reservasGrupales  ReservaGrupal[]
   documentos        Documento[]
   personal          Personal[]
+  transferenciasPersonalDesde TransferenciaPersonal[] @relation("TPDesde")
+  transferenciasPersonalHasta TransferenciaPersonal[] @relation("TPHasta")
 }
 
 model Usuario {
@@ -75,6 +77,7 @@ model Usuario {
   reservasGrupalesCreadas  ReservaGrupal[] @relation("ReservaGrupalCreadaPor")
   auditLogs                AuditLog[]
   personalRecord           Personal?
+  transferenciasPersonalEjecutadas TransferenciaPersonal[] @relation("TPTransferidoPor")
 
   @@index([sedeId])
 }
@@ -706,6 +709,7 @@ model Personal {
   id                 Int       @id @default(autoincrement())
   sedeId             Int?
   sede               Sede?     @relation(fields: [sedeId], references: [id])
+  transferencias     TransferenciaPersonal[]
 
   dni                String    @unique
   nombre             String
@@ -735,6 +739,30 @@ model Personal {
 
   @@index([sedeId])
   @@index([activo])
+}
+
+// ============================================================
+// TRANSFERENCIAS DE PERSONAL ENTRE SEDES
+// ============================================================
+model TransferenciaPersonal {
+  id               Int       @id @default(autoincrement())
+  personalId       Int
+  personal         Personal  @relation(fields: [personalId], references: [id], onDelete: Cascade)
+
+  desdeSedeId      Int?
+  desdeSede        Sede?     @relation("TPDesde", fields: [desdeSedeId], references: [id])
+  hastaSedeId      Int
+  hastaSede        Sede      @relation("TPHasta", fields: [hastaSedeId], references: [id])
+
+  motivo           String
+  fechaEfectiva    DateTime  @default(now())
+  transferidoPorId Int
+  transferidoPor   Usuario   @relation("TPTransferidoPor", fields: [transferidoPorId], references: [id])
+
+  creadoEn         DateTime  @default(now())
+
+  @@index([personalId, fechaEfectiva])
+  @@index([hastaSedeId])
 }
 
 // ============================================================

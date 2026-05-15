@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
   ConflictException,
@@ -212,5 +213,232 @@ export class PersonalService {
       where: { id },
       data: { usuarioId: null },
     });
+  }
+
+  // ════════════════════════════════════════════════════════════
+  // TRANSFERENCIA ENTRE SEDES
+  // ════════════════════════════════════════════════════════════
+
+  /**
+   * Transfiere un Personal de su sede actual a otra sede.
+   * Mantiene el mismo Personal e id de Usuario; solo cambia las sedeId.
+   * Bloquea la operación si el usuario asociado tiene un turno de caja
+   * abierto (debe cerrarlo primero).
+   */
+  async transferir(
+    personalId: number,
+    dto: { haciaSedeId: number; motivo: string },
+    user: JwtPayload,
+  ) {
+    if (!dto.motivo || dto.motivo.trim().length < 3)
+      throw new BadRequestException('Motivo de transferencia obligatorio');
+
+    const personal = await this.findOne(personalId);
+    if (!personal.sedeId)
+      throw new BadRequestException(
+        'Este personal no tiene sede asignada — primero asigna una al editar.',
+      );
+    if (personal.sedeId === dto.haciaSedeId)
+      throw new BadRequestException(
+        'El personal ya pertenece a esa sede.',
+      );
+
+    // Permisos: ADMIN_SEDE solo puede transferir DESDE o HACIA su propia sede
+    if (user.rol === 'ADMIN_SEDE') {
+      if (
+        personal.sedeId !== user.sedeId &&
+        dto.haciaSedeId !== user.sedeId
+      ) {
+        throw new ForbiddenException(
+          'Solo puedes transferir personal desde o hacia tu sede.',
+        );
+      }
+    }
+
+    // Sede destino debe existir y estar activa
+    const sedeDestino = await this.prisma.sede.findUnique({
+      where: { id: dto.haciaSedeId },
+    });
+    if (!sedeDestino || !sedeDestino.activa)
+      throw new BadRequestException('Sede destino no encontrada o inactiva');
+
+    // Si tiene usuario, verificar que NO tenga turno de caja abierto
+    if (personal.usuarioId) {
+      const turnoAbierto = await this.prisma.turnoCaja.findFirst({
+        where: {
+          usuarioId: personal.usuarioId,
+          estado: 'ABIERTO',
+        },
+        include: { sede: { select: { nombre: true } } },
+      });
+      if (turnoAbierto) {
+        throw new BadRequestException(
+          `${personal.nombre} ${personal.apellidoPaterno} tiene un turno de caja ABIERTO #${turnoAbierto.id} en la sede ${turnoAbierto.sede.nombre}. Debe cerrar caja antes de ser transferido.`,
+        );
+      }
+    }
+
+    return this.prisma.$transaction(async (tx) => {
+      const transferencia = await tx.transferenciaPersonal.create({
+        data: {
+          personalId: personalId,
+          desdeSedeId: personal.sedeId,
+          hastaSedeId: dto.haciaSedeId,
+          motivo: dto.motivo.trim(),
+          transferidoPorId: user.sub,
+        },
+        include: {
+          desdeSede: { select: { id: true, nombre: true } },
+          hastaSede: { select: { id: true, nombre: true } },
+        },
+      });
+      await tx.personal.update({
+        where: { id: personalId },
+        data: { sedeId: dto.haciaSedeId },
+      });
+      if (personal.usuarioId) {
+        await tx.usuario.update({
+          where: { id: personal.usuarioId },
+          data: { sedeId: dto.haciaSedeId },
+        });
+      }
+      return { transferencia };
+    });
+  }
+
+  /**
+   * Historial completo del personal: lista de transferencias + métricas
+   * agregadas por sede (ventas, alquileres, turnos cerrados), sumando
+   * datos de todas las sedes donde el usuario asociado haya operado.
+   * Accesible para SUPERADMIN y para ADMIN_SEDE cuyo sede haya tenido
+   * al personal alguna vez.
+   */
+  async historialCompleto(personalId: number, user: JwtPayload) {
+    const personal = await this.findOne(personalId);
+
+    if (user.rol === 'ADMIN_SEDE' && user.sedeId != null) {
+      const enSuSedeActualmente = personal.sedeId === user.sedeId;
+      const huboTransferenciaConSuSede =
+        await this.prisma.transferenciaPersonal.findFirst({
+          where: {
+            personalId,
+            OR: [
+              { desdeSedeId: user.sedeId },
+              { hastaSedeId: user.sedeId },
+            ],
+          },
+        });
+      if (!enSuSedeActualmente && !huboTransferenciaConSuSede) {
+        throw new ForbiddenException(
+          'Este personal nunca trabajó en tu sede; no puedes ver su historial.',
+        );
+      }
+    }
+
+    const transferencias = await this.prisma.transferenciaPersonal.findMany({
+      where: { personalId },
+      orderBy: { fechaEfectiva: 'asc' },
+      include: {
+        desdeSede: { select: { id: true, nombre: true } },
+        hastaSede: { select: { id: true, nombre: true } },
+        transferidoPor: {
+          select: { id: true, nombre: true, username: true },
+        },
+      },
+    });
+
+    // Si no hay usuario vinculado, no podemos agregar métricas
+    if (!personal.usuarioId) {
+      return {
+        personal,
+        transferencias,
+        porSede: [],
+        totales: { ventas: 0, alquileres: 0, ingresos: 0, turnosCerrados: 0 },
+      };
+    }
+
+    // Recopilar todas las sedes donde el usuario haya estado
+    const sedesIdsSet = new Set<number>();
+    if (personal.sedeId) sedesIdsSet.add(personal.sedeId);
+    for (const t of transferencias) {
+      if (t.desdeSedeId) sedesIdsSet.add(t.desdeSedeId);
+      sedesIdsSet.add(t.hastaSedeId);
+    }
+    const sedesIds = Array.from(sedesIdsSet);
+
+    const sedes = await this.prisma.sede.findMany({
+      where: { id: { in: sedesIds } },
+      select: { id: true, nombre: true },
+    });
+
+    const porSede: any[] = [];
+    let totalVentas = 0;
+    let totalAlquileres = 0;
+    let totalIngresos = 0;
+    let totalTurnos = 0;
+
+    for (const sede of sedes) {
+      const [ventas, alquileres, turnos] = await Promise.all([
+        this.prisma.venta.findMany({
+          where: {
+            sedeId: sede.id,
+            usuarioId: personal.usuarioId,
+            estado: 'ACTIVA',
+          },
+          select: { total: true },
+        }),
+        this.prisma.alquiler.findMany({
+          where: {
+            sedeId: sede.id,
+            creadoPorId: personal.usuarioId,
+            estado: { not: 'ANULADO' },
+          },
+          select: { total: true, montoPagado: true },
+        }),
+        this.prisma.turnoCaja.count({
+          where: {
+            sedeId: sede.id,
+            usuarioId: personal.usuarioId,
+            estado: 'CERRADO',
+          },
+        }),
+      ]);
+
+      const sumaVentas = ventas.reduce((s, v) => s + Number(v.total), 0);
+      const sumaAlquileres = alquileres.reduce(
+        (s, a) => s + Number(a.total),
+        0,
+      );
+      porSede.push({
+        sede,
+        ventas: { cantidad: ventas.length, total: sumaVentas },
+        alquileres: { cantidad: alquileres.length, total: sumaAlquileres },
+        turnosCerrados: turnos,
+        ingresoTotal: sumaVentas + sumaAlquileres,
+      });
+      totalVentas += ventas.length;
+      totalAlquileres += alquileres.length;
+      totalIngresos += sumaVentas + sumaAlquileres;
+      totalTurnos += turnos;
+    }
+
+    // Ordenar sedes por sede actual primero, después por ingreso
+    porSede.sort((a, b) => {
+      if (a.sede.id === personal.sedeId) return -1;
+      if (b.sede.id === personal.sedeId) return 1;
+      return b.ingresoTotal - a.ingresoTotal;
+    });
+
+    return {
+      personal,
+      transferencias,
+      porSede,
+      totales: {
+        ventas: totalVentas,
+        alquileres: totalAlquileres,
+        ingresos: totalIngresos,
+        turnosCerrados: totalTurnos,
+      },
+    };
   }
 }

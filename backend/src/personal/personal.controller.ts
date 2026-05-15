@@ -26,6 +26,7 @@ import {
   IsString,
   Matches,
   MinLength,
+  Min,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 import { Rol } from '@prisma/client';
@@ -92,6 +93,11 @@ class CrearUsuarioDto {
   @IsOptional() @IsString() username?: string;
   @IsString() @MinLength(6) password!: string;
   @IsEnum(Rol) rol!: Rol;
+}
+
+class TransferirDto {
+  @Type(() => Number) @IsInt() @Min(1) haciaSedeId!: number;
+  @IsString() @MinLength(3) motivo!: string;
 }
 
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -203,5 +209,31 @@ export class PersonalController {
   @Delete(':id/usuario')
   desvincularUsuario(@Param('id', ParseIntPipe) id: number) {
     return this.service.desvincularUsuario(id);
+  }
+
+  /** Transferir personal a otra sede (SUPERADMIN o ADMIN_SEDE de origen/destino). */
+  @Roles(Rol.SUPERADMIN, Rol.ADMIN_SEDE)
+  @Post(':id/transferir')
+  transferir(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: TransferirDto,
+    @CurrentUser() user: JwtPayload,
+  ) {
+    return this.service.transferir(id, dto, user);
+  }
+
+  /**
+   * Historial completo del personal: lista de transferencias entre sedes
+   * + métricas agregadas por sede (ventas, alquileres, turnos cerrados).
+   * Visible para SUPERADMIN y ADMIN_SEDE que tenga al personal en su sede
+   * actual o que haya sido origen/destino de alguna transferencia.
+   */
+  @Roles(Rol.SUPERADMIN, Rol.ADMIN_SEDE)
+  @Get(':id/historial-completo')
+  historialCompleto(
+    @Param('id', ParseIntPipe) id: number,
+    @CurrentUser() user: JwtPayload,
+  ) {
+    return this.service.historialCompleto(id, user);
   }
 }

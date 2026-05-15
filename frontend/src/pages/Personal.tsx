@@ -12,6 +12,11 @@ import {
   UserCheck,
   Mail,
   Phone,
+  ArrowRightLeft,
+  History,
+  Building,
+  BarChart3,
+  AlertTriangle,
 } from 'lucide-react';
 import { api } from '@/lib/api';
 import { useAuthStore } from '@/store/auth';
@@ -71,6 +76,8 @@ export default function PersonalPage() {
   const [showNuevo, setShowNuevo] = useState(false);
   const [editar, setEditar] = useState<Personal | null>(null);
   const [crearUsuarioFor, setCrearUsuarioFor] = useState<Personal | null>(null);
+  const [transferirFor, setTransferirFor] = useState<Personal | null>(null);
+  const [historialFor, setHistorialFor] = useState<Personal | null>(null);
   const [busqueda, setBusqueda] = useState('');
 
   const { data, isLoading } = useQuery({
@@ -198,6 +205,8 @@ export default function PersonalPage() {
                       if (ok) eliminar.mutate(p.id);
                     }}
                     onCrearUsuario={() => setCrearUsuarioFor(p)}
+                    onTransferir={() => setTransferirFor(p)}
+                    onHistorial={() => setHistorialFor(p)}
                   />
                 ))}
             </tbody>
@@ -237,6 +246,27 @@ export default function PersonalPage() {
           }}
         />
       )}
+      {transferirFor && (
+        <TransferirModal
+          personal={transferirFor}
+          onClose={() => setTransferirFor(null)}
+          onSaved={(t) => {
+            setTransferirFor(null);
+            qc.invalidateQueries({ queryKey: ['personal'] });
+            toast({
+              type: 'success',
+              title: 'Personal transferido',
+              description: `Ahora pertenece a ${t.hastaSede?.nombre || 'la nueva sede'}.`,
+            });
+          }}
+        />
+      )}
+      {historialFor && (
+        <HistorialModal
+          personal={historialFor}
+          onClose={() => setHistorialFor(null)}
+        />
+      )}
     </div>
   );
 }
@@ -247,12 +277,16 @@ function FilaPersonal({
   onEditar,
   onEliminar,
   onCrearUsuario,
+  onTransferir,
+  onHistorial,
 }: {
   p: Personal;
   puedeEditar: boolean;
   onEditar: () => void;
   onEliminar: () => void;
   onCrearUsuario: () => void;
+  onTransferir: () => void;
+  onHistorial: () => void;
 }) {
   const edad = edadDe(p.fechaNacimiento);
   const initials =
@@ -324,6 +358,20 @@ function FilaPersonal({
       <td className="px-5 py-3 text-right">
         {puedeEditar && (
           <div className="inline-flex items-center gap-1">
+            <button
+              onClick={onHistorial}
+              className="inline-flex items-center justify-center text-slate-400 hover:text-violet-600 dark:hover:text-violet-300 hover:bg-violet-50 dark:hover:bg-violet-900/30 w-7 h-7 rounded-lg"
+              title="Historial completo"
+            >
+              <History size={13} />
+            </button>
+            <button
+              onClick={onTransferir}
+              className="inline-flex items-center justify-center text-slate-400 hover:text-amber-600 dark:hover:text-amber-300 hover:bg-amber-50 dark:hover:bg-amber-900/30 w-7 h-7 rounded-lg"
+              title="Transferir de sede"
+            >
+              <ArrowRightLeft size={13} />
+            </button>
             <button
               onClick={onEditar}
               className="inline-flex items-center gap-1.5 text-xs text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 px-2.5 py-1.5 rounded-lg"
@@ -784,5 +832,395 @@ function Th({
     >
       {children}
     </th>
+  );
+}
+
+// ════════════════════════════════════════════════════════════
+// MODAL: Transferir personal a otra sede
+// ════════════════════════════════════════════════════════════
+function TransferirModal({
+  personal,
+  onClose,
+  onSaved,
+}: {
+  personal: Personal;
+  onClose: () => void;
+  onSaved: (t: any) => void;
+}) {
+  const sedesQ = useQuery({
+    queryKey: ['sedes', 'all'],
+    queryFn: async () => (await api.get<any[]>('/sedes')).data,
+  });
+  const [haciaSedeId, setHaciaSedeId] = useState<number | null>(null);
+  const [motivo, setMotivo] = useState('');
+  const [confirmText, setConfirmText] = useState('');
+  const [error, setError] = useState<string | null>(null);
+  const [enviando, setEnviando] = useState(false);
+
+  const normalizar = (s: string) =>
+    s
+      .normalize('NFD')
+      .replace(/[̀-ͯ]/g, '')
+      .trim()
+      .toLowerCase();
+  const FRASE = 'si acepto';
+  const confirmacionOk = normalizar(confirmText) === normalizar(FRASE);
+
+  const sedesDisponibles = (sedesQ.data || []).filter(
+    (s: any) => s.id !== personal.sedeId && s.activa,
+  );
+
+  const submit = async () => {
+    if (!haciaSedeId) return setError('Selecciona la sede destino');
+    if (motivo.trim().length < 3) return setError('Motivo es obligatorio');
+    if (!confirmacionOk) return setError('Escribe la frase de confirmación');
+    setEnviando(true);
+    setError(null);
+    try {
+      const { data } = await api.post(`/personal/${personal.id}/transferir`, {
+        haciaSedeId,
+        motivo: motivo.trim(),
+      });
+      onSaved(data.transferencia);
+    } catch (err: any) {
+      setError(err.response?.data?.message || 'Error al transferir');
+    } finally {
+      setEnviando(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/40 dark:bg-black/70 flex items-center justify-center p-4 z-50">
+      <div className="bg-white dark:bg-slate-900 dark:ring-1 dark:ring-slate-800 rounded-2xl w-full max-w-lg shadow-2xl">
+        <div className="px-5 py-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <ArrowRightLeft size={18} className="text-amber-600 dark:text-amber-400" />
+            <h2 className="font-hotel text-lg font-bold text-slate-900 dark:text-slate-100">
+              Transferir personal
+            </h2>
+          </div>
+          <button onClick={onClose} className="text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 p-1">
+            <X size={18} />
+          </button>
+        </div>
+        <div className="p-5 space-y-4">
+          <div className="bg-slate-50 dark:bg-slate-800/60 rounded-xl p-3 text-sm">
+            <div className="flex items-center justify-between gap-2">
+              <div className="min-w-0">
+                <div className="font-bold text-slate-900 dark:text-slate-100 truncate">
+                  {personal.nombre} {personal.apellidoPaterno} {personal.apellidoMaterno || ''}
+                </div>
+                <div className="text-[11px] text-slate-500 dark:text-slate-400 font-mono">
+                  DNI {personal.dni}
+                </div>
+              </div>
+              <div className="text-right text-[11px]">
+                <div className="text-slate-400 dark:text-slate-500 uppercase tracking-widest">Sede actual</div>
+                <div className="font-semibold text-slate-700 dark:text-slate-200">
+                  {personal.sede?.nombre || 'Sin sede'}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <Field label="Sede destino">
+            <select
+              value={haciaSedeId || ''}
+              onChange={(e) => setHaciaSedeId(Number(e.target.value) || null)}
+              className={inputCls}
+            >
+              <option value="">— Selecciona —</option>
+              {sedesDisponibles.map((s: any) => (
+                <option key={s.id} value={s.id}>
+                  {s.nombre}
+                </option>
+              ))}
+            </select>
+          </Field>
+
+          <Field label="Motivo de la transferencia">
+            <textarea
+              rows={2}
+              value={motivo}
+              onChange={(e) => setMotivo(e.target.value)}
+              placeholder="Ej: Cobertura permanente · cierre temporal de sede · solicitud propia"
+              className={inputCls}
+            />
+          </Field>
+
+          <div className="border-t border-slate-200 dark:border-slate-700 pt-3">
+            <div className="text-[11px] font-semibold text-rose-700 dark:text-rose-300 bg-rose-50 dark:bg-rose-900/30 border border-rose-200 dark:border-rose-800/50 rounded-lg p-2.5 leading-snug flex gap-2">
+              <AlertTriangle size={14} className="shrink-0 mt-0.5" />
+              <div>
+                Esta acción cambia la sede del personal{personal.usuario ? ' y de su usuario del sistema' : ''}.
+                Si el cajero tiene un turno de caja abierto, primero debe cerrarlo.
+                Para confirmar escribe:
+                <div className="font-mono text-[12px] font-bold text-rose-800 dark:text-rose-200 mt-1 select-all">
+                  {FRASE}
+                </div>
+              </div>
+            </div>
+            <input
+              type="text"
+              autoComplete="off"
+              placeholder={`Escribe: ${FRASE}`}
+              value={confirmText}
+              onChange={(e) => setConfirmText(e.target.value)}
+              className={`w-full mt-2 px-3 py-2 rounded-lg text-sm font-mono border-2 transition focus:outline-none ${
+                confirmacionOk
+                  ? 'border-emerald-400 dark:border-emerald-700 bg-emerald-50 dark:bg-emerald-900/30 text-emerald-800 dark:text-emerald-200'
+                  : 'border-rose-300 dark:border-rose-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100'
+              }`}
+            />
+          </div>
+
+          {error && (
+            <div className="text-sm text-rose-700 dark:text-rose-300 bg-rose-50 dark:bg-rose-900/30 border border-rose-200 dark:border-rose-800 rounded-lg p-2.5">
+              {error}
+            </div>
+          )}
+        </div>
+        <div className="px-5 py-4 border-t border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50 flex gap-2">
+          <button
+            onClick={onClose}
+            className="flex-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 py-2.5 rounded-xl font-medium"
+          >
+            Cancelar
+          </button>
+          <button
+            onClick={submit}
+            disabled={enviando || !haciaSedeId || motivo.trim().length < 3 || !confirmacionOk}
+            className="flex-[2] bg-gradient-to-r from-amber-600 to-amber-500 hover:from-amber-700 hover:to-amber-600 text-white py-2.5 rounded-xl font-semibold shadow-md disabled:opacity-40"
+          >
+            {enviando ? 'Transfiriendo…' : 'Confirmar transferencia'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ════════════════════════════════════════════════════════════
+// MODAL: Historial completo del personal (todas las sedes)
+// ════════════════════════════════════════════════════════════
+interface HistorialResp {
+  personal: Personal;
+  transferencias: Array<{
+    id: number;
+    desdeSede?: { id: number; nombre: string } | null;
+    hastaSede: { id: number; nombre: string };
+    motivo: string;
+    fechaEfectiva: string;
+    transferidoPor: { id: number; nombre: string; username: string };
+  }>;
+  porSede: Array<{
+    sede: { id: number; nombre: string };
+    ventas: { cantidad: number; total: number };
+    alquileres: { cantidad: number; total: number };
+    turnosCerrados: number;
+    ingresoTotal: number;
+  }>;
+  totales: {
+    ventas: number;
+    alquileres: number;
+    ingresos: number;
+    turnosCerrados: number;
+  };
+}
+
+function HistorialModal({
+  personal,
+  onClose,
+}: {
+  personal: Personal;
+  onClose: () => void;
+}) {
+  const { data, isLoading } = useQuery<HistorialResp>({
+    queryKey: ['personal', personal.id, 'historial'],
+    queryFn: async () =>
+      (await api.get(`/personal/${personal.id}/historial-completo`)).data,
+  });
+
+  return (
+    <div className="fixed inset-0 bg-black/40 dark:bg-black/70 flex items-center justify-center p-4 z-50">
+      <div className="bg-white dark:bg-slate-900 dark:ring-1 dark:ring-slate-800 rounded-2xl w-full max-w-3xl max-h-[92vh] overflow-y-auto shadow-2xl">
+        <div className="px-5 py-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between sticky top-0 bg-white dark:bg-slate-900 z-10">
+          <div className="flex items-center gap-2">
+            <History size={18} className="text-violet-600 dark:text-violet-400" />
+            <div>
+              <h2 className="font-hotel text-lg font-bold text-slate-900 dark:text-slate-100">
+                Historial completo
+              </h2>
+              <div className="text-[11px] text-slate-500 dark:text-slate-400">
+                {personal.nombre} {personal.apellidoPaterno} · DNI {personal.dni}
+              </div>
+            </div>
+          </div>
+          <button onClick={onClose} className="text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 p-1">
+            <X size={18} />
+          </button>
+        </div>
+
+        {isLoading && (
+          <div className="p-8 text-center text-slate-500 dark:text-slate-400">
+            Cargando historial…
+          </div>
+        )}
+
+        {!isLoading && data && (
+          <div className="p-5 space-y-5">
+            {/* Totales */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+              <Kpi color="violet" label="Ingresos" value={`S/ ${data.totales.ingresos.toFixed(0)}`} />
+              <Kpi color="emerald" label="Alquileres" value={data.totales.alquileres} />
+              <Kpi color="amber" label="Ventas" value={data.totales.ventas} />
+              <Kpi color="blue" label="Turnos cerrados" value={data.totales.turnosCerrados} />
+            </div>
+
+            {/* Línea de tiempo de transferencias */}
+            <div>
+              <div className="flex items-center gap-2 mb-2">
+                <ArrowRightLeft size={14} className="text-amber-600 dark:text-amber-400" />
+                <h3 className="text-[12px] font-bold uppercase tracking-widest text-slate-700 dark:text-slate-200">
+                  Transferencias ({data.transferencias.length})
+                </h3>
+              </div>
+              {data.transferencias.length === 0 ? (
+                <div className="text-[12px] text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-slate-800/60 rounded-lg p-3">
+                  Nunca ha sido transferido. Sede actual:{' '}
+                  <b>{personal.sede?.nombre || '—'}</b>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {data.transferencias.map((t) => (
+                    <div
+                      key={t.id}
+                      className="bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-lg p-2.5"
+                    >
+                      <div className="flex items-center gap-2 flex-wrap text-[12px]">
+                        <span className="font-mono text-slate-400 dark:text-slate-500">
+                          {new Date(t.fechaEfectiva).toLocaleDateString('es-PE')}
+                        </span>
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 text-[10px] uppercase tracking-widest font-bold">
+                          <Building size={10} /> {t.desdeSede?.nombre || '—'}
+                        </span>
+                        <ArrowRightLeft size={11} className="text-amber-600" />
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300 text-[10px] uppercase tracking-widest font-bold">
+                          <Building size={10} /> {t.hastaSede.nombre}
+                        </span>
+                      </div>
+                      <div className="text-[12px] text-slate-700 dark:text-slate-200 mt-1.5">
+                        <i>"{t.motivo}"</i>
+                      </div>
+                      <div className="text-[10px] text-slate-400 dark:text-slate-500 mt-1">
+                        Realizado por {t.transferidoPor.nombre} (@{t.transferidoPor.username})
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Métricas por sede */}
+            <div>
+              <div className="flex items-center gap-2 mb-2">
+                <BarChart3 size={14} className="text-violet-600 dark:text-violet-400" />
+                <h3 className="text-[12px] font-bold uppercase tracking-widest text-slate-700 dark:text-slate-200">
+                  Actividad por sede
+                </h3>
+              </div>
+              {data.porSede.length === 0 ? (
+                <div className="text-[12px] text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-slate-800/60 rounded-lg p-3">
+                  Sin actividad registrada (sin usuario vinculado o sin operaciones).
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {data.porSede.map((row) => {
+                    const esActual = row.sede.id === personal.sedeId;
+                    return (
+                      <div
+                        key={row.sede.id}
+                        className={`rounded-lg p-3 border ${
+                          esActual
+                            ? 'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-800/50'
+                            : 'bg-slate-50 dark:bg-slate-800/60 border-slate-200 dark:border-slate-700'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between gap-3 flex-wrap">
+                          <div className="flex items-center gap-2">
+                            <Building size={14} className={esActual ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-500 dark:text-slate-400'} />
+                            <div className="font-bold text-slate-900 dark:text-slate-100">
+                              {row.sede.nombre}
+                            </div>
+                            {esActual && (
+                              <span className="text-[9px] uppercase tracking-widest font-bold text-emerald-700 dark:text-emerald-300 bg-emerald-100 dark:bg-emerald-900/40 px-1.5 py-0.5 rounded">
+                                Sede actual
+                              </span>
+                            )}
+                          </div>
+                          <div className="text-right">
+                            <div className="text-[10px] uppercase tracking-widest text-slate-400 dark:text-slate-500">
+                              Total
+                            </div>
+                            <div className="font-bold tabular-nums text-slate-900 dark:text-slate-100">
+                              S/ {row.ingresoTotal.toFixed(2)}
+                            </div>
+                          </div>
+                        </div>
+                        <div className="mt-2 grid grid-cols-3 gap-2 text-[11px]">
+                          <KV k="Alquileres" v={`${row.alquileres.cantidad} · S/ ${row.alquileres.total.toFixed(0)}`} />
+                          <KV k="Ventas" v={`${row.ventas.cantidad} · S/ ${row.ventas.total.toFixed(0)}`} />
+                          <KV k="Turnos cerrados" v={String(row.turnosCerrados)} />
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function Kpi({
+  color,
+  label,
+  value,
+}: {
+  color: 'violet' | 'emerald' | 'amber' | 'blue';
+  label: string;
+  value: React.ReactNode;
+}) {
+  const map = {
+    violet: 'from-violet-500 to-violet-600',
+    emerald: 'from-emerald-500 to-emerald-600',
+    amber: 'from-amber-500 to-amber-600',
+    blue: 'from-blue-500 to-blue-600',
+  };
+  return (
+    <div className={`rounded-xl p-3 bg-gradient-to-br ${map[color]} text-white`}>
+      <div className="text-[10px] uppercase tracking-widest opacity-90 font-semibold">
+        {label}
+      </div>
+      <div className="text-xl font-hotel font-bold mt-0.5 tabular-nums">
+        {value}
+      </div>
+    </div>
+  );
+}
+
+function KV({ k, v }: { k: string; v: string }) {
+  return (
+    <div>
+      <div className="text-[9px] uppercase tracking-widest text-slate-400 dark:text-slate-500">
+        {k}
+      </div>
+      <div className="font-semibold text-slate-700 dark:text-slate-200 tabular-nums">
+        {v}
+      </div>
+    </div>
   );
 }

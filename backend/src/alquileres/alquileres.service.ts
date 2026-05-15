@@ -386,6 +386,7 @@ export class AlquileresService {
           clienteRuc: dto.clienteRuc || null,
           clienteRazonSocial: dto.clienteRazonSocial || null,
           clienteDireccionFiscal: dto.clienteDireccionFiscal || null,
+          deseaEmitirSunat: dto.deseaEmitirSunat ?? false,
           creadoPorId: user.sub,
         },
       });

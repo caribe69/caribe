@@ -187,54 +187,39 @@ export class NubeFactService {
     const igvHospedajePct = Number(cfg.nubefactIgvHospedaje);
     const igvProductosPct = Number(cfg.nubefactIgvProductos);
 
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    // IMPORTANTE: el comprobante SOLO incluye el precio de la
+    // habitación (alojamiento). Los consumos de productos NO se
+    // emiten en la boleta/factura — son gasto interno del hotel.
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    void igvProductosPct; // dejado por si se quiere reactivar productos
+
     const items: any[] = [];
-
-    // Línea 1: alojamiento (precio habitación)
     const precioHab = Number(alquiler.precioHabitacion);
-    if (precioHab > 0) {
-      const valorUnitario = precioHab / (1 + igvHospedajePct / 100);
-      const igvHab = precioHab - valorUnitario;
-      items.push({
-        unidad_de_medida: 'ZZ',
-        codigo: 'HOSP',
-        codigo_producto_sunat: '90111500', // alojamiento en hoteles (SUNAT)
-        descripcion: `ALOJAMIENTO ${(alquiler.habitacion.descripcion || 'HABITACION').toUpperCase()} Nº ${alquiler.habitacion.numero}`,
-        cantidad: 1,
-        valor_unitario: round2(valorUnitario),
-        precio_unitario: round2(precioHab),
-        descuento: '',
-        subtotal: round2(valorUnitario),
-        tipo_de_igv: 1,
-        igv: round2(igvHab),
-        total: round2(precioHab),
-        anticipo_regularizacion: false,
-      });
+    if (precioHab <= 0) {
+      throw new BadRequestException(
+        'El precio de la habitación debe ser mayor a 0 para emitir un comprobante.',
+      );
     }
+    const valorUnitario = precioHab / (1 + igvHospedajePct / 100);
+    const igvHab = precioHab - valorUnitario;
+    items.push({
+      unidad_de_medida: 'ZZ',
+      codigo: 'HOSP',
+      codigo_producto_sunat: '90111500', // alojamiento en hoteles (SUNAT)
+      descripcion: `ALOJAMIENTO ${(alquiler.habitacion.descripcion || 'HABITACION').toUpperCase()} Nº ${alquiler.habitacion.numero}`,
+      cantidad: 1,
+      valor_unitario: round2(valorUnitario),
+      precio_unitario: round2(precioHab),
+      descuento: '',
+      subtotal: round2(valorUnitario),
+      tipo_de_igv: 1,
+      igv: round2(igvHab),
+      total: round2(precioHab),
+      anticipo_regularizacion: false,
+    });
 
-    // Líneas: cada consumo de producto (IGV 18%)
-    for (const c of alquiler.consumos) {
-      const sub = Number(c.subtotal);
-      const valorUnitarioSinIgv = Number(c.precioUnit) / (1 + igvProductosPct / 100);
-      const totalLinea = sub * (1 + igvProductosPct / 100);
-      const igvLinea = totalLinea - sub;
-      items.push({
-        unidad_de_medida: 'NIU',
-        codigo: String(c.producto.id),
-        codigo_producto_sunat: '',
-        descripcion: c.producto.nombre.toUpperCase(),
-        cantidad: c.cantidad,
-        valor_unitario: round2(valorUnitarioSinIgv),
-        precio_unitario: round2(Number(c.precioUnit)),
-        descuento: '',
-        subtotal: round2(sub),
-        tipo_de_igv: 1,
-        igv: round2(igvLinea),
-        total: round2(totalLinea),
-        anticipo_regularizacion: false,
-      });
-    }
-
-    // Totales agregados
+    // Totales agregados (solo habitación)
     const totalGravada = items.reduce((s, i) => s + i.subtotal, 0);
     const totalIgv = items.reduce((s, i) => s + i.igv, 0);
     const total = items.reduce((s, i) => s + i.total, 0);

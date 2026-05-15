@@ -263,6 +263,9 @@ model Alquiler {
   pagos           PagoAlquiler[]
 
   // ── Facturación electrónica SUNAT (vía NubeFact) ─────────
+  /// Si el cajero marcó "deseo emitir comprobante electrónico" al crear/cobrar.
+  /// Por defecto false. Sin este flag, el alquiler NO se emite a SUNAT.
+  deseaEmitirSunat   Boolean   @default(false)
   sunatEmitido       Boolean   @default(false)
   sunatAceptada      Boolean?
   sunatSerie         String?

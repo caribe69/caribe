@@ -1063,6 +1063,14 @@ function NuevoAlquilerModal({
   const [rucData, setRucData] = useState<any | null>(null);
   const [buscandoRuc, setBuscandoRuc] = useState(false);
 
+  // Emisión electrónica SUNAT
+  const [emitirSunat, setEmitirSunat] = useState(false);
+  const [confirmText, setConfirmText] = useState('');
+  const FRASE_CONFIRMACION = 'sí, sí, acepto';
+  const confirmacionOk = emitirSunat
+    ? confirmText.trim() === FRASE_CONFIRMACION
+    : true;
+
   // Debounced lookup de RUC
   useEffect(() => {
     if (!conRuc || !/^(10|15|17|20)\d{9}$/.test(ruc)) {
@@ -1117,6 +1125,9 @@ function NuevoAlquilerModal({
     return () => clearTimeout(t);
   }, [form.clienteDni]);
 
+  const [emitiendoSunat, setEmitiendoSunat] = useState(false);
+  const [resultadoSunat, setResultadoSunat] = useState<any | null>(null);
+
   const crear = useMutation({
     mutationFn: async () => {
       const payload: any = {
@@ -1134,6 +1145,7 @@ function NuevoAlquilerModal({
         notas: form.notas || undefined,
         pagado: form.pagado,
         amenitiesEntregados: form.amenitiesEntregados,
+        deseaEmitirSunat: emitirSunat,
       };
       if (conRuc && rucData?.encontrado) {
         payload.tipoComprobante = 'FACTURA';
@@ -1141,12 +1153,34 @@ function NuevoAlquilerModal({
         payload.clienteRazonSocial = rucData.razonSocial;
         payload.clienteDireccionFiscal = rucData.direccion || undefined;
       }
-      return (await api.post('/alquileres', payload)).data;
+      const alq = (await api.post('/alquileres', payload)).data;
+
+      // Si el cajero confirmó la emisión, dispara NubeFact justo después
+      if (emitirSunat && alq?.id) {
+        setEmitiendoSunat(true);
+        try {
+          const emisionResp = await api.post(
+            `/nubefact/alquileres/${alq.id}/emitir`,
+            {},
+          );
+          setResultadoSunat({ ok: true, raw: emisionResp.data });
+        } catch (err: any) {
+          setResultadoSunat({
+            ok: false,
+            mensaje: err.response?.data?.message || err.message,
+          });
+        } finally {
+          setEmitiendoSunat(false);
+        }
+      }
+      return alq;
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['alquileres'] });
       qc.invalidateQueries({ queryKey: ['habitaciones'] });
-      onClose();
+      // Si la emisión falló no cerramos el modal — el cajero ve el mensaje
+      // y puede reintentar más tarde desde la pantalla del alquiler.
+      if (!emitirSunat || (resultadoSunat && resultadoSunat.ok)) onClose();
     },
     onError: (err: any) => setError(err.response?.data?.message || 'Error'),
   });
@@ -1466,6 +1500,109 @@ function NuevoAlquilerModal({
             )}
           </div>
 
+          {/* ────── Emisión electrónica SUNAT ────── */}
+          <div className="border-t border-slate-200 dark:border-slate-700 pt-3 mt-2">
+            <label className="flex items-start gap-2 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={emitirSunat}
+                onChange={(e) => {
+                  setEmitirSunat(e.target.checked);
+                  if (!e.target.checked) setConfirmText('');
+                }}
+                className="mt-0.5 w-4 h-4 accent-violet-600"
+              />
+              <div className="flex-1">
+                <div className="text-sm font-semibold text-slate-800 dark:text-slate-100">
+                  Emitir comprobante electrónico SUNAT
+                </div>
+                <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 leading-snug">
+                  Genera{' '}
+                  {conRuc && rucData?.encontrado ? (
+                    <b>factura</b>
+                  ) : (
+                    <b>boleta</b>
+                  )}{' '}
+                  electrónica vía NubeFact. <b>Solo el precio de la habitación</b>{' '}
+                  se incluye en el comprobante (los consumos de productos no
+                  forman parte de la facturación SUNAT).
+                </div>
+              </div>
+            </label>
+
+            {emitirSunat && (
+              <div className="mt-3 ml-6 space-y-2 animate-fade-in">
+                <div className="text-[11px] font-semibold text-rose-700 dark:text-rose-300 bg-rose-50 dark:bg-rose-900/30 border border-rose-200 dark:border-rose-800/50 rounded-lg p-2.5 leading-snug">
+                  ⚠ La emisión queda registrada en SUNAT y consume un correlativo
+                  oficial. Para confirmar, escribe textualmente la frase:
+                  <div className="font-mono text-[12px] font-bold text-rose-800 dark:text-rose-200 mt-1 select-all">
+                    {FRASE_CONFIRMACION}
+                  </div>
+                </div>
+                <input
+                  type="text"
+                  autoComplete="off"
+                  placeholder={`Escribe: ${FRASE_CONFIRMACION}`}
+                  value={confirmText}
+                  onChange={(e) => setConfirmText(e.target.value)}
+                  className={`w-full px-3 py-2 rounded-lg text-sm font-mono border-2 transition focus:outline-none ${
+                    confirmacionOk
+                      ? 'border-emerald-400 dark:border-emerald-700 bg-emerald-50 dark:bg-emerald-900/30 text-emerald-800 dark:text-emerald-200'
+                      : 'border-rose-300 dark:border-rose-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100'
+                  }`}
+                />
+                {confirmacionOk && (
+                  <div className="text-[11px] text-emerald-700 dark:text-emerald-300 font-semibold inline-flex items-center gap-1">
+                    ✓ Confirmación recibida. Al crear el alquiler se emitirá el
+                    comprobante.
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Resultado de la emisión (si hubo intento) */}
+          {resultadoSunat && (
+            <div
+              className={`text-[11px] rounded-lg p-2.5 border ${
+                resultadoSunat.ok
+                  ? 'bg-emerald-50 dark:bg-emerald-900/30 border-emerald-200 dark:border-emerald-800/50 text-emerald-800 dark:text-emerald-200'
+                  : 'bg-rose-50 dark:bg-rose-900/30 border-rose-200 dark:border-rose-800/50 text-rose-800 dark:text-rose-200'
+              }`}
+            >
+              {resultadoSunat.ok ? (
+                <>
+                  <div className="font-bold mb-0.5">✓ Comprobante emitido</div>
+                  <div className="text-[11px]">
+                    {resultadoSunat.raw?.serie}-{resultadoSunat.raw?.numero}{' '}
+                    {resultadoSunat.raw?.aceptada_por_sunat
+                      ? '· aceptado por SUNAT'
+                      : '· pendiente en SUNAT'}
+                  </div>
+                  {resultadoSunat.raw?.enlace_del_pdf && (
+                    <a
+                      href={resultadoSunat.raw.enlace_del_pdf}
+                      target="_blank"
+                      rel="noopener"
+                      className="underline text-[11px] mt-0.5 inline-block"
+                    >
+                      Ver/descargar PDF →
+                    </a>
+                  )}
+                </>
+              ) : (
+                <>
+                  <div className="font-bold mb-0.5">✗ No se pudo emitir</div>
+                  <div>{resultadoSunat.mensaje}</div>
+                  <div className="mt-1 opacity-75">
+                    El alquiler quedó creado igual; podés reintentar la emisión
+                    después.
+                  </div>
+                </>
+              )}
+            </div>
+          )}
+
           {error && (
             <div className="text-sm text-red-600 dark:text-red-300 bg-red-50 dark:bg-red-950/40 p-2 rounded">
               {error}
@@ -1474,11 +1611,28 @@ function NuevoAlquilerModal({
 
           <button
             onClick={() => crear.mutate()}
-            disabled={crear.isPending || !form.clienteNombre || !form.clienteDni}
+            disabled={
+              crear.isPending ||
+              emitiendoSunat ||
+              !form.clienteNombre ||
+              !form.clienteDni ||
+              !confirmacionOk
+            }
             className="w-full bg-brand-500 hover:bg-brand-600 text-white py-2.5 rounded-lg font-medium disabled:opacity-60"
           >
-            {crear.isPending ? 'Creando...' : 'Crear alquiler'}
+            {crear.isPending
+              ? 'Creando...'
+              : emitiendoSunat
+                ? 'Emitiendo SUNAT…'
+                : emitirSunat
+                  ? `Crear alquiler + emitir ${conRuc && rucData?.encontrado ? 'factura' : 'boleta'}`
+                  : 'Crear alquiler'}
           </button>
+          {emitirSunat && !confirmacionOk && (
+            <div className="text-[11px] text-slate-500 dark:text-slate-400 text-center">
+              Escribe la frase de confirmación para habilitar el botón.
+            </div>
+          )}
         </div>
       </div>
     </div>

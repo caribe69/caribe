@@ -38,6 +38,10 @@ export class CreateAlquilerDto {
   @IsOptional() @IsString() clienteRuc?: string;
   @IsOptional() @IsString() clienteRazonSocial?: string;
   @IsOptional() @IsString() clienteDireccionFiscal?: string;
+
+  /// Intención de emitir comprobante electrónico SUNAT al final del flujo.
+  /// El frontend exige confirmación tipeada antes de marcar esto en true.
+  @IsOptional() @IsBoolean() deseaEmitirSunat?: boolean;
 }
 
 export class AmenitiesDto {

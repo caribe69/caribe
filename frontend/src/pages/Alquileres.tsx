@@ -574,7 +574,10 @@ function AlquilerActivoModal({
   const [extenderOpen, setExtenderOpen] = useState(false);
   const [boletaOpen, setBoletaOpen] = useState(false);
   const [fiscalesOpen, setFiscalesOpen] = useState(false);
-  const [cobrarOpen, setCobrarOpen] = useState(false);
+  const [cobrarOpen, setCobrarOpen] = useState<
+    | null
+    | { titulo: string; monto: number; categoria: 'habitacion' | 'productos' | 'todo' }
+  >(null);
 
   // Busca alquiler ACTIVO de esta habitación
   const { data: alquileres } = useQuery({
@@ -625,7 +628,7 @@ function AlquilerActivoModal({
           ? 'Alquiler totalmente pagado'
           : `Saldo pendiente: S/ ${saldo.toFixed(2)}`,
       });
-      setCobrarOpen(false);
+      setCobrarOpen(null);
     },
     onError: (err: any) =>
       toast.show({
@@ -651,11 +654,20 @@ function AlquilerActivoModal({
 
   // Helpers precalculados
   const total = Number(alquiler?.total ?? 0);
+  const precioHab = Number(alquiler?.precioHabitacion ?? 0);
+  const totalProductos = Number(alquiler?.totalProductos ?? 0);
   const montoPagado = Number(alquiler?.montoPagado ?? (alquiler?.pagado ? total : 0));
   const saldo = total - montoPagado;
   const pctPagado = total > 0 ? Math.min(100, (montoPagado / total) * 100) : 0;
   const estadoPago: 'pagado' | 'parcial' | 'pendiente' =
     saldo <= 0.01 ? 'pagado' : montoPagado > 0 ? 'parcial' : 'pendiente';
+
+  // Convención: el dinero cobrado se aplica PRIMERO a la habitación,
+  // después a los productos. Así el frontend distingue saldo por rubro.
+  const pagadoHab = Math.min(montoPagado, precioHab);
+  const saldoHab = Math.max(0, precioHab - pagadoHab);
+  const pagadoProd = Math.max(0, montoPagado - precioHab);
+  const saldoProd = Math.max(0, totalProductos - pagadoProd);
 
   return (
     <div className="fixed inset-0 bg-slate-950/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-fade-in">
@@ -781,19 +793,6 @@ function AlquilerActivoModal({
                   </div>
                 )}
 
-                {/* Toggle chocolates */}
-                <label className="flex items-center gap-2 px-4 py-2.5 border-t border-slate-100 cursor-pointer select-none hover:bg-amber-50/50 transition">
-                  <input
-                    type="checkbox"
-                    checked={!!alquiler.amenitiesEntregados}
-                    onChange={(e) => amenities.mutate({ id: alquiler.id, entregados: e.target.checked })}
-                    className="w-4 h-4 accent-amber-500"
-                  />
-                  <span className="text-xs font-medium text-slate-700 flex items-center gap-1.5">
-                    <span className="text-base">🍫</span>
-                    Chocolates de bienvenida entregados
-                  </span>
-                </label>
               </div>
             </div>
 
@@ -880,13 +879,62 @@ function AlquilerActivoModal({
 
             {/* ACCIONES */}
             <div className="p-4 space-y-2">
-              {/* CTA PRINCIPAL: Cobrar (si hay saldo) */}
-              {saldo > 0.01 && (
+              {/* CTAs: Cobrar habitación + Cobrar productos por separado */}
+              {(saldoHab > 0.01 || saldoProd > 0.01) && (
+                <div className={saldoHab > 0.01 && saldoProd > 0.01 ? 'grid grid-cols-2 gap-2' : ''}>
+                  {saldoHab > 0.01 && (
+                    <button
+                      onClick={() =>
+                        setCobrarOpen({
+                          titulo: 'Cobrar habitación',
+                          monto: saldoHab,
+                          categoria: 'habitacion',
+                        })
+                      }
+                      className="w-full flex flex-col items-center justify-center gap-0.5 bg-gradient-to-r from-violet-600 to-violet-500 hover:from-violet-700 hover:to-violet-600 text-white py-2.5 rounded-xl btn-press font-semibold shadow-md shadow-violet-500/30"
+                    >
+                      <span className="inline-flex items-center gap-1.5 text-sm">
+                        🏠 Cobrar habitación
+                      </span>
+                      <span className="text-[11px] opacity-90 tabular-nums">
+                        S/ {saldoHab.toFixed(2)} pendiente
+                      </span>
+                    </button>
+                  )}
+                  {saldoProd > 0.01 && (
+                    <button
+                      onClick={() =>
+                        setCobrarOpen({
+                          titulo: 'Cobrar productos',
+                          monto: saldoProd,
+                          categoria: 'productos',
+                        })
+                      }
+                      className="w-full flex flex-col items-center justify-center gap-0.5 bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-700 hover:to-blue-600 text-white py-2.5 rounded-xl btn-press font-semibold shadow-md shadow-blue-500/30"
+                    >
+                      <span className="inline-flex items-center gap-1.5 text-sm">
+                        🛒 Cobrar productos
+                      </span>
+                      <span className="text-[11px] opacity-90 tabular-nums">
+                        S/ {saldoProd.toFixed(2)} pendiente
+                      </span>
+                    </button>
+                  )}
+                </div>
+              )}
+              {/* Cobrar TODO (atajo cuando ambos tienen saldo) */}
+              {saldoHab > 0.01 && saldoProd > 0.01 && (
                 <button
-                  onClick={() => setCobrarOpen(true)}
-                  className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-700 hover:to-emerald-600 text-white py-3 rounded-xl btn-press font-semibold shadow-md shadow-emerald-500/30"
+                  onClick={() =>
+                    setCobrarOpen({
+                      titulo: 'Cobrar todo',
+                      monto: saldo,
+                      categoria: 'todo',
+                    })
+                  }
+                  className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-700 hover:to-emerald-600 text-white py-2 rounded-xl btn-press text-xs font-semibold shadow-md shadow-emerald-500/30"
                 >
-                  💰 Cobrar <span className="opacity-80">· saldo S/ {saldo.toFixed(2)}</span>
+                  💰 Cobrar todo · S/ {saldo.toFixed(2)}
                 </button>
               )}
 
@@ -1017,7 +1065,10 @@ function AlquilerActivoModal({
             {cobrarOpen && (
               <CobrarAlquilerModal
                 alquiler={alquiler}
-                onClose={() => setCobrarOpen(false)}
+                titulo={cobrarOpen.titulo}
+                categoria={cobrarOpen.categoria}
+                montoSugerido={cobrarOpen.monto}
+                onClose={() => setCobrarOpen(null)}
                 onCobrar={(monto) => cobrar.mutate({ id: alquiler.id, monto })}
                 loading={cobrar.isPending}
               />
@@ -2601,33 +2652,90 @@ function formatDuracion(mins: number): string {
 
 function CobrarAlquilerModal({
   alquiler,
+  titulo,
+  categoria,
+  montoSugerido,
   onClose,
   onCobrar,
   loading,
 }: {
   alquiler: Alquiler;
+  titulo?: string;
+  categoria?: 'habitacion' | 'productos' | 'todo';
+  montoSugerido?: number;
   onClose: () => void;
   onCobrar: (monto?: number) => void;
   loading: boolean;
 }) {
   const total = Number(alquiler.total);
-  const pagado = Number(
+  const pagadoGlobal = Number(
     alquiler.montoPagado ?? (alquiler.pagado ? total : 0),
   );
-  const saldo = total - pagado;
-  const [monto, setMonto] = useState<string>(saldo.toFixed(2));
+  const saldoGlobal = total - pagadoGlobal;
+  const saldoCategoria =
+    typeof montoSugerido === 'number' && montoSugerido > 0
+      ? montoSugerido
+      : saldoGlobal;
+  const cat = categoria ?? 'todo';
+  const [monto, setMonto] = useState<string>(saldoCategoria.toFixed(2));
   const [modo, setModo] = useState<'completo' | 'parcial'>('completo');
 
   const montoNum = Number(monto) || 0;
-  const valido = montoNum > 0 && montoNum <= saldo + 0.001;
-  const saldoRestante = saldo - montoNum;
+  const valido = montoNum > 0 && montoNum <= saldoCategoria + 0.001;
+  const saldoRestante = saldoCategoria - montoNum;
+  const enviarMonto =
+    cat === 'todo' && modo === 'completo' ? undefined : montoNum;
+  const tema =
+    cat === 'habitacion'
+      ? {
+          emoji: '🏠',
+          label: 'habitación',
+          textAccent: 'text-violet-700',
+          bigText: 'text-2xl font-hotel font-bold text-violet-700 tabular-nums',
+          tabActive: 'bg-white shadow-sm text-violet-700',
+          inputBorder:
+            'flex-1 border border-slate-200 rounded-xl px-3 py-2.5 text-2xl font-bold tabular-nums text-center focus:outline-none focus:border-violet-400 focus:ring-2 focus:ring-violet-100',
+          chip:
+            'px-2.5 py-1 rounded-lg text-xs font-medium bg-slate-100 hover:bg-violet-100 hover:text-violet-700',
+          confirm:
+            'flex-1 bg-gradient-to-r from-violet-600 to-violet-500 hover:from-violet-700 hover:to-violet-600 text-white py-2.5 rounded-xl font-semibold shadow-md shadow-violet-500/30 disabled:opacity-40',
+        }
+      : cat === 'productos'
+        ? {
+            emoji: '🛒',
+            label: 'productos',
+            textAccent: 'text-blue-700',
+            bigText: 'text-2xl font-hotel font-bold text-blue-700 tabular-nums',
+            tabActive: 'bg-white shadow-sm text-blue-700',
+            inputBorder:
+              'flex-1 border border-slate-200 rounded-xl px-3 py-2.5 text-2xl font-bold tabular-nums text-center focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100',
+            chip:
+              'px-2.5 py-1 rounded-lg text-xs font-medium bg-slate-100 hover:bg-blue-100 hover:text-blue-700',
+            confirm:
+              'flex-1 bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-700 hover:to-blue-600 text-white py-2.5 rounded-xl font-semibold shadow-md shadow-blue-500/30 disabled:opacity-40',
+          }
+        : {
+            emoji: '💰',
+            label: 'alquiler',
+            textAccent: 'text-emerald-700',
+            bigText: 'text-2xl font-hotel font-bold text-emerald-700 tabular-nums',
+            tabActive: 'bg-white shadow-sm text-emerald-700',
+            inputBorder:
+              'flex-1 border border-slate-200 rounded-xl px-3 py-2.5 text-2xl font-bold tabular-nums text-center focus:outline-none focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100',
+            chip:
+              'px-2.5 py-1 rounded-lg text-xs font-medium bg-slate-100 hover:bg-emerald-100 hover:text-emerald-700',
+            confirm:
+              'flex-1 bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-700 hover:to-emerald-600 text-white py-2.5 rounded-xl font-semibold shadow-md shadow-emerald-500/30 disabled:opacity-40',
+          };
 
   return (
     <div className="fixed inset-0 bg-slate-950/60 backdrop-blur-sm flex items-center justify-center p-4 z-[60] animate-fade-in">
       <div className="bg-white rounded-3xl w-full max-w-md shadow-2xl animate-scale-in">
         <div className="flex justify-between items-center p-5 border-b border-slate-100">
           <div>
-            <h2 className="font-hotel text-lg font-bold">Registrar cobro</h2>
+            <h2 className="font-hotel text-lg font-bold">
+              {tema.emoji} {titulo ?? 'Registrar cobro'}
+            </h2>
             <div className="text-xs text-slate-500">
               Hab. {alquiler.habitacion.numero} · {alquiler.clienteNombre}
             </div>
@@ -2650,16 +2758,18 @@ function CobrarAlquilerModal({
               </span>
             </div>
             <div className="flex justify-between">
-              <span className="text-emerald-700">Ya pagado</span>
+              <span className="text-emerald-700">Ya pagado (total)</span>
               <span className="font-semibold text-emerald-700 tabular-nums">
-                S/ {pagado.toFixed(2)}
+                S/ {pagadoGlobal.toFixed(2)}
               </span>
             </div>
             <div className="h-px bg-slate-200" />
             <div className="flex justify-between items-baseline">
-              <span className="text-rose-700 font-semibold">Saldo</span>
-              <span className="text-2xl font-hotel font-bold text-rose-700 tabular-nums">
-                S/ {saldo.toFixed(2)}
+              <span className={`font-semibold ${tema.textAccent}`}>
+                Saldo {tema.label}
+              </span>
+              <span className={tema.bigText}>
+                S/ {saldoCategoria.toFixed(2)}
               </span>
             </div>
           </div>
@@ -2669,11 +2779,11 @@ function CobrarAlquilerModal({
             <button
               onClick={() => {
                 setModo('completo');
-                setMonto(saldo.toFixed(2));
+                setMonto(saldoCategoria.toFixed(2));
               }}
               className={`flex-1 py-2 rounded-lg text-sm font-medium transition ${
                 modo === 'completo'
-                  ? 'bg-white shadow-sm text-emerald-700'
+                  ? tema.tabActive
                   : 'text-slate-600'
               }`}
             >
@@ -2682,7 +2792,7 @@ function CobrarAlquilerModal({
             <button
               onClick={() => {
                 setModo('parcial');
-                setMonto((saldo / 2).toFixed(2));
+                setMonto((saldoCategoria / 2).toFixed(2));
               }}
               className={`flex-1 py-2 rounded-lg text-sm font-medium transition ${
                 modo === 'parcial'
@@ -2705,10 +2815,10 @@ function CobrarAlquilerModal({
                   type="number"
                   step="0.01"
                   min="0.01"
-                  max={saldo}
+                  max={saldoCategoria}
                   value={monto}
                   onChange={(e) => setMonto(e.target.value)}
-                  className="flex-1 border border-slate-200 rounded-xl px-3 py-2.5 text-2xl font-bold tabular-nums text-center focus:outline-none focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100"
+                  className={tema.inputBorder}
                   autoFocus
                 />
               </div>
@@ -2717,10 +2827,10 @@ function CobrarAlquilerModal({
                 {[0.25, 0.5, 0.75, 1].map((f) => (
                   <button
                     key={f}
-                    onClick={() => setMonto((saldo * f).toFixed(2))}
-                    className="px-2.5 py-1 rounded-lg text-xs font-medium bg-slate-100 hover:bg-emerald-100 hover:text-emerald-700"
+                    onClick={() => setMonto((saldoCategoria * f).toFixed(2))}
+                    className={tema.chip}
                   >
-                    {f === 1 ? 'Todo' : `${f * 100}% (S/ ${(saldo * f).toFixed(2)})`}
+                    {f === 1 ? 'Todo' : `${f * 100}% (S/ ${(saldoCategoria * f).toFixed(2)})`}
                   </button>
                 ))}
               </div>
@@ -2730,10 +2840,12 @@ function CobrarAlquilerModal({
                   <b className={saldoRestante > 0 ? 'text-rose-700' : 'text-emerald-700'}>
                     S/ {saldoRestante.toFixed(2)}
                   </b>{' '}
-                  {saldoRestante > 0 ? 'pendiente por cobrar' : '✓ saldado'}
+                  {saldoRestante > 0
+                    ? `pendiente en ${tema.label}`
+                    : `✓ ${tema.label} saldada`}
                 </div>
               )}
-              {!valido && montoNum > saldo && (
+              {!valido && montoNum > saldoCategoria && (
                 <div className="mt-2 text-xs text-rose-700 dark:text-rose-300 bg-rose-50 border border-rose-200 rounded p-2">
                   El monto excede el saldo pendiente
                 </div>
@@ -2750,14 +2862,14 @@ function CobrarAlquilerModal({
             </button>
             <button
               onClick={() =>
-                onCobrar(modo === 'parcial' ? montoNum : undefined)
+                onCobrar(modo === 'parcial' ? montoNum : enviarMonto)
               }
               disabled={loading || (modo === 'parcial' && !valido)}
-              className="flex-1 bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-700 hover:to-emerald-600 text-white py-2.5 rounded-xl font-semibold shadow-md shadow-emerald-500/30 disabled:opacity-40"
+              className={tema.confirm}
             >
               {loading
                 ? 'Registrando...'
-                : `Confirmar S/ ${modo === 'parcial' ? montoNum.toFixed(2) : saldo.toFixed(2)}`}
+                : `Confirmar S/ ${modo === 'parcial' ? montoNum.toFixed(2) : saldoCategoria.toFixed(2)}`}
             </button>
           </div>
         </div>

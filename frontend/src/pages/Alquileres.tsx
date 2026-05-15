@@ -1063,6 +1063,28 @@ function NuevoAlquilerModal({
   const [rucData, setRucData] = useState<any | null>(null);
   const [buscandoRuc, setBuscandoRuc] = useState(false);
 
+  // Cortesías (productos con esCortesia=true que se entregan gratis)
+  const [cortesias, setCortesias] = useState<
+    Array<{ productoId: number; cantidad: number }>
+  >([]);
+  // Implementos prestados (vuelven al finalizar el alquiler)
+  const [implementos, setImplementos] = useState<
+    Array<{ implementoId: number; cantidad: number }>
+  >([]);
+
+  const productosQ = useQuery({
+    queryKey: ['productos'],
+    queryFn: async () => (await api.get<any[]>('/productos')).data,
+  });
+  const productosCortesia = (productosQ.data || []).filter(
+    (p: any) => p.esCortesia && p.stock > 0,
+  );
+
+  const implementosQ = useQuery({
+    queryKey: ['implementos'],
+    queryFn: async () => (await api.get<any[]>('/implementos')).data,
+  });
+
   // Emisión electrónica SUNAT
   const [emitirSunat, setEmitirSunat] = useState(false);
   const [confirmText, setConfirmText] = useState('');
@@ -1153,6 +1175,8 @@ function NuevoAlquilerModal({
         pagado: form.pagado,
         amenitiesEntregados: form.amenitiesEntregados,
         deseaEmitirSunat: emitirSunat,
+        cortesias: cortesias.length ? cortesias : undefined,
+        implementos: implementos.length ? implementos : undefined,
       };
       if (conRuc && rucData?.encontrado) {
         payload.tipoComprobante = 'FACTURA';
@@ -1193,21 +1217,31 @@ function NuevoAlquilerModal({
   });
 
   return (
-    <div className="fixed inset-0 bg-violet-950/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-fade-in">
-      <div className="bg-white rounded-2xl w-full max-w-md p-6 max-h-[90vh] overflow-y-auto animate-scale-in shadow-2xl">
-        <div className="flex justify-between items-start mb-4">
+    <div className="fixed inset-0 bg-violet-950/70 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-fade-in">
+      <div className="bg-white dark:bg-slate-900 dark:ring-1 dark:ring-slate-800 rounded-3xl w-full max-w-2xl max-h-[92vh] overflow-hidden animate-scale-in shadow-2xl flex flex-col">
+        {/* Header con gradient */}
+        <div className="bg-gradient-to-r from-violet-600 to-violet-500 text-white px-6 py-4 flex justify-between items-start shrink-0">
           <div>
-            <h2 className="text-lg font-bold">Nuevo alquiler</h2>
-            <div className="text-sm text-emerald-700 font-medium">
-              Hab. {habitacion.numero} · Piso {habitacion.piso.numero}
+            <div className="text-[10px] uppercase tracking-[0.2em] opacity-90 font-semibold mb-0.5">
+              Nuevo alquiler
+            </div>
+            <h2 className="font-hotel text-xl font-bold">
+              Habitación {habitacion.numero}
+            </h2>
+            <div className="text-[11px] opacity-90 mt-0.5">
+              Piso {habitacion.piso.numero}
+              {habitacion.descripcion && ` · ${habitacion.descripcion}`}
             </div>
           </div>
-          <button onClick={onClose}>
-            <X size={20} />
+          <button
+            onClick={onClose}
+            className="w-9 h-9 rounded-lg hover:bg-white/20 flex items-center justify-center btn-press"
+          >
+            <X size={18} />
           </button>
         </div>
 
-        <div className="space-y-3">
+        <div className="flex-1 overflow-y-auto scroll-premium px-6 py-5 space-y-3">
           {/* DNI primero con búsqueda automática */}
           <div>
             <label className="text-[10px] font-semibold text-slate-500 uppercase tracking-widest">
@@ -1506,6 +1540,179 @@ function NuevoAlquilerModal({
               </div>
             )}
           </div>
+
+          {/* ────── Cortesías incluidas ────── */}
+          {productosCortesia.length > 0 && (
+            <div className="border-t border-slate-200 dark:border-slate-700 pt-3 mt-2">
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-2">
+                  <span className="inline-flex items-center justify-center w-7 h-7 rounded-lg bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300">
+                    🎁
+                  </span>
+                  <div>
+                    <div className="text-sm font-semibold text-slate-800 dark:text-slate-100">
+                      Pack de cortesía
+                    </div>
+                    <div className="text-[11px] text-slate-500 dark:text-slate-400">
+                      Descuenta stock pero no se cobra al cliente
+                    </div>
+                  </div>
+                </div>
+                <span className="text-[10px] uppercase tracking-widest font-bold text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-900/30 px-2 py-1 rounded-full">
+                  GRATIS
+                </span>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                {productosCortesia.map((p: any) => {
+                  const item = cortesias.find((c) => c.productoId === p.id);
+                  const cant = item?.cantidad || 0;
+                  const setCant = (n: number) => {
+                    if (n <= 0)
+                      setCortesias((prev) =>
+                        prev.filter((c) => c.productoId !== p.id),
+                      );
+                    else if (item)
+                      setCortesias((prev) =>
+                        prev.map((c) =>
+                          c.productoId === p.id ? { ...c, cantidad: n } : c,
+                        ),
+                      );
+                    else
+                      setCortesias((prev) => [
+                        ...prev,
+                        { productoId: p.id, cantidad: n },
+                      ]);
+                  };
+                  return (
+                    <div
+                      key={p.id}
+                      className={`rounded-lg p-2 border text-xs ${
+                        cant > 0
+                          ? 'bg-amber-50 dark:bg-amber-900/30 border-amber-300 dark:border-amber-700'
+                          : 'bg-slate-50 dark:bg-slate-800/60 border-slate-200 dark:border-slate-700'
+                      }`}
+                    >
+                      <div className="font-semibold text-slate-800 dark:text-slate-100 truncate">
+                        {p.nombre}
+                      </div>
+                      <div className="text-[10px] text-slate-500 dark:text-slate-400 mb-1.5">
+                        Stock: {p.stock}
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <button
+                          type="button"
+                          onClick={() => setCant(cant - 1)}
+                          disabled={cant === 0}
+                          className="w-6 h-6 rounded bg-rose-100 dark:bg-rose-900/40 text-rose-700 dark:text-rose-300 disabled:opacity-30 text-sm font-bold"
+                        >
+                          −
+                        </button>
+                        <span className="flex-1 text-center font-bold tabular-nums">
+                          {cant}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => setCant(Math.min(cant + 1, p.stock))}
+                          disabled={cant >= p.stock}
+                          className="w-6 h-6 rounded bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300 disabled:opacity-30 text-sm font-bold"
+                        >
+                          +
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* ────── Implementos prestados (toallas, controles, etc.) ────── */}
+          {(implementosQ.data?.length || 0) > 0 && (
+            <div className="border-t border-slate-200 dark:border-slate-700 pt-3 mt-2">
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-2">
+                  <span className="inline-flex items-center justify-center w-7 h-7 rounded-lg bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300">
+                    🛁
+                  </span>
+                  <div>
+                    <div className="text-sm font-semibold text-slate-800 dark:text-slate-100">
+                      Implementos entregados
+                    </div>
+                    <div className="text-[11px] text-slate-500 dark:text-slate-400">
+                      Toallas, controles, etc. Vuelven al almacén al finalizar
+                    </div>
+                  </div>
+                </div>
+                <span className="text-[10px] uppercase tracking-widest font-bold text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-900/30 px-2 py-1 rounded-full">
+                  PRÉSTAMO
+                </span>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                {implementosQ.data?.map((item: any) => {
+                  const sel = implementos.find(
+                    (i) => i.implementoId === item.id,
+                  );
+                  const cant = sel?.cantidad || 0;
+                  const setCant = (n: number) => {
+                    if (n <= 0)
+                      setImplementos((prev) =>
+                        prev.filter((i) => i.implementoId !== item.id),
+                      );
+                    else if (sel)
+                      setImplementos((prev) =>
+                        prev.map((i) =>
+                          i.implementoId === item.id ? { ...i, cantidad: n } : i,
+                        ),
+                      );
+                    else
+                      setImplementos((prev) => [
+                        ...prev,
+                        { implementoId: item.id, cantidad: n },
+                      ]);
+                  };
+                  const disponible = item.stockDisponible || 0;
+                  return (
+                    <div
+                      key={item.id}
+                      className={`rounded-lg p-2 border text-xs ${
+                        cant > 0
+                          ? 'bg-blue-50 dark:bg-blue-900/30 border-blue-300 dark:border-blue-700'
+                          : 'bg-slate-50 dark:bg-slate-800/60 border-slate-200 dark:border-slate-700'
+                      }`}
+                    >
+                      <div className="font-semibold text-slate-800 dark:text-slate-100 truncate">
+                        {item.nombre}
+                      </div>
+                      <div className="text-[10px] text-slate-500 dark:text-slate-400 mb-1.5">
+                        Disponible: {disponible}
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <button
+                          type="button"
+                          onClick={() => setCant(cant - 1)}
+                          disabled={cant === 0}
+                          className="w-6 h-6 rounded bg-rose-100 dark:bg-rose-900/40 text-rose-700 dark:text-rose-300 disabled:opacity-30 text-sm font-bold"
+                        >
+                          −
+                        </button>
+                        <span className="flex-1 text-center font-bold tabular-nums">
+                          {cant}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => setCant(Math.min(cant + 1, disponible))}
+                          disabled={cant >= disponible}
+                          className="w-6 h-6 rounded bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300 disabled:opacity-30 text-sm font-bold"
+                        >
+                          +
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
 
           {/* ────── Emisión electrónica SUNAT ────── */}
           <div className="border-t border-slate-200 dark:border-slate-700 pt-3 mt-2">

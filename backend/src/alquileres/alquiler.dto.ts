@@ -1,6 +1,7 @@
 import { MetodoPago } from '@prisma/client';
 import { Type } from 'class-transformer';
 import {
+  IsArray,
   IsBoolean,
   IsDateString,
   IsEnum,
@@ -10,7 +11,18 @@ import {
   IsString,
   Min,
   MinLength,
+  ValidateNested,
 } from 'class-validator';
+
+export class CortesiaInput {
+  @Type(() => Number) @IsInt() productoId!: number;
+  @Type(() => Number) @IsInt() @Min(1) cantidad!: number;
+}
+
+export class ImplementoInput {
+  @Type(() => Number) @IsInt() implementoId!: number;
+  @Type(() => Number) @IsInt() @Min(1) cantidad!: number;
+}
 
 export class CreateAlquilerDto {
   @IsOptional() @IsInt() sedeId?: number;
@@ -42,6 +54,14 @@ export class CreateAlquilerDto {
   /// Intención de emitir comprobante electrónico SUNAT al final del flujo.
   /// El frontend exige confirmación tipeada antes de marcar esto en true.
   @IsOptional() @IsBoolean() deseaEmitirSunat?: boolean;
+
+  /// Productos de cortesía a entregar al alquiler (descuentan stock, no cobran).
+  @IsOptional() @IsArray() @ValidateNested({ each: true })
+  @Type(() => CortesiaInput) cortesias?: CortesiaInput[];
+
+  /// Implementos prestados (toallas, controles, etc.) — vuelven al finalizar.
+  @IsOptional() @IsArray() @ValidateNested({ each: true })
+  @Type(() => ImplementoInput) implementos?: ImplementoInput[];
 }
 
 export class AmenitiesDto {

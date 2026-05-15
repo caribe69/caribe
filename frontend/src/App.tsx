@@ -21,6 +21,7 @@ import Transferencias from '@/pages/Transferencias';
 import Auditoria from '@/pages/Auditoria';
 import Documentos from '@/pages/Documentos';
 import PersonalPage from '@/pages/Personal';
+import ImplementosPage from '@/pages/Implementos';
 
 function Protected({ children }: { children: React.ReactNode }) {
   const token = useAuthStore((s) => s.token);
@@ -59,6 +60,7 @@ export default function App() {
         <Route path="auditoria" element={<Auditoria />} />
         <Route path="documentos" element={<Documentos />} />
         <Route path="personal" element={<PersonalPage />} />
+        <Route path="implementos" element={<ImplementosPage />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

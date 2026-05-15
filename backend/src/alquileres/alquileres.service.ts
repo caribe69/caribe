@@ -409,6 +409,77 @@ export class AlquileresService {
         });
       }
 
+      // Procesar CORTESÍAS (productos que se entregan gratis al alquiler)
+      // Se crea un ConsumoProducto con esCortesia=true y subtotal=0.
+      if (dto.cortesias && dto.cortesias.length > 0) {
+        for (const cor of dto.cortesias) {
+          const prod = await tx.producto.findUnique({
+            where: { id: cor.productoId },
+          });
+          if (!prod) continue;
+          if (!prod.esCortesia)
+            throw new BadRequestException(
+              `El producto "${prod.nombre}" no está marcado como cortesía.`,
+            );
+          if (prod.stock < cor.cantidad)
+            throw new ConflictException(
+              `Stock insuficiente para cortesía "${prod.nombre}" (hay ${prod.stock}, se piden ${cor.cantidad}).`,
+            );
+          await tx.consumoProducto.create({
+            data: {
+              alquilerId: alquiler.id,
+              productoId: prod.id,
+              cantidad: cor.cantidad,
+              precioUnit: 0,
+              subtotal: 0,
+              esCortesia: true,
+            },
+          });
+          await tx.producto.update({
+            where: { id: prod.id },
+            data: { stock: { decrement: cor.cantidad } },
+          });
+          await tx.movimientoStock.create({
+            data: {
+              productoId: prod.id,
+              cantidad: -cor.cantidad,
+              tipo: 'SALIDA_CORTESIA' as any,
+              referencia: `Cortesía alquiler #${alquiler.id}`,
+              usuarioId: user.sub,
+            },
+          });
+        }
+      }
+
+      // Procesar IMPLEMENTOS (toallas/sábanas/controles prestados)
+      if (dto.implementos && dto.implementos.length > 0) {
+        for (const imp of dto.implementos) {
+          const item = await tx.implemento.findUnique({
+            where: { id: imp.implementoId },
+          });
+          if (!item) continue;
+          if (item.sedeId !== alquiler.sedeId)
+            throw new BadRequestException(
+              `El implemento "${item.nombre}" no pertenece a esta sede.`,
+            );
+          if (item.stockDisponible < imp.cantidad)
+            throw new ConflictException(
+              `Stock insuficiente de "${item.nombre}" (disponible ${item.stockDisponible}, se piden ${imp.cantidad}).`,
+            );
+          await tx.asignacionImplemento.create({
+            data: {
+              alquilerId: alquiler.id,
+              implementoId: item.id,
+              cantidad: imp.cantidad,
+            },
+          });
+          await tx.implemento.update({
+            where: { id: item.id },
+            data: { stockDisponible: { decrement: imp.cantidad } },
+          });
+        }
+      }
+
       return alquiler;
     });
   }
@@ -553,6 +624,22 @@ export class AlquileresService {
         where: { id: alquiler.habitacionId },
         data: { estado: EstadoHabitacion.ALISTANDO },
       });
+
+      // Auto-devolver implementos prestados que aún no fueron devueltos
+      // (toallas, sábanas, controles, etc.) — vuelven al stock disponible.
+      const pendientes = await tx.asignacionImplemento.findMany({
+        where: { alquilerId: alquiler.id, fechaDevolucion: null },
+      });
+      for (const asig of pendientes) {
+        await tx.asignacionImplemento.update({
+          where: { id: asig.id },
+          data: { fechaDevolucion: new Date() },
+        });
+        await tx.implemento.update({
+          where: { id: asig.implementoId },
+          data: { stockDisponible: { increment: asig.cantidad } },
+        });
+      }
 
       // Auto-asignación: elige el usuario de LIMPIEZA activo con menos tareas pendientes
       const limpiadoras = await tx.usuario.findMany({

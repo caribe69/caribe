@@ -26,6 +26,7 @@ import { AuditModule } from './audit/audit.module';
 import { DocumentosModule } from './documentos/documentos.module';
 import { PersonalModule } from './personal/personal.module';
 import { NubeFactModule } from './nubefact/nubefact.module';
+import { ImplementosModule } from './implementos/implementos.module';
 
 @Module({
   imports: [
@@ -62,6 +63,8 @@ import { NubeFactModule } from './nubefact/nubefact.module';
     DocumentosModule,
     PersonalModule,
     NubeFactModule,
+    ImplementosModule,
   ],
 })
 export class AppModule {}
+

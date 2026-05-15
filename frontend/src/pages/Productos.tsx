@@ -27,6 +27,7 @@ interface Producto {
   precio: string;
   stock: number;
   stockMinimo: number;
+  esCortesia?: boolean;
 }
 
 export default function Productos() {
@@ -459,6 +460,7 @@ function ProductoModal({
     precio: producto?.precio ? String(producto.precio) : '',
     stock: producto?.stock != null ? String(producto.stock) : '0',
     stockMinimo: producto?.stockMinimo != null ? String(producto.stockMinimo) : '5',
+    esCortesia: producto?.esCortesia ?? false,
   });
   const [error, setError] = useState<string | null>(null);
 
@@ -471,6 +473,7 @@ function ProductoModal({
           descripcion: form.descripcion || undefined,
           precio: Number(form.precio),
           stockMinimo: Number(form.stockMinimo),
+          esCortesia: form.esCortesia,
         });
         // Si el stock cambió, registrar ajuste (para mantener historial)
         const nuevoStock = Number(form.stock);
@@ -487,6 +490,7 @@ function ProductoModal({
           precio: Number(form.precio),
           stock: Number(form.stock),
           stockMinimo: Number(form.stockMinimo),
+          esCortesia: form.esCortesia,
         });
       }
     },
@@ -572,6 +576,27 @@ function ProductoModal({
               onChange={(e) => setForm({ ...form, stock: e.target.value })}
             />
           </Field>
+
+          <label className="flex items-start gap-2.5 mt-2 cursor-pointer select-none bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800/50 rounded-xl p-3">
+            <input
+              type="checkbox"
+              checked={form.esCortesia}
+              onChange={(e) =>
+                setForm({ ...form, esCortesia: e.target.checked })
+              }
+              className="mt-0.5 w-4 h-4 accent-amber-600"
+            />
+            <div className="flex-1">
+              <div className="text-sm font-semibold text-amber-900 dark:text-amber-100">
+                Es producto de cortesía
+              </div>
+              <div className="text-[11px] text-amber-700 dark:text-amber-300 mt-0.5 leading-snug">
+                Si está marcado, aparecerá como "pack de cortesía" al crear un
+                alquiler. Se descuenta del stock pero{' '}
+                <b>no se cobra al cliente</b>.
+              </div>
+            </div>
+          </label>
 
           {error && (
             <div className="text-sm text-rose-700 dark:text-rose-300 bg-rose-50 dark:bg-rose-900/30 border border-rose-200 dark:border-rose-800 rounded-lg p-2.5">

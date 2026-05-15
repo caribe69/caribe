@@ -38,6 +38,7 @@ export class ProductosService {
         precio: dto.precio,
         stock: dto.stock ?? 0,
         stockMinimo: dto.stockMinimo ?? 0,
+        esCortesia: dto.esCortesia ?? false,
       },
     });
   }

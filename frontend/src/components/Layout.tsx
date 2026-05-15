@@ -132,6 +132,12 @@ const groups: Group[] = [
         roles: ['SUPERADMIN', 'ADMIN_SEDE', 'LIMPIEZA'],
       },
       {
+        to: '/implementos',
+        label: 'Implementos',
+        icon: Sparkles,
+        roles: ['SUPERADMIN', 'ADMIN_SEDE', 'HOTELERO'],
+      },
+      {
         to: '/transferencias',
         label: 'Transferencias',
         icon: Truck,

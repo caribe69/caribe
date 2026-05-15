@@ -1,5 +1,6 @@
 import { Type } from 'class-transformer';
 import {
+  IsBoolean,
   IsInt,
   IsNumber,
   IsOptional,
@@ -13,6 +14,7 @@ export class CreateProductoDto {
   @Type(() => Number) @IsNumber() precio: number;
   @IsOptional() @IsInt() stock?: number;
   @IsOptional() @IsInt() stockMinimo?: number;
+  @IsOptional() @IsBoolean() esCortesia?: boolean;
 }
 
 export class UpdateProductoDto {
@@ -20,6 +22,7 @@ export class UpdateProductoDto {
   @IsOptional() @IsString() descripcion?: string;
   @IsOptional() @Type(() => Number) @IsNumber() precio?: number;
   @IsOptional() @IsInt() stockMinimo?: number;
+  @IsOptional() @IsBoolean() esCortesia?: boolean;
 }
 
 export class AjusteStockDto {

@@ -32,6 +32,7 @@ model Sede {
   habitaciones      Habitacion[]
   productos         Producto[]
   productosLimpieza ProductoLimpieza[]
+  implementos       Implemento[]
   alquileres        Alquiler[]
   tareasLimpieza    TareaLimpieza[]
   turnosCaja        TurnoCaja[]
@@ -156,6 +157,9 @@ model Producto {
   stock       Int      @default(0)
   stockMinimo Int      @default(0)
   activo      Boolean  @default(true)
+  /// Si está marcado, este producto puede darse como cortesía
+  /// (descuenta stock pero no se cobra al alquiler).
+  esCortesia  Boolean  @default(false)
   creadoEn    DateTime @default(now())
 
   consumos    ConsumoProducto[]
@@ -264,6 +268,7 @@ model Alquiler {
   consumos        ConsumoProducto[]
   anulacionRequests AnulacionRequest[]
   pagos           PagoAlquiler[]
+  implementos     AsignacionImplemento[]
 
   // ── Facturación electrónica SUNAT (vía NubeFact) ─────────
   /// Si el cajero marcó "deseo emitir comprobante electrónico" al crear/cobrar.
@@ -333,10 +338,53 @@ model ConsumoProducto {
   cantidad     Int
   precioUnit   Decimal   @db.Decimal(10, 2)
   subtotal     Decimal   @db.Decimal(10, 2)
+  /// Si true: el producto se entregó como cortesía. Descuenta del stock
+  /// pero NO se cobra al alquiler (subtotal = 0).
+  esCortesia   Boolean   @default(false)
   creadoEn     DateTime  @default(now())
 
   @@index([alquilerId])
   @@index([productoId])
+}
+
+// ============================================================
+// IMPLEMENTOS (toallas, sábanas, controles, etc.)
+// Préstamos por alquiler: se entregan y deben devolverse al cerrar.
+// ============================================================
+model Implemento {
+  id              Int       @id @default(autoincrement())
+  sedeId          Int
+  sede            Sede      @relation(fields: [sedeId], references: [id])
+  nombre          String
+  descripcion     String?
+  /// Stock total en posesión del hotel (incluye los que están afuera prestados).
+  stockTotal      Int       @default(0)
+  /// Disponible AHORA para entregar (stockTotal - prestados sin devolver).
+  stockDisponible Int       @default(0)
+  activo          Boolean   @default(true)
+  creadoEn        DateTime  @default(now())
+  actualizadoEn   DateTime  @updatedAt
+
+  asignaciones    AsignacionImplemento[]
+
+  @@index([sedeId, activo])
+}
+
+model AsignacionImplemento {
+  id              Int        @id @default(autoincrement())
+  alquilerId      Int
+  alquiler        Alquiler   @relation(fields: [alquilerId], references: [id], onDelete: Cascade)
+  implementoId    Int
+  implemento      Implemento @relation(fields: [implementoId], references: [id])
+  cantidad        Int        @default(1)
+  fechaAsignacion DateTime   @default(now())
+  /// Si NULL: aún está afuera. Si tiene fecha: ya fue devuelto.
+  fechaDevolucion DateTime?
+  /// Si se devolvió con faltantes/dañados (informativo).
+  notas           String?
+
+  @@index([alquilerId])
+  @@index([implementoId, fechaDevolucion])
 }
 
 // ============================================================
@@ -346,6 +394,7 @@ enum TipoMovimiento {
   ENTRADA
   SALIDA_VENTA
   SALIDA_LIMPIEZA
+  SALIDA_CORTESIA
   AJUSTE
   ANULACION
   TRANSFERENCIA_SALIDA

@@ -514,6 +514,29 @@ export class AlquileresService {
     if (alquiler.estado !== EstadoAlquiler.ACTIVO)
       throw new BadRequestException('Alquiler no está activo');
 
+    // Validación: NO se puede finalizar si hay saldo pendiente.
+    // Cubre tanto el precio de la habitación como los consumos de productos.
+    const total = Number((alquiler as any).total ?? 0);
+    const precioHab = Number((alquiler as any).precioHabitacion ?? 0);
+    const totalProductos = Number((alquiler as any).totalProductos ?? 0);
+    const pagado = Number((alquiler as any).montoPagado ?? 0);
+    const saldo = total - pagado;
+
+    if (saldo > 0.01) {
+      const saldoHab = Math.max(0, precioHab - pagado);
+      const saldoProd = Math.max(0, totalProductos - Math.max(0, pagado - precioHab));
+      const detalles: string[] = [];
+      if (saldoHab > 0.01)
+        detalles.push(`habitación S/ ${saldoHab.toFixed(2)}`);
+      if (saldoProd > 0.01)
+        detalles.push(`productos S/ ${saldoProd.toFixed(2)}`);
+      throw new BadRequestException(
+        `No se puede finalizar: falta pagar S/ ${saldo.toFixed(2)}` +
+          (detalles.length ? ` (${detalles.join(' · ')})` : '') +
+          '. Registra el cobro o regulariza el precio antes de cerrar la habitación.',
+      );
+    }
+
     return this.prisma.$transaction(async (tx) => {
       const act = await tx.alquiler.update({
         where: { id: alquiler.id },

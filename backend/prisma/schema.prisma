@@ -41,6 +41,8 @@ model Sede {
   transferenciasOrigen  TransferenciaSede[] @relation("TransferenciaOrigen")
   transferenciasDestino TransferenciaSede[] @relation("TransferenciaDestino")
   reservasGrupales  ReservaGrupal[]
+  documentos        Documento[]
+  personal          Personal[]
 }
 
 model Usuario {
@@ -72,6 +74,7 @@ model Usuario {
   transferenciasRecibidas TransferenciaSede[] @relation("TransferenciaRecibida")
   reservasGrupalesCreadas  ReservaGrupal[] @relation("ReservaGrupalCreadaPor")
   auditLogs                AuditLog[]
+  personalRecord           Personal?
 
   @@index([sedeId])
 }
@@ -615,6 +618,73 @@ model AppConfig {
   sessionTtlDays    Int      @default(30)
   actualizadoEn     DateTime @updatedAt
   creadoEn          DateTime @default(now())
+}
+
+// ============================================================
+// DOCUMENTOS — archivos del establecimiento con vencimiento
+// ============================================================
+enum TipoDocumento {
+  PDF
+  IMAGEN
+  OTRO
+}
+
+model Documento {
+  id              Int             @id @default(autoincrement())
+  sedeId          Int?
+  sede            Sede?           @relation(fields: [sedeId], references: [id])
+  nombre          String
+  descripcion     String?
+  tipo            TipoDocumento   @default(PDF)
+  archivoPath     String          // ruta relativa /uploads/documentos/...
+  archivoNombre   String?         // nombre original del archivo
+  fechaEmision    DateTime?
+  fechaVencimiento DateTime?
+  alertaDiasAntes Int             @default(30)
+  creadoPorId     Int?
+  creadoEn        DateTime        @default(now())
+  actualizadoEn   DateTime        @updatedAt
+
+  @@index([sedeId])
+  @@index([fechaVencimiento])
+}
+
+// ============================================================
+// PERSONAL — empleados con datos completos
+// ============================================================
+model Personal {
+  id                 Int       @id @default(autoincrement())
+  sedeId             Int?
+  sede               Sede?     @relation(fields: [sedeId], references: [id])
+
+  dni                String    @unique
+  nombre             String
+  apellidoPaterno    String
+  apellidoMaterno    String?
+
+  fotoPerfil         String?   // path
+  fotoDniFrente      String?
+  fotoDniReverso     String?
+
+  fechaNacimiento    DateTime?
+  fechaIngreso       DateTime  @default(now())
+  correo             String?
+  telefono           String?
+  direccion          String?
+  cargo              String?
+  notas              String?
+
+  activo             Boolean   @default(true)
+
+  // Vínculo opcional con un usuario del sistema
+  usuarioId          Int?      @unique
+  usuario            Usuario?  @relation(fields: [usuarioId], references: [id])
+
+  creadoEn           DateTime  @default(now())
+  actualizadoEn      DateTime  @updatedAt
+
+  @@index([sedeId])
+  @@index([activo])
 }
 
 // ============================================================

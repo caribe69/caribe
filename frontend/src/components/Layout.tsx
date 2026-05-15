@@ -27,6 +27,7 @@ import {
   BarChart3,
   UserCog,
   Shield,
+  IdCard,
 } from 'lucide-react';
 import { useAuthStore, Rol } from '@/store/auth';
 import TopBar from './TopBar';
@@ -180,6 +181,18 @@ const groups: Group[] = [
         label: 'Usuarios',
         icon: Users,
         roles: ['SUPERADMIN', 'ADMIN_SEDE'],
+      },
+      {
+        to: '/personal',
+        label: 'Personal',
+        icon: IdCard,
+        roles: ['SUPERADMIN', 'ADMIN_SEDE'],
+      },
+      {
+        to: '/documentos',
+        label: 'Documentos',
+        icon: FileBarChart,
+        roles: ['SUPERADMIN', 'ADMIN_SEDE', 'HOTELERO'],
       },
       {
         to: '/configuracion',

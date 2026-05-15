@@ -23,6 +23,8 @@ import { TransferenciasModule } from './transferencias/transferencias.module';
 import { ReservasGrupalesModule } from './reservas-grupales/reservas-grupales.module';
 import { PublicModule } from './public/public.module';
 import { AuditModule } from './audit/audit.module';
+import { DocumentosModule } from './documentos/documentos.module';
+import { PersonalModule } from './personal/personal.module';
 
 @Module({
   imports: [
@@ -56,6 +58,8 @@ import { AuditModule } from './audit/audit.module';
     ReservasGrupalesModule,
     PublicModule,
     AuditModule,
+    DocumentosModule,
+    PersonalModule,
   ],
 })
 export class AppModule {}

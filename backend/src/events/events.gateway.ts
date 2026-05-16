@@ -139,17 +139,18 @@ export class EventsGateway implements OnGatewayConnection, OnGatewayDisconnect {
     this.logger.log(`Desconectado ${user.username}`);
   }
 
-  /** Emite a todos los usuarios de una sede + a cualquier SUPERADMIN */
+  /** Emite a todos los usuarios de una sede + a cualquier SUPERADMIN.
+   *  Bug fix: usábamos dos .emit() separados, lo que duplicaba el
+   *  evento para SUPERADMIN (está en ambos rooms). Socket.io permite
+   *  pasar un array de rooms a .to() y deduplica automáticamente. */
   emitToSede(sedeId: number, event: string, payload: any) {
     const body = { ...payload, sedeId };
-    // Count clients in rooms for debugging
     const sedeRoom = this.server.sockets.adapter.rooms.get(`sede:${sedeId}`);
     const superRoom = this.server.sockets.adapter.rooms.get('superadmin');
     this.logger.log(
       `emit ${event} → sede:${sedeId} (${sedeRoom?.size || 0} clientes) + superadmin (${superRoom?.size || 0})`,
     );
-    this.server.to(`sede:${sedeId}`).emit(event, body);
-    this.server.to('superadmin').emit(event, body);
+    this.server.to([`sede:${sedeId}`, 'superadmin']).emit(event, body);
   }
 
   /** Emite a todos los usuarios con un rol específico de una sede */

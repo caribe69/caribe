@@ -20,8 +20,7 @@ import {
 } from 'lucide-react';
 import { api } from '@/lib/api';
 import { useDialog } from '@/components/ConfirmProvider';
-import { BoletaPDFDoc } from '@/components/BoletaPDF';
-import { openPdfNewTab } from '@/lib/openPdfNewTab';
+import { openBoletaPdfNewTab } from '@/lib/openPdfNewTab';
 import ReservaGrupalModal from '@/components/ReservaGrupalModal';
 import { useAuthStore } from '@/store/auth';
 import { useToast } from '@/components/ToastProvider';
@@ -978,12 +977,7 @@ function AlquilerActivoModal({
                   onClick={async () => {
                     setImprimiendoPDF(true);
                     try {
-                      await openPdfNewTab(
-                        <BoletaPDFDoc
-                          alquiler={alquiler as any}
-                          empresa={empresaQ.data}
-                        />,
-                      );
+                      await openBoletaPdfNewTab(alquiler, empresaQ.data);
                     } finally {
                       setImprimiendoPDF(false);
                     }
@@ -1983,12 +1977,7 @@ function NuevoAlquilerModal({
                   onClick={async () => {
                     setPreviewLoading(true);
                     try {
-                      await openPdfNewTab(
-                        <BoletaPDFDoc
-                          alquiler={previewAlquiler as any}
-                          empresa={empresaQ.data}
-                        />,
-                      );
+                      await openBoletaPdfNewTab(previewAlquiler, empresaQ.data);
                     } finally {
                       setPreviewLoading(false);
                     }
@@ -2535,12 +2524,7 @@ function ListaAlquileres() {
                   onClick={async () => {
                     setImprimiendoId(a.id);
                     try {
-                      await openPdfNewTab(
-                        <BoletaPDFDoc
-                          alquiler={a as any}
-                          empresa={empresaQ.data}
-                        />,
-                      );
+                      await openBoletaPdfNewTab(a, empresaQ.data);
                     } finally {
                       setImprimiendoId(null);
                     }

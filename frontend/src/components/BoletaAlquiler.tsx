@@ -113,7 +113,7 @@ export default function BoletaAlquiler({
  * Recibo formato ticket térmico (~80mm). Pensado para impresoras POS,
  * pero también se ve bien al imprimir en A4 si no hay térmica.
  */
-function BoletaContenido({
+export function BoletaContenido({
   alquiler,
   empresa,
 }: {

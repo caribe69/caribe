@@ -20,7 +20,7 @@ import {
 } from 'lucide-react';
 import { api } from '@/lib/api';
 import { useDialog } from '@/components/ConfirmProvider';
-import BoletaAlquiler from '@/components/BoletaAlquiler';
+import BoletaAlquiler, { BoletaContenido } from '@/components/BoletaAlquiler';
 import ReservaGrupalModal from '@/components/ReservaGrupalModal';
 import { useAuthStore } from '@/store/auth';
 import { useToast } from '@/components/ToastProvider';
@@ -1139,7 +1139,55 @@ function NuevoAlquilerModal({
   // Emisión electrónica SUNAT
   const [emitirSunat, setEmitirSunat] = useState(false);
   const [confirmText, setConfirmText] = useState('');
+  const [previewOpen, setPreviewOpen] = useState(false);
   const FRASE_CONFIRMACION = 'si acepto';
+
+  // Config de la empresa (para mostrar en el preview)
+  const empresaQ = useQuery<any>({
+    queryKey: ['config'],
+    queryFn: async () => (await api.get('/settings')).data,
+    staleTime: 5 * 60_000,
+  });
+  const usuarioActual = useAuthStore((s) => s.usuario);
+
+  const previewAlquiler = useMemo(
+    () => ({
+      id: 0,
+      creadoEn: new Date().toISOString(),
+      clienteNombre: form.clienteNombre || 'CONSUMIDOR FINAL',
+      clienteDni: form.clienteDni || '00000000',
+      precioHabitacion: Number(form.precioHabitacion) || 0,
+      total: Number(form.precioHabitacion) || 0,
+      metodoPago: form.metodoPago,
+      tipoComprobante:
+        conRuc && rucData?.encontrado ? 'FACTURA' : 'BOLETA',
+      clienteRuc: conRuc && rucData?.encontrado ? ruc : null,
+      clienteRazonSocial: rucData?.razonSocial || null,
+      clienteDireccionFiscal: rucData?.direccion || null,
+      habitacion: {
+        numero: habitacion.numero,
+        descripcion: habitacion.descripcion ?? null,
+        piso: { numero: habitacion.piso?.numero ?? 0 },
+      },
+      creadoPor: usuarioActual
+        ? { nombre: usuarioActual.nombre, username: usuarioActual.username }
+        : null,
+      sede: usuarioActual?.sede
+        ? { nombre: usuarioActual.sede.nombre }
+        : undefined,
+    }),
+    [
+      form.clienteNombre,
+      form.clienteDni,
+      form.precioHabitacion,
+      form.metodoPago,
+      conRuc,
+      ruc,
+      rucData,
+      habitacion,
+      usuarioActual,
+    ],
+  );
   // Comparación case-insensitive y tolerante a tildes para evitar fricción
   const normalizar = (s: string) =>
     s
@@ -1806,6 +1854,15 @@ function NuevoAlquilerModal({
                     comprobante.
                   </div>
                 )}
+
+                <button
+                  type="button"
+                  onClick={() => setPreviewOpen(true)}
+                  className="w-full flex items-center justify-center gap-1.5 text-[11px] font-semibold text-violet-700 dark:text-violet-300 bg-violet-50 dark:bg-violet-900/30 hover:bg-violet-100 dark:hover:bg-violet-900/50 border border-violet-200 dark:border-violet-800/50 rounded-lg py-2 transition"
+                >
+                  <Printer size={12} /> Ver vista previa del{' '}
+                  {conRuc && rucData?.encontrado ? 'comprobante' : 'ticket'}
+                </button>
               </div>
             )}
           </div>
@@ -1884,6 +1941,45 @@ function NuevoAlquilerModal({
           )}
         </div>
       </div>
+
+      {previewOpen && (
+        <div
+          className="fixed inset-0 bg-slate-950/70 backdrop-blur-sm flex items-center justify-center p-4 z-[110] animate-fade-in"
+          onClick={() => setPreviewOpen(false)}
+        >
+          <div
+            className="bg-white dark:bg-slate-900 rounded-2xl w-full max-w-sm max-h-[90vh] overflow-y-auto scroll-premium shadow-2xl animate-scale-in"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex justify-between items-center p-3 border-b border-slate-100 dark:border-slate-800 sticky top-0 bg-white dark:bg-slate-900 z-10">
+              <div>
+                <h2 className="font-semibold text-slate-900 dark:text-slate-100 text-sm">
+                  Vista previa ·{' '}
+                  {conRuc && rucData?.encontrado ? 'Factura' : 'Boleta'}
+                </h2>
+                <div className="text-[10px] text-slate-500 dark:text-slate-400">
+                  Borrador — el correlativo y enlace SUNAT se asignan al
+                  emitir
+                </div>
+              </div>
+              <button
+                onClick={() => setPreviewOpen(false)}
+                className="w-7 h-7 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center justify-center"
+              >
+                <X size={16} className="text-slate-500" />
+              </button>
+            </div>
+            <div className="p-4 bg-slate-50 dark:bg-slate-950">
+              <div className="bg-white mx-auto shadow-sm border border-slate-200">
+                <BoletaContenido
+                  alquiler={previewAlquiler as any}
+                  empresa={empresaQ.data}
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

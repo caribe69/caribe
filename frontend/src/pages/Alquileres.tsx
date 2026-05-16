@@ -20,7 +20,8 @@ import {
 } from 'lucide-react';
 import { api } from '@/lib/api';
 import { useDialog } from '@/components/ConfirmProvider';
-import BoletaAlquiler, { BoletaContenido } from '@/components/BoletaAlquiler';
+import { BoletaPDFDoc } from '@/components/BoletaPDF';
+import { openPdfNewTab } from '@/lib/openPdfNewTab';
 import ReservaGrupalModal from '@/components/ReservaGrupalModal';
 import { useAuthStore } from '@/store/auth';
 import { useToast } from '@/components/ToastProvider';
@@ -572,8 +573,13 @@ function AlquilerActivoModal({
     usuario?.rol === 'SUPERADMIN' || usuario?.rol === 'ADMIN_SEDE';
   const [addProdOpen, setAddProdOpen] = useState(false);
   const [extenderOpen, setExtenderOpen] = useState(false);
-  const [boletaOpen, setBoletaOpen] = useState(false);
   const [fiscalesOpen, setFiscalesOpen] = useState(false);
+  const [imprimiendoPDF, setImprimiendoPDF] = useState(false);
+  const empresaQ = useQuery<any>({
+    queryKey: ['config'],
+    queryFn: async () => (await api.get('/settings')).data,
+    staleTime: 5 * 60_000,
+  });
   const [cobrarOpen, setCobrarOpen] = useState<
     | null
     | { titulo: string; monto: number; categoria: 'habitacion' | 'productos' | 'todo' }
@@ -962,10 +968,28 @@ function AlquilerActivoModal({
                     : 'Cambiar a factura con RUC'}
                 </button>
                 <button
-                  onClick={() => setBoletaOpen(true)}
-                  className="flex items-center justify-center gap-1.5 bg-violet-600 hover:bg-violet-700 text-white py-2.5 rounded-xl btn-press text-xs font-semibold"
+                  disabled={imprimiendoPDF}
+                  onClick={async () => {
+                    setImprimiendoPDF(true);
+                    try {
+                      await openPdfNewTab(
+                        <BoletaPDFDoc
+                          alquiler={alquiler as any}
+                          empresa={empresaQ.data}
+                        />,
+                      );
+                    } finally {
+                      setImprimiendoPDF(false);
+                    }
+                  }}
+                  className="flex items-center justify-center gap-1.5 bg-violet-600 hover:bg-violet-700 text-white py-2.5 rounded-xl btn-press text-xs font-semibold disabled:opacity-60"
+                  title="Abre el PDF en una pestaña nueva — usa Ctrl+P para imprimir"
                 >
-                  <Printer size={14} />
+                  {imprimiendoPDF ? (
+                    <Loader2 size={14} className="animate-spin" />
+                  ) : (
+                    <Printer size={14} />
+                  )}
                   {alquiler.tipoComprobante === 'FACTURA' ? 'Factura' : 'Boleta'}
                 </button>
                 <button
@@ -1048,12 +1072,6 @@ function AlquilerActivoModal({
               <ExtenderAlquilerModal
                 alquiler={alquiler}
                 onClose={() => setExtenderOpen(false)}
-              />
-            )}
-            {boletaOpen && (
-              <BoletaAlquiler
-                alquiler={alquiler as any}
-                onClose={() => setBoletaOpen(false)}
               />
             )}
             {fiscalesOpen && (
@@ -1139,7 +1157,7 @@ function NuevoAlquilerModal({
   // Emisión electrónica SUNAT
   const [emitirSunat, setEmitirSunat] = useState(false);
   const [confirmText, setConfirmText] = useState('');
-  const [previewOpen, setPreviewOpen] = useState(false);
+  const [previewLoading, setPreviewLoading] = useState(false);
   const FRASE_CONFIRMACION = 'si acepto';
 
   // Config de la empresa (para mostrar en el preview)
@@ -1857,11 +1875,33 @@ function NuevoAlquilerModal({
 
                 <button
                   type="button"
-                  onClick={() => setPreviewOpen(true)}
-                  className="w-full flex items-center justify-center gap-1.5 text-[11px] font-semibold text-violet-700 dark:text-violet-300 bg-violet-50 dark:bg-violet-900/30 hover:bg-violet-100 dark:hover:bg-violet-900/50 border border-violet-200 dark:border-violet-800/50 rounded-lg py-2 transition"
+                  disabled={previewLoading}
+                  onClick={async () => {
+                    setPreviewLoading(true);
+                    try {
+                      await openPdfNewTab(
+                        <BoletaPDFDoc
+                          alquiler={previewAlquiler as any}
+                          empresa={empresaQ.data}
+                        />,
+                      );
+                    } finally {
+                      setPreviewLoading(false);
+                    }
+                  }}
+                  className="w-full flex items-center justify-center gap-1.5 text-[11px] font-semibold text-violet-700 dark:text-violet-300 bg-violet-50 dark:bg-violet-900/30 hover:bg-violet-100 dark:hover:bg-violet-900/50 border border-violet-200 dark:border-violet-800/50 rounded-lg py-2 transition disabled:opacity-50"
                 >
-                  <Printer size={12} /> Ver vista previa del{' '}
-                  {conRuc && rucData?.encontrado ? 'comprobante' : 'ticket'}
+                  {previewLoading ? (
+                    <>
+                      <Loader2 size={12} className="animate-spin" /> Generando
+                      PDF…
+                    </>
+                  ) : (
+                    <>
+                      <Printer size={12} /> Ver vista previa PDF (otra
+                      pestaña)
+                    </>
+                  )}
                 </button>
               </div>
             )}
@@ -1942,44 +1982,6 @@ function NuevoAlquilerModal({
         </div>
       </div>
 
-      {previewOpen && (
-        <div
-          className="fixed inset-0 bg-slate-950/70 backdrop-blur-sm flex items-center justify-center p-4 z-[110] animate-fade-in"
-          onClick={() => setPreviewOpen(false)}
-        >
-          <div
-            className="bg-white dark:bg-slate-900 rounded-2xl w-full max-w-sm max-h-[90vh] overflow-y-auto scroll-premium shadow-2xl animate-scale-in"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex justify-between items-center p-3 border-b border-slate-100 dark:border-slate-800 sticky top-0 bg-white dark:bg-slate-900 z-10">
-              <div>
-                <h2 className="font-semibold text-slate-900 dark:text-slate-100 text-sm">
-                  Vista previa ·{' '}
-                  {conRuc && rucData?.encontrado ? 'Factura' : 'Boleta'}
-                </h2>
-                <div className="text-[10px] text-slate-500 dark:text-slate-400">
-                  Borrador — el correlativo y enlace SUNAT se asignan al
-                  emitir
-                </div>
-              </div>
-              <button
-                onClick={() => setPreviewOpen(false)}
-                className="w-7 h-7 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center justify-center"
-              >
-                <X size={16} className="text-slate-500" />
-              </button>
-            </div>
-            <div className="p-4 bg-slate-50 dark:bg-slate-950">
-              <div className="bg-white mx-auto shadow-sm border border-slate-200">
-                <BoletaContenido
-                  alquiler={previewAlquiler as any}
-                  empresa={empresaQ.data}
-                />
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
@@ -2250,8 +2252,13 @@ function ListaAlquileres() {
   const dialog = useDialog();
   const [filtro, setFiltro] = useState<string>('');
   const [busqueda, setBusqueda] = useState('');
-  const [boletaAlquiler, setBoletaAlquiler] = useState<Alquiler | null>(null);
   const [extender, setExtender] = useState<Alquiler | null>(null);
+  const [imprimiendoId, setImprimiendoId] = useState<number | null>(null);
+  const empresaQ = useQuery<any>({
+    queryKey: ['config'],
+    queryFn: async () => (await api.get('/settings')).data,
+    staleTime: 5 * 60_000,
+  });
 
   const { data, isLoading } = useQuery({
     queryKey: ['alquileres', filtro],
@@ -2420,22 +2427,36 @@ function ListaAlquileres() {
               )}
               {a.estado !== 'ANULADO' && (
                 <button
-                  onClick={() => setBoletaAlquiler(a)}
-                  className="text-xs flex items-center gap-1 bg-violet-600 hover:bg-violet-700 text-white px-3 py-1.5 rounded btn-press"
+                  disabled={imprimiendoId === a.id}
+                  onClick={async () => {
+                    setImprimiendoId(a.id);
+                    try {
+                      await openPdfNewTab(
+                        <BoletaPDFDoc
+                          alquiler={a as any}
+                          empresa={empresaQ.data}
+                        />,
+                      );
+                    } finally {
+                      setImprimiendoId(null);
+                    }
+                  }}
+                  className="text-xs flex items-center gap-1 bg-violet-600 hover:bg-violet-700 text-white px-3 py-1.5 rounded btn-press disabled:opacity-60"
+                  title="Abre el PDF en una pestaña nueva"
                 >
-                  <Printer size={14} /> Imprimir boleta
+                  {imprimiendoId === a.id ? (
+                    <Loader2 size={14} className="animate-spin" />
+                  ) : (
+                    <Printer size={14} />
+                  )}
+                  Imprimir{' '}
+                  {a.tipoComprobante === 'FACTURA' ? 'factura' : 'boleta'}
                 </button>
               )}
             </div>
           </div>
         ))}
       </div>
-      {boletaAlquiler && (
-        <BoletaAlquiler
-          alquiler={boletaAlquiler as any}
-          onClose={() => setBoletaAlquiler(null)}
-        />
-      )}
       {extender && (
         <ExtenderAlquilerModal
           alquiler={extender}

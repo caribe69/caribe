@@ -7,11 +7,13 @@ import {
   Pencil,
   Trash2,
   Search,
-  Minus,
-  Check,
   Sparkles,
-  ArrowDownToLine,
-  AlertTriangle,
+  WashingMachine,
+  Home,
+  ArrowLeftRight,
+  CheckSquare,
+  Square,
+  CircleAlert,
 } from 'lucide-react';
 import { api } from '@/lib/api';
 import { useAuthStore } from '@/store/auth';
@@ -20,28 +22,48 @@ import { useToast } from '@/components/ToastProvider';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { EmptyState } from '@/components/ui/EmptyState';
 
-interface Implemento {
+type Estado = 'EN_HABITACION' | 'EN_TRANSITO' | 'EN_LAVANDERIA' | 'PERDIDO';
+
+interface TipoImplemento {
   id: number;
+  sedeId: number;
   nombre: string;
-  descripcion?: string | null;
-  stockTotal: number;
-  stockDisponible: number;
+  icono: string | null;
+  color: string | null;
   activo: boolean;
+  _count?: { unidades: number };
 }
 
-interface Asignacion {
+interface Habitacion {
   id: number;
-  cantidad: number;
-  fechaAsignacion: string;
-  fechaDevolucion: string | null;
-  implemento: { id: number; nombre: string };
-  alquiler: {
-    id: number;
-    clienteNombre: string;
-    estado: string;
-    habitacion: { numero: string };
-  };
+  numero: string;
 }
+
+interface ImplementoUnidad {
+  id: number;
+  tipoId: number;
+  codigo: string;
+  habitacionId: number;
+  estado: Estado;
+  notas: string | null;
+  activo: boolean;
+  tipo: { id: number; nombre: string; icono: string | null; color: string | null };
+  habitacion: { id: number; numero: string };
+}
+
+const ESTADO_LABEL: Record<Estado, string> = {
+  EN_HABITACION: 'En habitación',
+  EN_TRANSITO: 'En tránsito',
+  EN_LAVANDERIA: 'En lavandería',
+  PERDIDO: 'Perdido',
+};
+
+const ESTADO_COLOR: Record<Estado, string> = {
+  EN_HABITACION: 'bg-emerald-500',
+  EN_TRANSITO: 'bg-amber-500',
+  EN_LAVANDERIA: 'bg-blue-500',
+  PERDIDO: 'bg-rose-500',
+};
 
 export default function ImplementosPage() {
   const qc = useQueryClient();
@@ -51,279 +73,451 @@ export default function ImplementosPage() {
   const puedeEditar =
     usuario?.rol === 'SUPERADMIN' || usuario?.rol === 'ADMIN_SEDE';
 
-  const [showNuevo, setShowNuevo] = useState(false);
-  const [editar, setEditar] = useState<Implemento | null>(null);
-  const [tab, setTab] = useState<'inventario' | 'prestados'>('inventario');
+  const [tab, setTab] = useState<'unidades' | 'tipos' | 'lavanderia'>(
+    'unidades',
+  );
   const [busqueda, setBusqueda] = useState('');
+  const [showCrearTipo, setShowCrearTipo] = useState(false);
+  const [showCrearUnidad, setShowCrearUnidad] = useState(false);
 
-  const { data: implementos = [], isLoading } = useQuery({
-    queryKey: ['implementos'],
-    queryFn: async () =>
-      (await api.get<Implemento[]>('/implementos')).data,
+  const tiposQ = useQuery<TipoImplemento[]>({
+    queryKey: ['implementos', 'tipos'],
+    queryFn: async () => (await api.get('/implementos/tipos')).data,
   });
 
-  const { data: prestados = [], isLoading: loadPrestados } = useQuery({
-    queryKey: ['implementos', 'prestados'],
-    queryFn: async () =>
-      (
-        await api.get<Asignacion[]>('/implementos/asignaciones', {
-          params: { pendientes: true },
-        })
-      ).data,
-    enabled: tab === 'prestados',
+  const unidadesQ = useQuery<ImplementoUnidad[]>({
+    queryKey: ['implementos', 'unidades'],
+    queryFn: async () => (await api.get('/implementos')).data,
   });
 
-  const filtrados = useMemo(() => {
+  const habitacionesQ = useQuery<Habitacion[]>({
+    queryKey: ['habitaciones'],
+    queryFn: async () => (await api.get('/habitaciones')).data,
+  });
+
+  // ─── Tab UNIDADES (lista completa con filtro) ───
+  const unidadesFiltradas = useMemo(() => {
     const q = busqueda.trim().toLowerCase();
-    if (!q) return implementos;
-    return implementos.filter((i) =>
-      i.nombre.toLowerCase().includes(q),
+    const lista = unidadesQ.data || [];
+    if (!q) return lista;
+    return lista.filter(
+      (u) =>
+        u.codigo.toLowerCase().includes(q) ||
+        u.tipo.nombre.toLowerCase().includes(q) ||
+        u.habitacion.numero.toLowerCase().includes(q),
     );
-  }, [implementos, busqueda]);
+  }, [busqueda, unidadesQ.data]);
 
-  const stats = useMemo(() => {
-    const total = implementos.reduce((s, i) => s + i.stockTotal, 0);
-    const disponibles = implementos.reduce((s, i) => s + i.stockDisponible, 0);
-    return {
-      tipos: implementos.length,
-      total,
-      disponibles,
-      prestados: total - disponibles,
-    };
-  }, [implementos]);
+  // ─── Tab LAVANDERÍA (solo EN_LAVANDERIA + selección bulk) ───
+  const enLavanderia = useMemo(
+    () => (unidadesQ.data || []).filter((u) => u.estado === 'EN_LAVANDERIA'),
+    [unidadesQ.data],
+  );
+  const [seleccion, setSeleccion] = useState<Set<number>>(new Set());
 
-  const ajustar = useMutation({
-    mutationFn: async ({ id, delta }: { id: number; delta: number }) =>
-      api.post(`/implementos/${id}/ajuste-stock`, { delta }),
-    onSuccess: () => {
+  const retornar = useMutation({
+    mutationFn: async (ids: number[]) =>
+      (await api.post('/implementos/retornar-lavanderia', { unidadIds: ids }))
+        .data,
+    onSuccess: (data: any) => {
+      toast({
+        type: 'success',
+        title: `${data.actualizados} unidad(es) volvieron a sus habitaciones`,
+      });
+      setSeleccion(new Set());
       qc.invalidateQueries({ queryKey: ['implementos'] });
-      toast({ type: 'success', title: 'Stock actualizado' });
     },
     onError: (err: any) =>
       toast({
         type: 'error',
-        title: 'No se pudo actualizar',
-        description: err.response?.data?.message,
+        title: 'Error',
+        description: err.response?.data?.message || err.message,
       }),
-  });
-
-  const eliminar = useMutation({
-    mutationFn: async (id: number) => api.delete(`/implementos/${id}`),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['implementos'] });
-      toast({ type: 'success', title: 'Implemento eliminado' });
-    },
-    onError: (err: any) =>
-      toast({
-        type: 'error',
-        title: 'No se pudo eliminar',
-        description: err.response?.data?.message,
-      }),
-  });
-
-  const devolver = useMutation({
-    mutationFn: async (asignacionId: number) =>
-      api.post(`/implementos/asignaciones/${asignacionId}/devolver`),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['implementos'] });
-      qc.invalidateQueries({ queryKey: ['implementos', 'prestados'] });
-      toast({ type: 'success', title: 'Implemento devuelto' });
-    },
   });
 
   return (
     <div className="space-y-4">
-      {/* Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <Tile color="from-violet-500 to-violet-600" icon={<Package size={16} />} label="Tipos" value={stats.tipos} />
-        <Tile color="from-blue-500 to-blue-600" icon={<Sparkles size={16} />} label="Unidades totales" value={stats.total} />
-        <Tile color="from-emerald-500 to-emerald-600" icon={<Check size={16} />} label="Disponibles" value={stats.disponibles} />
-        <Tile color="from-amber-500 to-amber-600" icon={<ArrowDownToLine size={16} />} label="Prestados" value={stats.prestados} alert={stats.prestados > 0} />
+      {/* Header */}
+      <div className="flex items-center justify-between gap-3 flex-wrap">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 flex items-center justify-center">
+            <Package size={20} />
+          </div>
+          <div>
+            <div className="text-[10px] uppercase tracking-widest font-semibold text-slate-500">
+              Almacén
+            </div>
+            <h1 className="font-hotel text-xl font-bold text-slate-900 dark:text-slate-100">
+              Implementos
+            </h1>
+          </div>
+        </div>
       </div>
 
       {/* Tabs */}
-      <div className="bg-white dark:bg-slate-900 dark:ring-1 dark:ring-slate-800 rounded-3xl shadow-sm overflow-hidden">
-        <div className="flex border-b border-slate-100 dark:border-slate-800">
-          <TabBtn active={tab === 'inventario'} onClick={() => setTab('inventario')}>
-            Inventario ({implementos.length})
-          </TabBtn>
-          <TabBtn active={tab === 'prestados'} onClick={() => setTab('prestados')}>
-            Prestados ahora ({stats.prestados})
-          </TabBtn>
-        </div>
-
-        {tab === 'inventario' && (
-          <>
-            <div className="p-4 flex flex-wrap items-center gap-3">
-              <div className="relative flex-1 min-w-[200px]">
-                <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-                <input
-                  value={busqueda}
-                  onChange={(e) => setBusqueda(e.target.value)}
-                  placeholder="Buscar implemento..."
-                  className="w-full bg-slate-50 dark:bg-slate-800 dark:text-slate-100 border border-slate-200 dark:border-slate-700 rounded-xl pl-9 pr-3 py-2 text-sm focus:outline-none focus:border-violet-400"
-                />
-              </div>
-              {puedeEditar && (
-                <button
-                  onClick={() => setShowNuevo(true)}
-                  className="inline-flex items-center gap-2 bg-gradient-to-r from-violet-600 to-violet-500 hover:from-violet-700 hover:to-violet-600 text-white px-4 py-2 rounded-xl text-sm font-medium shadow-md shadow-violet-500/30 btn-press"
-                >
-                  <Plus size={15} /> Nuevo implemento
-                </button>
-              )}
-            </div>
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-slate-100 dark:border-slate-800">
-                  <Th>Implemento</Th>
-                  <Th align="center">Disponible / Total</Th>
-                  <Th align="center">Prestados</Th>
-                  {puedeEditar && <Th align="right">Acciones</Th>}
-                </tr>
-              </thead>
-              <tbody>
-                {isLoading &&
-                  Array.from({ length: 4 }).map((_, i) => (
-                    <tr key={i} className="border-b border-slate-50 dark:border-slate-800/60">
-                      {Array.from({ length: 4 }).map((__, j) => (
-                        <td key={j} className="px-5 py-3">
-                          <Skeleton className="h-4" />
-                        </td>
-                      ))}
-                    </tr>
-                  ))}
-                {!isLoading && filtrados.length === 0 && (
-                  <tr>
-                    <td colSpan={4} className="p-0">
-                      <EmptyState
-                        icon={<Sparkles size={28} />}
-                        title="Aún no hay implementos"
-                        description={
-                          puedeEditar
-                            ? 'Agrega toallas, sábanas, controles, etc. con "Nuevo implemento".'
-                            : undefined
-                        }
-                      />
-                    </td>
-                  </tr>
-                )}
-                {!isLoading &&
-                  filtrados.map((it) => (
-                    <Fila
-                      key={it.id}
-                      it={it}
-                      puedeEditar={puedeEditar}
-                      onAjustar={(delta) =>
-                        ajustar.mutate({ id: it.id, delta })
-                      }
-                      onEditar={() => setEditar(it)}
-                      onEliminar={async () => {
-                        const ok = await confirm({
-                          title: `¿Eliminar "${it.nombre}"?`,
-                          message:
-                            'Solo se puede eliminar si no hay unidades prestadas.',
-                          variant: 'danger',
-                          confirmText: 'Eliminar',
-                        });
-                        if (ok) eliminar.mutate(it.id);
-                      }}
-                    />
-                  ))}
-              </tbody>
-            </table>
-          </>
-        )}
-
-        {tab === 'prestados' && (
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-slate-100 dark:border-slate-800">
-                <Th>Implemento</Th>
-                <Th>Habitación / Cliente</Th>
-                <Th align="center">Cantidad</Th>
-                <Th>Entregado</Th>
-                <Th align="right">Acción</Th>
-              </tr>
-            </thead>
-            <tbody>
-              {loadPrestados && (
-                <tr><td colSpan={5} className="p-8 text-center text-slate-400">Cargando…</td></tr>
-              )}
-              {!loadPrestados && prestados.length === 0 && (
-                <tr>
-                  <td colSpan={5} className="p-0">
-                    <EmptyState
-                      icon={<Check size={28} />}
-                      title="Todo devuelto"
-                      description="No hay implementos prestados en este momento."
-                    />
-                  </td>
-                </tr>
-              )}
-              {!loadPrestados &&
-                prestados.map((a) => (
-                  <tr
-                    key={a.id}
-                    className="border-b border-slate-50 dark:border-slate-800/60 last:border-0 hover:bg-violet-50/30 dark:hover:bg-violet-900/20"
-                  >
-                    <td className="px-5 py-3 font-semibold text-slate-800 dark:text-slate-100">
-                      {a.implemento.nombre}
-                    </td>
-                    <td className="px-5 py-3 text-xs">
-                      <div className="font-semibold text-slate-700 dark:text-slate-200">
-                        Hab. {a.alquiler.habitacion.numero}
-                      </div>
-                      <div className="text-slate-500 dark:text-slate-400">
-                        {a.alquiler.clienteNombre}
-                      </div>
-                    </td>
-                    <td className="px-5 py-3 text-center tabular-nums font-bold text-slate-900 dark:text-slate-100">
-                      ×{a.cantidad}
-                    </td>
-                    <td className="px-5 py-3 text-xs text-slate-600 dark:text-slate-300 tabular-nums">
-                      {new Date(a.fechaAsignacion).toLocaleString('es-PE', {
-                        day: '2-digit',
-                        month: '2-digit',
-                        hour: '2-digit',
-                        minute: '2-digit',
-                      })}
-                    </td>
-                    <td className="px-5 py-3 text-right">
-                      {puedeEditar && (
-                        <button
-                          onClick={() => devolver.mutate(a.id)}
-                          className="inline-flex items-center gap-1.5 text-xs bg-emerald-100 dark:bg-emerald-900/40 hover:bg-emerald-200 text-emerald-700 dark:text-emerald-300 px-3 py-1.5 rounded-lg"
-                        >
-                          <ArrowDownToLine size={12} /> Devolver
-                        </button>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-            </tbody>
-          </table>
-        )}
+      <div className="flex gap-1 bg-slate-100 dark:bg-slate-800/60 rounded-xl p-1 w-fit">
+        {(['unidades', 'tipos', 'lavanderia'] as const).map((t) => (
+          <button
+            key={t}
+            onClick={() => {
+              setTab(t);
+              setBusqueda('');
+            }}
+            className={`px-4 py-1.5 rounded-lg text-xs font-semibold transition ${
+              tab === t
+                ? 'bg-white dark:bg-slate-900 shadow-sm text-slate-900 dark:text-slate-100'
+                : 'text-slate-600 dark:text-slate-300'
+            }`}
+          >
+            {t === 'unidades' && '🧺 Por habitación'}
+            {t === 'tipos' && '📋 Tipos'}
+            {t === 'lavanderia' && (
+              <>
+                🧼 Lavandería{' '}
+                <span className="text-[10px] bg-blue-500 text-white rounded-full px-1.5 ml-1">
+                  {enLavanderia.length}
+                </span>
+              </>
+            )}
+          </button>
+        ))}
       </div>
 
-      {showNuevo && (
-        <ImplementoModal
-          onClose={() => setShowNuevo(false)}
-          onSaved={() => {
-            setShowNuevo(false);
+      {/* ═══════════ TAB: UNIDADES (por habitación) ═══════════ */}
+      {tab === 'unidades' && (
+        <div className="space-y-3">
+          <div className="flex items-center gap-2 flex-wrap">
+            <div className="relative flex-1 max-w-md">
+              <Search
+                size={14}
+                className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
+              />
+              <input
+                value={busqueda}
+                onChange={(e) => setBusqueda(e.target.value)}
+                placeholder="Buscar por código, tipo o habitación…"
+                className="w-full pl-9 pr-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg text-sm bg-white dark:bg-slate-900"
+              />
+            </div>
+            {puedeEditar && (
+              <button
+                onClick={() => setShowCrearUnidad(true)}
+                className="inline-flex items-center gap-1.5 bg-violet-600 hover:bg-violet-700 text-white text-xs font-semibold px-3 py-2 rounded-lg"
+              >
+                <Plus size={14} /> Nueva unidad
+              </button>
+            )}
+          </div>
+
+          {unidadesQ.isLoading ? (
+            <Skeleton className="h-40" />
+          ) : unidadesFiltradas.length === 0 ? (
+            <EmptyState
+              title="No hay unidades registradas"
+              description="Crea un tipo de implemento primero (Toalla, Sábana, etc.) y después agrega unidades individuales con código único por habitación."
+            />
+          ) : (
+            <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-sm overflow-hidden">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="text-left text-[10px] uppercase tracking-widest text-slate-500 border-b border-slate-200 dark:border-slate-700">
+                    <th className="px-4 py-3">Código</th>
+                    <th className="px-4 py-3">Tipo</th>
+                    <th className="px-4 py-3">Hab.</th>
+                    <th className="px-4 py-3 text-center">Estado</th>
+                    {puedeEditar && <th className="px-4 py-3 text-right">Acc.</th>}
+                  </tr>
+                </thead>
+                <tbody>
+                  {unidadesFiltradas.map((u) => (
+                    <tr
+                      key={u.id}
+                      className="border-b border-slate-100 dark:border-slate-800/60 hover:bg-slate-50/60 dark:hover:bg-slate-800/30"
+                    >
+                      <td className="px-4 py-2.5 font-mono font-bold text-slate-800 dark:text-slate-100">
+                        {u.codigo}
+                      </td>
+                      <td className="px-4 py-2.5">
+                        <span className="inline-flex items-center gap-1.5">
+                          {u.tipo.icono && <span>{u.tipo.icono}</span>}
+                          {u.tipo.nombre}
+                        </span>
+                      </td>
+                      <td className="px-4 py-2.5 font-semibold text-violet-700 dark:text-violet-300">
+                        {u.habitacion.numero}
+                      </td>
+                      <td className="px-4 py-2.5 text-center">
+                        <span
+                          className={`inline-flex items-center gap-1 text-[10px] uppercase tracking-wider font-bold text-white px-2 py-0.5 rounded ${ESTADO_COLOR[u.estado]}`}
+                        >
+                          <span className="w-1.5 h-1.5 rounded-full bg-white/70" />
+                          {ESTADO_LABEL[u.estado]}
+                        </span>
+                      </td>
+                      {puedeEditar && (
+                        <td className="px-4 py-2.5 text-right">
+                          <button
+                            onClick={async () => {
+                              if (
+                                await confirm({
+                                  title: `Eliminar unidad ${u.codigo}`,
+                                  message:
+                                    'Esta acción la desactiva (no la borra). Histórico se preserva.',
+                                  variant: 'danger',
+                                  confirmText: 'Eliminar',
+                                })
+                              ) {
+                                api
+                                  .delete(`/implementos/${u.id}`)
+                                  .then(() => {
+                                    toast({
+                                      type: 'success',
+                                      title: 'Eliminada',
+                                    });
+                                    qc.invalidateQueries({
+                                      queryKey: ['implementos'],
+                                    });
+                                  })
+                                  .catch((e) =>
+                                    toast({
+                                      type: 'error',
+                                      title: e.response?.data?.message || e.message,
+                                    }),
+                                  );
+                              }
+                            }}
+                            className="p-1.5 rounded hover:bg-rose-100 dark:hover:bg-rose-900/30 text-rose-600"
+                          >
+                            <Trash2 size={13} />
+                          </button>
+                        </td>
+                      )}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ═══════════ TAB: TIPOS ═══════════ */}
+      {tab === 'tipos' && (
+        <div className="space-y-3">
+          {puedeEditar && (
+            <button
+              onClick={() => setShowCrearTipo(true)}
+              className="inline-flex items-center gap-1.5 bg-violet-600 hover:bg-violet-700 text-white text-xs font-semibold px-3 py-2 rounded-lg"
+            >
+              <Plus size={14} /> Nuevo tipo
+            </button>
+          )}
+          {tiposQ.isLoading ? (
+            <Skeleton className="h-40" />
+          ) : (tiposQ.data?.length || 0) === 0 ? (
+            <EmptyState
+              title="Sin tipos de implemento"
+              description="Crea los tipos genéricos primero (Toalla blanca, Sábana queen, Control TV…). Después en la pestaña 'Por habitación' agregás cuántas unidades de cada tipo tiene cada habitación."
+            />
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+              {tiposQ.data?.map((t) => (
+                <div
+                  key={t.id}
+                  className="bg-white dark:bg-slate-900 rounded-2xl shadow-sm p-4 flex items-center gap-3"
+                  style={
+                    t.color
+                      ? { borderLeft: `4px solid #${t.color}` }
+                      : undefined
+                  }
+                >
+                  <div className="text-2xl">{t.icono || '📦'}</div>
+                  <div className="flex-1 min-w-0">
+                    <div className="font-semibold text-slate-900 dark:text-slate-100 truncate">
+                      {t.nombre}
+                    </div>
+                    <div className="text-xs text-slate-500">
+                      {t._count?.unidades ?? 0} unidad(es) activas
+                    </div>
+                  </div>
+                  {puedeEditar && (
+                    <button
+                      onClick={async () => {
+                        if (
+                          await confirm({
+                            title: `Eliminar tipo ${t.nombre}`,
+                            message:
+                              'Solo se puede si no quedan unidades activas de este tipo.',
+                            variant: 'danger',
+                            confirmText: 'Eliminar',
+                          })
+                        ) {
+                          api
+                            .delete(`/implementos/tipos/${t.id}`)
+                            .then(() => {
+                              toast({ type: 'success', title: 'Eliminado' });
+                              qc.invalidateQueries({ queryKey: ['implementos'] });
+                            })
+                            .catch((e) =>
+                              toast({
+                                type: 'error',
+                                title: e.response?.data?.message || e.message,
+                              }),
+                            );
+                        }
+                      }}
+                      className="p-1.5 rounded hover:bg-rose-100 dark:hover:bg-rose-900/30 text-rose-600"
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ═══════════ TAB: LAVANDERÍA ═══════════ */}
+      {tab === 'lavanderia' && (
+        <div className="space-y-3">
+          <div className="bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800/50 rounded-xl p-3 text-xs text-blue-800 dark:text-blue-200">
+            <div className="flex items-start gap-2">
+              <WashingMachine size={16} className="shrink-0 mt-0.5" />
+              <div>
+                Lista de todos los implementos que las limpiadoras marcaron como
+                llevados a lavandería. Cuando recibís el bulto limpio, seleccionalos
+                y presioná <b>"Marcar como devueltos"</b> — vuelven a sus
+                habitaciones automáticamente.
+              </div>
+            </div>
+          </div>
+
+          {enLavanderia.length === 0 ? (
+            <EmptyState
+              title="Sin implementos en lavandería"
+              description="Las limpiadoras marcan los implementos sucios al completar la tarea de limpieza de cada habitación. Aparecen acá automáticamente."
+            />
+          ) : (
+            <>
+              <div className="flex items-center gap-2 flex-wrap">
+                <button
+                  onClick={() => {
+                    if (seleccion.size === enLavanderia.length) {
+                      setSeleccion(new Set());
+                    } else {
+                      setSeleccion(new Set(enLavanderia.map((u) => u.id)));
+                    }
+                  }}
+                  className="inline-flex items-center gap-1.5 text-xs font-semibold text-violet-700 hover:bg-violet-50 px-2 py-1 rounded"
+                >
+                  {seleccion.size === enLavanderia.length ? (
+                    <>
+                      <CheckSquare size={14} /> Quitar selección
+                    </>
+                  ) : (
+                    <>
+                      <Square size={14} /> Seleccionar todo ({enLavanderia.length})
+                    </>
+                  )}
+                </button>
+                <div className="text-xs text-slate-500">
+                  {seleccion.size} seleccionada(s)
+                </div>
+                <div className="flex-1" />
+                {puedeEditar && seleccion.size > 0 && (
+                  <button
+                    onClick={() => retornar.mutate(Array.from(seleccion))}
+                    disabled={retornar.isPending}
+                    className="inline-flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold px-3 py-2 rounded-lg disabled:opacity-50"
+                  >
+                    <Home size={14} />
+                    {retornar.isPending
+                      ? 'Devolviendo…'
+                      : `Marcar ${seleccion.size} como devuelta(s)`}
+                  </button>
+                )}
+              </div>
+
+              <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-sm overflow-hidden">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="text-left text-[10px] uppercase tracking-widest text-slate-500 border-b border-slate-200 dark:border-slate-700">
+                      <th className="px-3 py-3 w-8" />
+                      <th className="px-4 py-3">Código</th>
+                      <th className="px-4 py-3">Tipo</th>
+                      <th className="px-4 py-3">Vuelve a Hab.</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {enLavanderia.map((u) => {
+                      const sel = seleccion.has(u.id);
+                      return (
+                        <tr
+                          key={u.id}
+                          onClick={() => {
+                            const next = new Set(seleccion);
+                            if (sel) next.delete(u.id);
+                            else next.add(u.id);
+                            setSeleccion(next);
+                          }}
+                          className={`border-b border-slate-100 dark:border-slate-800/60 cursor-pointer ${
+                            sel
+                              ? 'bg-violet-50 dark:bg-violet-900/30'
+                              : 'hover:bg-slate-50/60 dark:hover:bg-slate-800/30'
+                          }`}
+                        >
+                          <td className="px-3 py-2.5">
+                            {sel ? (
+                              <CheckSquare
+                                size={16}
+                                className="text-violet-600"
+                              />
+                            ) : (
+                              <Square size={16} className="text-slate-400" />
+                            )}
+                          </td>
+                          <td className="px-4 py-2.5 font-mono font-bold text-slate-800 dark:text-slate-100">
+                            {u.codigo}
+                          </td>
+                          <td className="px-4 py-2.5">
+                            {u.tipo.icono && (
+                              <span className="mr-1">{u.tipo.icono}</span>
+                            )}
+                            {u.tipo.nombre}
+                          </td>
+                          <td className="px-4 py-2.5 font-semibold text-violet-700 dark:text-violet-300">
+                            {u.habitacion.numero}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </>
+          )}
+        </div>
+      )}
+
+      {/* ═══════════ Modales ═══════════ */}
+      {showCrearTipo && (
+        <CrearTipoModal
+          onClose={() => setShowCrearTipo(false)}
+          onCreado={() => {
+            setShowCrearTipo(false);
             qc.invalidateQueries({ queryKey: ['implementos'] });
-            toast({ type: 'success', title: 'Implemento creado' });
           }}
         />
       )}
-      {editar && (
-        <ImplementoModal
-          implemento={editar}
-          onClose={() => setEditar(null)}
-          onSaved={() => {
-            setEditar(null);
+      {showCrearUnidad && (
+        <CrearUnidadModal
+          tipos={tiposQ.data || []}
+          habitaciones={habitacionesQ.data || []}
+          onClose={() => setShowCrearUnidad(false)}
+          onCreado={() => {
+            setShowCrearUnidad(false);
             qc.invalidateQueries({ queryKey: ['implementos'] });
-            toast({ type: 'success', title: 'Implemento actualizado' });
           }}
         />
       )}
@@ -331,301 +525,313 @@ export default function ImplementosPage() {
   );
 }
 
-function Fila({
-  it,
-  puedeEditar,
-  onAjustar,
-  onEditar,
-  onEliminar,
-}: {
-  it: Implemento;
-  puedeEditar: boolean;
-  onAjustar: (delta: number) => void;
-  onEditar: () => void;
-  onEliminar: () => void;
-}) {
-  const prestados = it.stockTotal - it.stockDisponible;
-  const sinStock = it.stockDisponible === 0 && it.stockTotal > 0;
-  return (
-    <tr className="border-b border-slate-50 dark:border-slate-800/60 last:border-0 hover:bg-violet-50/30 dark:hover:bg-violet-900/20">
-      <td className="px-5 py-3">
-        <div className="flex items-center gap-2.5">
-          <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-blue-500 to-blue-600 text-white flex items-center justify-center shrink-0">
-            <Sparkles size={14} />
-          </div>
-          <div>
-            <div className="font-semibold text-slate-800 dark:text-slate-100">
-              {it.nombre}
-            </div>
-            {it.descripcion && (
-              <div className="text-[11px] text-slate-500 dark:text-slate-400">
-                {it.descripcion}
-              </div>
-            )}
-          </div>
-        </div>
-      </td>
-      <td className="px-5 py-3 text-center">
-        <div className="inline-flex items-center gap-2">
-          {puedeEditar && (
-            <button
-              onClick={() => onAjustar(-1)}
-              disabled={it.stockTotal === 0}
-              className="w-7 h-7 rounded-lg bg-rose-100 dark:bg-rose-900/40 text-rose-700 dark:text-rose-300 disabled:opacity-30 flex items-center justify-center"
-              title="Restar 1 del stock total"
-            >
-              <Minus size={12} />
-            </button>
-          )}
-          <div
-            className={`min-w-[80px] text-center font-bold tabular-nums ${
-              sinStock
-                ? 'text-rose-700 dark:text-rose-300'
-                : 'text-slate-900 dark:text-slate-100'
-            }`}
-          >
-            {it.stockDisponible} <span className="text-slate-400 dark:text-slate-500 font-normal text-xs">/ {it.stockTotal}</span>
-          </div>
-          {puedeEditar && (
-            <button
-              onClick={() => onAjustar(1)}
-              className="w-7 h-7 rounded-lg bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300 flex items-center justify-center"
-              title="Sumar 1 al stock total"
-            >
-              <Plus size={12} />
-            </button>
-          )}
-        </div>
-        {sinStock && (
-          <div className="text-[10px] text-rose-600 dark:text-rose-400 mt-0.5 flex items-center justify-center gap-1">
-            <AlertTriangle size={10} /> Sin disponibilidad
-          </div>
-        )}
-      </td>
-      <td className="px-5 py-3 text-center tabular-nums">
-        {prestados > 0 ? (
-          <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded-full bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300 text-[11px] font-bold">
-            {prestados} fuera
-          </span>
-        ) : (
-          <span className="text-slate-400 dark:text-slate-500 text-xs">—</span>
-        )}
-      </td>
-      {puedeEditar && (
-        <td className="px-5 py-3 text-right">
-          <div className="inline-flex items-center gap-1">
-            <button
-              onClick={onEditar}
-              className="inline-flex items-center gap-1.5 text-xs text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 px-2.5 py-1.5 rounded-lg"
-            >
-              <Pencil size={13} /> Editar
-            </button>
-            <button
-              onClick={onEliminar}
-              className="w-7 h-7 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-900/30 flex items-center justify-center"
-            >
-              <Trash2 size={13} />
-            </button>
-          </div>
-        </td>
-      )}
-    </tr>
-  );
-}
-
-function ImplementoModal({
-  implemento,
+// ────────────────────────────────────────────────────────────
+// Modal crear tipo
+// ────────────────────────────────────────────────────────────
+function CrearTipoModal({
   onClose,
-  onSaved,
+  onCreado,
 }: {
-  implemento?: Implemento;
   onClose: () => void;
-  onSaved: () => void;
+  onCreado: () => void;
 }) {
-  const esEdicion = !!implemento;
-  const [nombre, setNombre] = useState(implemento?.nombre || '');
-  const [descripcion, setDescripcion] = useState(implemento?.descripcion || '');
-  const [stockTotal, setStockTotal] = useState(
-    implemento?.stockTotal != null ? String(implemento.stockTotal) : '0',
-  );
+  const { show: toast } = useToast();
+  const [nombre, setNombre] = useState('');
+  const [icono, setIcono] = useState('🧖');
+  const [color, setColor] = useState('8b5cf6');
   const [error, setError] = useState<string | null>(null);
-  const [guardando, setGuardando] = useState(false);
 
-  const submit = async () => {
-    if (!nombre.trim()) return setError('Nombre obligatorio');
-    setGuardando(true);
-    setError(null);
-    try {
-      if (esEdicion) {
-        await api.patch(`/implementos/${implemento!.id}`, {
+  const crear = useMutation({
+    mutationFn: async () =>
+      (
+        await api.post('/implementos/tipos', {
           nombre: nombre.trim(),
-          descripcion: descripcion || undefined,
-        });
-        // Si el stockTotal cambió, llamar ajuste-stock
-        const nuevo = Number(stockTotal);
-        const delta = nuevo - implemento!.stockTotal;
-        if (delta !== 0)
-          await api.post(`/implementos/${implemento!.id}/ajuste-stock`, {
-            delta,
-          });
-      } else {
-        await api.post('/implementos', {
-          nombre: nombre.trim(),
-          descripcion: descripcion || undefined,
-          stockTotal: Number(stockTotal),
-        });
-      }
-      onSaved();
-    } catch (err: any) {
-      setError(err.response?.data?.message || 'Error');
-    } finally {
-      setGuardando(false);
-    }
-  };
+          icono: icono.trim() || null,
+          color: color.trim() || null,
+        })
+      ).data,
+    onSuccess: () => {
+      toast({ type: 'success', title: 'Tipo creado' });
+      onCreado();
+    },
+    onError: (err: any) =>
+      setError(err.response?.data?.message || err.message),
+  });
+
+  const iconosComunes = ['🧖', '🛏️', '📺', '🛁', '🧹', '🪥', '💡', '🧴'];
 
   return (
-    <div className="fixed inset-0 bg-black/40 dark:bg-black/70 flex items-center justify-center p-4 z-50">
-      <div className="bg-white dark:bg-slate-900 dark:ring-1 dark:ring-slate-800 rounded-2xl w-full max-w-md shadow-2xl">
-        <div className="px-5 py-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
-          <h2 className="font-hotel text-lg font-bold text-slate-900 dark:text-slate-100">
-            {esEdicion ? 'Editar implemento' : 'Nuevo implemento'}
-          </h2>
-          <button onClick={onClose} className="text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 p-1">
-            <X size={18} />
+    <div
+      className="fixed inset-0 bg-slate-950/60 backdrop-blur-sm flex items-center justify-center p-4 z-[100]"
+      onClick={onClose}
+    >
+      <div
+        className="bg-white dark:bg-slate-900 rounded-2xl w-full max-w-md shadow-2xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex justify-between items-center p-4 border-b border-slate-100 dark:border-slate-800">
+          <h3 className="font-semibold">Nuevo tipo de implemento</h3>
+          <button onClick={onClose} className="p-1.5 hover:bg-slate-100 rounded">
+            <X size={16} />
           </button>
         </div>
-        <div className="p-5 space-y-4">
-          <Field label="Nombre">
+        <div className="p-4 space-y-3">
+          <div>
+            <label className="text-[10px] font-semibold uppercase tracking-widest text-slate-500">
+              Nombre
+            </label>
             <input
-              autoFocus
               value={nombre}
               onChange={(e) => setNombre(e.target.value)}
-              placeholder="Ej: Toalla grande blanca"
-              className={inputCls}
+              placeholder="Ej: Toalla blanca grande"
+              className="w-full mt-1 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm bg-white dark:bg-slate-800"
             />
-          </Field>
-          <Field label="Descripción (opcional)">
-            <input
-              value={descripcion}
-              onChange={(e) => setDescripcion(e.target.value)}
-              placeholder="Características o detalles"
-              className={inputCls}
-            />
-          </Field>
-          <Field label="Stock total">
-            <input
-              type="number"
-              min={0}
-              value={stockTotal}
-              onChange={(e) => setStockTotal(e.target.value)}
-              className={inputCls}
-            />
-            <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">
-              Cantidad total que tiene el hotel. El sistema descuenta automáticamente cuando se prestan a un alquiler.
+          </div>
+          <div>
+            <label className="text-[10px] font-semibold uppercase tracking-widest text-slate-500">
+              Icono
+            </label>
+            <div className="flex gap-1 mt-1 flex-wrap">
+              {iconosComunes.map((i) => (
+                <button
+                  key={i}
+                  onClick={() => setIcono(i)}
+                  className={`text-2xl w-10 h-10 rounded-lg ${
+                    icono === i
+                      ? 'bg-violet-100 ring-2 ring-violet-500'
+                      : 'bg-slate-100 hover:bg-slate-200'
+                  }`}
+                >
+                  {i}
+                </button>
+              ))}
+              <input
+                value={icono}
+                onChange={(e) => setIcono(e.target.value)}
+                maxLength={4}
+                className="w-12 h-10 text-center text-xl border border-slate-200 rounded-lg"
+                placeholder="?"
+              />
             </div>
-          </Field>
+          </div>
+          <div>
+            <label className="text-[10px] font-semibold uppercase tracking-widest text-slate-500">
+              Color (hex sin #)
+            </label>
+            <div className="flex items-center gap-2 mt-1">
+              <input
+                value={color}
+                onChange={(e) =>
+                  setColor(e.target.value.replace(/[^0-9a-fA-F]/g, '').slice(0, 6))
+                }
+                placeholder="8b5cf6"
+                className="flex-1 font-mono border border-slate-200 rounded-lg px-3 py-2 text-sm"
+              />
+              <div
+                className="w-10 h-10 rounded-lg border border-slate-200"
+                style={{ backgroundColor: `#${color}` }}
+              />
+            </div>
+          </div>
           {error && (
-            <div className="text-sm text-rose-700 dark:text-rose-300 bg-rose-50 dark:bg-rose-900/30 border border-rose-200 dark:border-rose-800 rounded-lg p-2.5">
+            <div className="text-xs text-rose-700 bg-rose-50 p-2 rounded">
               {error}
             </div>
           )}
-        </div>
-        <div className="px-5 py-4 border-t border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50 flex gap-2">
-          <button
-            onClick={onClose}
-            className="flex-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 py-2.5 rounded-xl font-medium"
-          >
-            Cancelar
-          </button>
-          <button
-            onClick={submit}
-            disabled={guardando}
-            className="flex-1 bg-gradient-to-r from-violet-600 to-violet-500 hover:from-violet-700 hover:to-violet-600 text-white py-2.5 rounded-xl font-semibold shadow-md disabled:opacity-40"
-          >
-            {guardando ? 'Guardando…' : esEdicion ? 'Guardar' : 'Crear'}
-          </button>
+          <div className="flex gap-2 pt-2">
+            <button
+              onClick={onClose}
+              className="flex-1 bg-slate-100 hover:bg-slate-200 py-2 rounded-lg text-sm font-medium"
+            >
+              Cancelar
+            </button>
+            <button
+              onClick={() => crear.mutate()}
+              disabled={crear.isPending || !nombre.trim()}
+              className="flex-1 bg-violet-600 hover:bg-violet-700 text-white py-2 rounded-lg text-sm font-semibold disabled:opacity-50"
+            >
+              {crear.isPending ? 'Creando…' : 'Crear tipo'}
+            </button>
+          </div>
         </div>
       </div>
     </div>
   );
 }
 
-// helpers
-function Tile({
-  color,
-  icon,
-  label,
-  value,
-  alert,
+// ────────────────────────────────────────────────────────────
+// Modal crear unidad
+// ────────────────────────────────────────────────────────────
+function CrearUnidadModal({
+  tipos,
+  habitaciones,
+  onClose,
+  onCreado,
 }: {
-  color: string;
-  icon: React.ReactNode;
-  label: string;
-  value: React.ReactNode;
-  alert?: boolean;
+  tipos: TipoImplemento[];
+  habitaciones: Habitacion[];
+  onClose: () => void;
+  onCreado: () => void;
 }) {
+  const { show: toast } = useToast();
+  const [tipoId, setTipoId] = useState<number | ''>(tipos[0]?.id || '');
+  const [habitacionId, setHabitacionId] = useState<number | ''>('');
+  const [codigo, setCodigo] = useState('');
+  const [cantidad, setCantidad] = useState('1');
+  const [error, setError] = useState<string | null>(null);
+
+  const tipoSeleccionado = tipos.find((t) => t.id === tipoId);
+
+  const crear = useMutation({
+    mutationFn: async () => {
+      const n = Number(cantidad) || 1;
+      const promises: Promise<any>[] = [];
+      // Si cantidad > 1, generamos códigos secuenciales agregando sufijo numérico
+      for (let i = 0; i < n; i++) {
+        const code =
+          n === 1
+            ? codigo.trim().toUpperCase()
+            : `${codigo.trim().toUpperCase()}-${String(i + 1).padStart(2, '0')}`;
+        promises.push(
+          api.post('/implementos', {
+            tipoId: Number(tipoId),
+            codigo: code,
+            habitacionId: Number(habitacionId),
+          }),
+        );
+      }
+      return Promise.all(promises);
+    },
+    onSuccess: (results: any[]) => {
+      toast({
+        type: 'success',
+        title: `${results.length} unidad(es) creada(s)`,
+      });
+      onCreado();
+    },
+    onError: (err: any) =>
+      setError(err.response?.data?.message || err.message),
+  });
+
+  const n = Number(cantidad) || 1;
+  const previewCodigos =
+    n === 1
+      ? [codigo.trim().toUpperCase() || 'CÓDIGO']
+      : Array.from({ length: Math.min(n, 4) }, (_, i) =>
+          `${codigo.trim().toUpperCase() || 'CÓDIGO'}-${String(i + 1).padStart(2, '0')}`,
+        );
+
   return (
     <div
-      className={`rounded-2xl p-4 text-white bg-gradient-to-br ${color} shadow-md relative overflow-hidden ${alert ? 'animate-pulse' : ''}`}
+      className="fixed inset-0 bg-slate-950/60 backdrop-blur-sm flex items-center justify-center p-4 z-[100]"
+      onClick={onClose}
     >
-      <div className="absolute -right-4 -bottom-4 opacity-20 scale-[3]">{icon}</div>
-      <div className="relative">
-        <div className="text-[10px] uppercase tracking-widest opacity-90 font-semibold">{label}</div>
-        <div className="text-2xl font-hotel font-bold mt-1 tabular-nums">{value}</div>
+      <div
+        className="bg-white dark:bg-slate-900 rounded-2xl w-full max-w-md shadow-2xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex justify-between items-center p-4 border-b border-slate-100 dark:border-slate-800">
+          <h3 className="font-semibold">Nueva unidad</h3>
+          <button onClick={onClose} className="p-1.5 hover:bg-slate-100 rounded">
+            <X size={16} />
+          </button>
+        </div>
+        <div className="p-4 space-y-3">
+          <div>
+            <label className="text-[10px] font-semibold uppercase tracking-widest text-slate-500">
+              Tipo
+            </label>
+            <select
+              value={tipoId}
+              onChange={(e) => setTipoId(Number(e.target.value))}
+              className="w-full mt-1 border border-slate-200 rounded-lg px-3 py-2 text-sm bg-white"
+            >
+              <option value="">— Elegir tipo —</option>
+              {tipos.map((t) => (
+                <option key={t.id} value={t.id}>
+                  {t.icono} {t.nombre}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="text-[10px] font-semibold uppercase tracking-widest text-slate-500">
+              Habitación
+            </label>
+            <select
+              value={habitacionId}
+              onChange={(e) => setHabitacionId(Number(e.target.value))}
+              className="w-full mt-1 border border-slate-200 rounded-lg px-3 py-2 text-sm bg-white"
+            >
+              <option value="">— Elegir habitación —</option>
+              {habitaciones.map((h) => (
+                <option key={h.id} value={h.id}>
+                  Hab. {h.numero}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-[10px] font-semibold uppercase tracking-widest text-slate-500">
+                Código base
+              </label>
+              <input
+                value={codigo}
+                onChange={(e) =>
+                  setCodigo(e.target.value.toUpperCase().replace(/\s/g, '-'))
+                }
+                placeholder="TBG"
+                className="w-full mt-1 font-mono font-bold border border-slate-200 rounded-lg px-3 py-2 text-sm uppercase"
+              />
+            </div>
+            <div>
+              <label className="text-[10px] font-semibold uppercase tracking-widest text-slate-500">
+                Cantidad
+              </label>
+              <input
+                type="number"
+                min={1}
+                max={50}
+                value={cantidad}
+                onChange={(e) => setCantidad(e.target.value)}
+                className="w-full mt-1 border border-slate-200 rounded-lg px-3 py-2 text-sm"
+              />
+            </div>
+          </div>
+          {codigo.trim() && (
+            <div className="bg-violet-50 dark:bg-violet-900/30 border border-violet-200 rounded-lg p-2 text-[11px] text-violet-800 dark:text-violet-200">
+              Se crearán:{' '}
+              <span className="font-mono font-bold">
+                {previewCodigos.join(', ')}
+                {n > 4 && ` … +${n - 4} más`}
+              </span>
+            </div>
+          )}
+          {error && (
+            <div className="text-xs text-rose-700 bg-rose-50 p-2 rounded">
+              {error}
+            </div>
+          )}
+          <div className="flex gap-2 pt-2">
+            <button
+              onClick={onClose}
+              className="flex-1 bg-slate-100 hover:bg-slate-200 py-2 rounded-lg text-sm font-medium"
+            >
+              Cancelar
+            </button>
+            <button
+              onClick={() => crear.mutate()}
+              disabled={
+                crear.isPending || !tipoId || !habitacionId || !codigo.trim()
+              }
+              className="flex-1 bg-violet-600 hover:bg-violet-700 text-white py-2 rounded-lg text-sm font-semibold disabled:opacity-50"
+            >
+              {crear.isPending ? 'Creando…' : `Crear ${n > 1 ? n : 1} unidad(es)`}
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   );
 }
-
-function TabBtn({
-  children,
-  active,
-  onClick,
-}: {
-  children: React.ReactNode;
-  active: boolean;
-  onClick: () => void;
-}) {
-  return (
-    <button
-      onClick={onClick}
-      className={`px-5 py-3 text-sm font-semibold transition border-b-2 -mb-px ${
-        active
-          ? 'border-violet-600 text-violet-700 dark:text-violet-300'
-          : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
-      }`}
-    >
-      {children}
-    </button>
-  );
-}
-
-function Th({
-  children,
-  align = 'left',
-}: {
-  children: React.ReactNode;
-  align?: 'left' | 'right' | 'center';
-}) {
-  return (
-    <th
-      className={`px-5 py-3 text-[10px] font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-widest text-${align}`}
-    >
-      {children}
-    </th>
-  );
-}
-
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <div>
-      <label className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-widest">
-        {label}
-      </label>
-      <div className="mt-1">{children}</div>
-    </div>
-  );
-}
-
-const inputCls =
-  'w-full bg-white dark:bg-slate-800 dark:text-slate-100 border border-slate-200 dark:border-slate-700 rounded-xl px-3.5 py-2.5 text-sm focus:outline-none focus:border-violet-400 focus:ring-2 focus:ring-violet-100 dark:focus:ring-violet-900/30';

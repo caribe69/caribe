@@ -1,5 +1,6 @@
 import { Type } from 'class-transformer';
 import {
+  IsArray,
   IsInt,
   IsOptional,
   IsString,
@@ -24,4 +25,11 @@ export class RegistrarUsoProductoDto {
 
 export class CompletarTareaDto {
   @IsOptional() @IsString() notas?: string;
+  /**
+   * IDs de ImplementoUnidad que la limpiadora marcó para llevar a
+   * lavandería. El backend cambia su estado a EN_LAVANDERIA dentro de
+   * la misma transacción que completa la tarea.
+   */
+  @IsOptional() @IsArray() @Type(() => Number) @IsInt({ each: true })
+  unidadesALavanderia?: number[];
 }

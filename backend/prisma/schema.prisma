@@ -33,6 +33,7 @@ model Sede {
   productos         Producto[]
   productosLimpieza ProductoLimpieza[]
   implementos       Implemento[]
+  tiposImplemento   TipoImplemento[]
   alquileres        Alquiler[]
   tareasLimpieza    TareaLimpieza[]
   turnosCaja        TurnoCaja[]
@@ -111,6 +112,7 @@ model Usuario {
   auditLogs                AuditLog[]
   personalRecord           Personal?
   transferenciasPersonalEjecutadas TransferenciaPersonal[] @relation("TPTransferidoPor")
+  movimientosImplemento    MovimientoImplemento[]
 
   @@index([sedeId])
 }
@@ -158,6 +160,7 @@ model Habitacion {
   alquileres      Alquiler[]
   tareasLimpieza  TareaLimpieza[]
   fotos           FotoHabitacion[]
+  implementoUnidades ImplementoUnidad[]
 
   @@unique([sedeId, numero])
   @@index([sedeId, estado])
@@ -547,6 +550,7 @@ model TareaLimpieza {
 
   fotos          FotoLimpieza[]
   productosUsados UsoProductoLimpieza[]
+  movimientosImplemento MovimientoImplemento[]
 
   @@index([sedeId, estado])
   @@index([asignadaAId])
@@ -876,4 +880,93 @@ model AuditLog {
   @@index([accion, creadoEn])
   @@index([recurso, recursoId])
   @@index([creadoEn])
+}
+
+// ============================================================
+// IMPLEMENTOS POR HABITACIÓN (nuevo modelo, reemplaza al viejo)
+//
+// Cada habitación tiene un set de implementos individuales (cada
+// toalla, sábana, control TV con código único). Estados:
+//   EN_HABITACION  → en su habitación (default)
+//   EN_TRANSITO    → siendo llevada a lavandería (limpieza la marcó)
+//   EN_LAVANDERIA  → lavándose, fuera de la habitación
+//   PERDIDO        → marcado por admin si no aparece
+//
+// Flujo típico:
+// 1. Admin crea TipoImplemento por sede (ej. "Toalla blanca grande")
+// 2. Admin crea ImplementoUnidad con código único y la asigna a hab 102
+// 3. Cliente se va → habitación pasa a ALISTANDO
+// 4. Limpiadora completa la tarea y marca qué unidades van a lavandería
+// 5. Esas unidades pasan a EN_TRANSITO → EN_LAVANDERIA
+// 6. Admin/hotelero confirma desde la web cuando vuelven limpias
+//    → vuelven a EN_HABITACION (a su habitación original)
+// ============================================================
+
+enum EstadoImplementoUnidad {
+  EN_HABITACION
+  EN_TRANSITO
+  EN_LAVANDERIA
+  PERDIDO
+}
+
+/// Catálogo de tipos de implemento por sede (Toalla, Sábana, Control...)
+model TipoImplemento {
+  id            Int      @id @default(autoincrement())
+  sedeId        Int
+  sede          Sede     @relation(fields: [sedeId], references: [id])
+  nombre        String
+  /// Emoji/icono visual opcional (🧖 toalla, 🛏️ sábana, 📺 control)
+  icono         String?
+  /// Color de chip en la UI (hex sin #, ej "8b5cf6")
+  color         String?
+  activo        Boolean  @default(true)
+  creadoEn      DateTime @default(now())
+
+  unidades      ImplementoUnidad[]
+
+  @@unique([sedeId, nombre])
+  @@index([sedeId, activo])
+}
+
+/// Cada pieza individual con código único asignada a una habitación
+model ImplementoUnidad {
+  id              Int                    @id @default(autoincrement())
+  tipoId          Int
+  tipo            TipoImplemento         @relation(fields: [tipoId], references: [id])
+  /// Código único impreso/etiquetado (ej. "TBG-047", "SAB-012")
+  codigo          String                 @unique
+  /// Habitación a la que PERTENECE (su "casa"). Aunque esté en lavandería,
+  /// vuelve acá cuando se confirme el retorno.
+  habitacionId    Int
+  habitacion      Habitacion             @relation(fields: [habitacionId], references: [id])
+  estado          EstadoImplementoUnidad @default(EN_HABITACION)
+  notas           String?
+  activo          Boolean                @default(true)
+  creadoEn        DateTime               @default(now())
+  actualizadoEn   DateTime               @updatedAt
+
+  movimientos     MovimientoImplemento[]
+
+  @@index([habitacionId, estado])
+  @@index([tipoId, estado])
+  @@index([estado])
+}
+
+/// Historial de cambios de estado de cada unidad (auditoría completa)
+model MovimientoImplemento {
+  id               Int                    @id @default(autoincrement())
+  unidadId         Int
+  unidad           ImplementoUnidad       @relation(fields: [unidadId], references: [id], onDelete: Cascade)
+  estadoAnterior   EstadoImplementoUnidad
+  estadoNuevo      EstadoImplementoUnidad
+  usuarioId        Int?
+  usuario          Usuario?               @relation(fields: [usuarioId], references: [id])
+  /// Si el cambio fue por una limpieza, link a la tarea
+  tareaLimpiezaId  Int?
+  tareaLimpieza    TareaLimpieza?         @relation(fields: [tareaLimpiezaId], references: [id], onDelete: SetNull)
+  notas            String?
+  fecha            DateTime               @default(now())
+
+  @@index([unidadId, fecha])
+  @@index([fecha])
 }

@@ -212,6 +212,20 @@ export class LimpiezaService {
     if (!t.fotos.length)
       throw new BadRequestException('Debes subir al menos una foto de evidencia');
 
+    // Si la limpiadora seleccionó implementos para llevar a lavandería,
+    // los validamos antes de la transacción para no abortar a mitad.
+    const unidadesIds = dto?.unidadesALavanderia ?? [];
+    if (unidadesIds.length > 0) {
+      const unidades = await this.prisma.implementoUnidad.findMany({
+        where: { id: { in: unidadesIds }, habitacionId: t.habitacionId },
+      });
+      if (unidades.length !== unidadesIds.length) {
+        throw new BadRequestException(
+          'Algunos implementos no existen o no pertenecen a esta habitación',
+        );
+      }
+    }
+
     await this.prisma.$transaction(async (tx) => {
       await tx.tareaLimpieza.update({
         where: { id: t.id },
@@ -225,6 +239,29 @@ export class LimpiezaService {
         where: { id: t.habitacionId },
         data: { estado: EstadoHabitacion.DISPONIBLE },
       });
+
+      // Mover los implementos marcados a EN_LAVANDERIA + registrar
+      // movimientos para auditoría. La habitación queda con menos
+      // implementos hasta que el admin confirme el retorno.
+      for (const unidadId of unidadesIds) {
+        const unidad = await tx.implementoUnidad.findUnique({
+          where: { id: unidadId },
+        });
+        if (!unidad) continue;
+        await tx.implementoUnidad.update({
+          where: { id: unidadId },
+          data: { estado: 'EN_LAVANDERIA' },
+        });
+        await tx.movimientoImplemento.create({
+          data: {
+            unidadId,
+            estadoAnterior: unidad.estado,
+            estadoNuevo: 'EN_LAVANDERIA',
+            usuarioId: user.sub,
+            tareaLimpiezaId: t.id,
+          },
+        });
+      }
     });
 
     // Devuelve la tarea completa (con piso, fotos, productos) para el cliente

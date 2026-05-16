@@ -1,14 +1,12 @@
 import {
   BadRequestException,
   ConflictException,
-  ForbiddenException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
 import {
   EstadoHabitacion,
   EstadoTareaLimpieza,
-  Rol,
 } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { JwtPayload } from '../auth/auth.service';
@@ -35,10 +33,10 @@ export class LimpiezaService {
   ) {
     const sedeId = resolveSedeId(user, sedeIdQuery);
     const where: any = { sedeId, ...(estado ? { estado } : {}) };
-    // LIMPIEZA ve sus tareas asignadas + las no asignadas (puede "tomarlas")
-    if (user.rol === Rol.LIMPIEZA) {
-      where.OR = [{ asignadaAId: user.sub }, { asignadaAId: null }];
-    }
+    // Cualquier limpiadora ve TODAS las tareas de su sede — la auto-
+    // asignación queda como hint visual (campo `asignadaA`), pero
+    // cualquier limpiadora puede tomarlas. El filtro por sede ya está
+    // arriba con resolveSedeId(), que para LIMPIEZA usa su sedeId fijo.
     return this.prisma.tareaLimpieza.findMany({
       where,
       include: {
@@ -62,9 +60,10 @@ export class LimpiezaService {
       },
     });
     if (!t) throw new NotFoundException('Tarea no encontrada');
+    // Solo se requiere pertenecer a la misma sede. Cualquier limpiadora
+    // de la sede puede ver/operar cualquier tarea — la asignación es
+    // solo una sugerencia inicial del sistema.
     enforceSede(user, t.sedeId);
-    if (user.rol === Rol.LIMPIEZA && t.asignadaAId !== user.sub)
-      throw new ForbiddenException('Tarea no asignada a ti');
     return t;
   }
 
@@ -117,12 +116,14 @@ export class LimpiezaService {
     if (t.estado !== EstadoTareaLimpieza.PENDIENTE)
       throw new BadRequestException('Tarea no está pendiente');
 
-    // Auto-claim: si la tarea no estaba asignada, se asigna al que inicia
+    // Quien la inicia se vuelve la dueña real de la tarea — aunque el
+    // sistema haya pre-asignado a otra limpiadora al crearla, la persona
+    // que efectivamente la trabaja es la que aparece como asignada.
     const dataToUpdate: any = {
       estado: EstadoTareaLimpieza.EN_PROCESO,
       iniciadaEn: new Date(),
+      asignadaAId: user.sub,
     };
-    if (!t.asignadaAId) dataToUpdate.asignadaAId = user.sub;
 
     await this.prisma.tareaLimpieza.update({
       where: { id: t.id },

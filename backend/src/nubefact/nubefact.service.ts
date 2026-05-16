@@ -6,7 +6,9 @@ import {
   ServiceUnavailableException,
 } from '@nestjs/common';
 import axios, { AxiosError } from 'axios';
+import { TipoComprobanteSerie } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
+import { SunatSeriesService } from './sunat-series.service';
 
 type TipoComprobanteNF = 1 | 2 | 3 | 4 | 7 | 8;
 
@@ -41,7 +43,10 @@ interface EmitirOpts {
 @Injectable()
 export class NubeFactService {
   private readonly log = new Logger(NubeFactService.name);
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private sunatSeries: SunatSeriesService,
+  ) {}
 
   // ─────────────────────────────────────────────────────────
   // Lectura de configuración (única fila id=1 en AppConfig)
@@ -179,9 +184,30 @@ export class NubeFactService {
     const cfg = await this.getConfig();
     const esFactura = alquiler.tipoComprobante === 'FACTURA';
     const tipo: 1 | 2 = esFactura ? 1 : 2;
-    const serie =
-      esFactura ? cfg.nubefactSerieFactura : cfg.nubefactSerieBoleta;
-    const numero = opts.numeroOverride ?? (await this.proximoNumero(serie));
+
+    // Serie + número provienen de SunatSerie por SEDE (incremento atómico).
+    // Si opts.numeroOverride viene seteado (re-emisión), respetamos esa serie
+    // y número exactos sin reservar nada nuevo.
+    const tipoSerie: TipoComprobanteSerie = esFactura ? 'FACTURA' : 'BOLETA';
+    let serie: string;
+    let numero: number;
+    let serieId: number | null = null;
+    if (opts.numeroOverride != null) {
+      if (!alquiler.sunatSerie)
+        throw new BadRequestException(
+          'No se puede re-emitir con un número específico si el alquiler no tiene serie previa.',
+        );
+      serie = alquiler.sunatSerie;
+      numero = opts.numeroOverride;
+    } else {
+      const reservado = await this.sunatSeries.reservarSiguiente(
+        alquiler.sedeId!,
+        tipoSerie,
+      );
+      serie = reservado.serie;
+      numero = reservado.numero;
+      serieId = reservado.serieId;
+    }
 
     // IGV: 10.5% habitación (hospedaje) · 18% productos
     const igvHospedajePct = Number(cfg.nubefactIgvHospedaje);
@@ -255,7 +281,15 @@ export class NubeFactService {
       items,
     };
 
-    return { body, tipo, serie, numero };
+    return {
+      body,
+      tipo,
+      serie,
+      numero,
+      serieId,
+      sedeId: alquiler.sedeId!,
+      tipoSerie,
+    };
   }
 
   // ─────────────────────────────────────────────────────────
@@ -263,14 +297,39 @@ export class NubeFactService {
   // se llama desde un endpoint cuando el usuario quiera)
   // ─────────────────────────────────────────────────────────
   async emitirDesdeAlquiler(alquilerId: number, opts: EmitirOpts = {}) {
-    const { body, serie, numero, tipo } = await this.mapAlquilerToComprobante(
-      alquilerId,
-      opts,
-    );
-    const resp = await this.post(body);
+    let { body, serie, numero, tipo, serieId, sedeId, tipoSerie } =
+      await this.mapAlquilerToComprobante(alquilerId, opts);
 
-    // Caso código 23: ya existía → consultar para idempotencia
-    if (resp.errors && resp.codigo === 23) {
+    // Hasta 10 reintentos avanzando correlativo si NubeFact dice "ya existe"
+    // (código 23). Esto cubre el caso donde el correlativo local quedó
+    // desincronizado respecto a NubeFact (porque hubo emisiones previas
+    // fuera del sistema, o porque se cambió la serie a una que ya tenía
+    // documentos en la nube).
+    let resp = await this.post(body);
+    let intentos = 0;
+    while (
+      resp.errors &&
+      resp.codigo === 23 &&
+      intentos < 10 &&
+      serieId &&
+      opts.numeroOverride == null
+    ) {
+      intentos++;
+      const siguiente = await this.sunatSeries.reservarSiguiente(
+        sedeId,
+        tipoSerie,
+        serie,
+      );
+      this.log.warn(
+        `NubeFact código 23 para ${serie}-${numero}. Reintentando con ${serie}-${siguiente.numero} (intento ${intentos})`,
+      );
+      numero = siguiente.numero;
+      body.numero = numero;
+      resp = await this.post(body);
+    }
+
+    if (resp.errors && resp.codigo === 23 && opts.numeroOverride != null) {
+      // Re-emisión explícita con número fijo → idempotencia clásica
       const consulta = await this.post({
         operacion: 'consultar_comprobante',
         tipo_de_comprobante: tipo,
@@ -280,6 +339,7 @@ export class NubeFactService {
       await this.persistirEnAlquiler(alquilerId, serie, numero, consulta);
       return { ...consulta, _idempotent: true };
     }
+
     if (resp.errors) {
       // Persistir el intento fallido también (para debugging) sin marcar emitido
       await this.prisma.alquiler.update({
@@ -290,7 +350,7 @@ export class NubeFactService {
         },
       });
       throw new BadRequestException(
-        `NubeFact rechazó: [${resp.codigo}] ${resp.errors}`,
+        `NubeFact rechazó tras ${intentos + 1} intento(s): [${resp.codigo}] ${resp.errors}`,
       );
     }
 
@@ -340,8 +400,24 @@ export class NubeFactService {
 
     const cfg = await this.getConfig();
     const tipo = 2; // boleta para ventas directas (rubro hotel, sin RUC)
-    const serie = cfg.nubefactSerieBoleta;
-    const numero = opts.numeroOverride ?? (await this.proximoNumero(serie));
+    const tipoSerie: TipoComprobanteSerie = 'BOLETA';
+
+    // Reservar serie + número de SunatSerie por sede
+    let serie: string;
+    let numero: number;
+    let serieId: number | null = null;
+    if (opts.numeroOverride != null) {
+      serie = venta.sunatSerie || (cfg.nubefactSerieBoleta as string);
+      numero = opts.numeroOverride;
+    } else {
+      const reservado = await this.sunatSeries.reservarSiguiente(
+        venta.sedeId!,
+        tipoSerie,
+      );
+      serie = reservado.serie;
+      numero = reservado.numero;
+      serieId = reservado.serieId;
+    }
     const igvProductosPct = Number(cfg.nubefactIgvProductos);
 
     const items = venta.items.map((it) => {
@@ -394,9 +470,30 @@ export class NubeFactService {
       items,
     };
 
-    const resp = await this.post(body);
+    let resp = await this.post(body);
+    let intentos = 0;
+    while (
+      resp.errors &&
+      resp.codigo === 23 &&
+      intentos < 10 &&
+      serieId &&
+      opts.numeroOverride == null
+    ) {
+      intentos++;
+      const siguiente = await this.sunatSeries.reservarSiguiente(
+        venta.sedeId!,
+        tipoSerie,
+        serie,
+      );
+      this.log.warn(
+        `NubeFact código 23 venta para ${serie}-${numero}. Reintentando con ${serie}-${siguiente.numero} (intento ${intentos})`,
+      );
+      numero = siguiente.numero;
+      body.numero = numero;
+      resp = await this.post(body);
+    }
 
-    if (resp.errors && resp.codigo === 23) {
+    if (resp.errors && resp.codigo === 23 && opts.numeroOverride != null) {
       const consulta = await this.post({
         operacion: 'consultar_comprobante',
         tipo_de_comprobante: tipo,
@@ -415,7 +512,7 @@ export class NubeFactService {
         },
       });
       throw new BadRequestException(
-        `NubeFact rechazó: [${resp.codigo}] ${resp.errors}`,
+        `NubeFact rechazó tras ${intentos + 1} intento(s): [${resp.codigo}] ${resp.errors}`,
       );
     }
 

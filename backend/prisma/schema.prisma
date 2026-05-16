@@ -46,6 +46,38 @@ model Sede {
   personal          Personal[]
   transferenciasPersonalDesde TransferenciaPersonal[] @relation("TPDesde")
   transferenciasPersonalHasta TransferenciaPersonal[] @relation("TPHasta")
+  sunatSeries       SunatSerie[]
+}
+
+// ============================================================
+// SERIES SUNAT POR SEDE
+// Cada sede tiene sus propias series (B003 para sede 1, B004 para
+// sede 2, etc.) con su correlativo independiente. El admin de la
+// sede registra el último correlativo conocido (lo ve en NubeFact)
+// y el sistema incrementa atómicamente desde ahí.
+// ============================================================
+enum TipoComprobanteSerie {
+  BOLETA
+  FACTURA
+}
+
+model SunatSerie {
+  id                 Int                  @id @default(autoincrement())
+  sedeId             Int
+  sede               Sede                 @relation(fields: [sedeId], references: [id])
+  tipo               TipoComprobanteSerie
+  serie              String               // ej. "B003", "F001" (4 chars exactos)
+  ultimoCorrelativo  Int                  @default(0)
+  activa             Boolean              @default(true)
+  // Marca como serie por defecto del par (sedeId, tipo). Solo una activa
+  // por (sede, tipo) puede ser predeterminada en cualquier momento.
+  esPredeterminada   Boolean              @default(false)
+  notas              String?
+  creadoEn           DateTime             @default(now())
+  actualizadoEn      DateTime             @updatedAt
+
+  @@unique([sedeId, serie])
+  @@index([sedeId, tipo, activa])
 }
 
 model Usuario {

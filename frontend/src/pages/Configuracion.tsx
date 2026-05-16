@@ -17,6 +17,7 @@ import {
 import { api } from '@/lib/api';
 import { useToast } from '@/components/ToastProvider';
 import { useAuthStore } from '@/store/auth';
+import SunatSeriesSection from '@/components/SunatSeriesSection';
 
 interface Config {
   id: number;
@@ -691,6 +692,8 @@ export default function Configuracion() {
           </div>
         </div>
       </section>
+
+      <SunatSeriesSection />
 
       <div className="flex justify-end sticky bottom-4">
         <button

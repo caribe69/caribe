@@ -17,7 +17,6 @@ import {
 import { api } from '@/lib/api';
 import { useToast } from '@/components/ToastProvider';
 import { useAuthStore } from '@/store/auth';
-import SunatSeriesSection from '@/components/SunatSeriesSection';
 import { ThumbImg } from '@/lib/imageUrl';
 
 interface Config {
@@ -735,7 +734,22 @@ export default function Configuracion() {
         </div>
       </section>
 
-      <SunatSeriesSection />
+      {/* Las series SUNAT se gestionan desde cada sede ahora — ya no
+          hace falta una sección global acá. */}
+      <section className="bg-violet-50 dark:bg-violet-900/30 border border-violet-200 dark:border-violet-800/50 rounded-2xl p-4 text-sm text-violet-800 dark:text-violet-200">
+        <div className="flex items-start gap-3">
+          <FileText size={18} className="shrink-0 mt-0.5" />
+          <div>
+            <div className="font-semibold mb-1">Series SUNAT</div>
+            <div className="text-xs">
+              Las series de boleta/factura ahora se configuran directamente en
+              cada sede. Andá a <b>Sedes</b> y tocá <b>"Configurar SUNAT"</b>{' '}
+              en la sede que necesites. Si una sede no tiene series cargadas,
+              te aparece en ámbar parpadeando para que la atiendas.
+            </div>
+          </div>
+        </div>
+      </section>
 
       <div className="flex justify-end sticky bottom-4">
         <button

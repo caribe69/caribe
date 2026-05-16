@@ -1,11 +1,12 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Building, Plus, Star } from 'lucide-react';
+import { Building, Plus, Star, FileText, X, AlertCircle } from 'lucide-react';
 import { useState } from 'react';
 import { api } from '@/lib/api';
 import { useAuthStore } from '@/store/auth';
 import { useToast } from '@/components/ToastProvider';
 import { usePagination } from '@/hooks/usePagination';
 import Pagination from '@/components/Pagination';
+import SunatSeriesSection from '@/components/SunatSeriesSection';
 
 export default function Sedes() {
   const qc = useQueryClient();
@@ -14,11 +15,30 @@ export default function Sedes() {
   const esSuperadmin = usuario?.rol === 'SUPERADMIN';
   const [show, setShow] = useState(false);
   const [form, setForm] = useState({ nombre: '', direccion: '', telefono: '' });
+  const [sunatPara, setSunatPara] = useState<{
+    id: number;
+    nombre: string;
+  } | null>(null);
 
   const { data, isLoading } = useQuery({
     queryKey: ['sedes'],
     queryFn: async () => (await api.get<any[]>('/sedes')).data,
   });
+
+  // Para detectar qué sedes NO tienen ninguna serie configurada (badge ⚠)
+  const seriesQ = useQuery<Array<{ sedeId: number; tipo: string }>>({
+    queryKey: ['sunat-series'],
+    queryFn: async () => (await api.get('/sunat-series')).data,
+  });
+
+  // Map: sedeId → { boleta: bool, factura: bool }
+  const sunatBySede = new Map<number, { boleta: boolean; factura: boolean }>();
+  for (const s of seriesQ.data || []) {
+    const entry = sunatBySede.get(s.sedeId) || { boleta: false, factura: false };
+    if (s.tipo === 'BOLETA') entry.boleta = true;
+    if (s.tipo === 'FACTURA') entry.factura = true;
+    sunatBySede.set(s.sedeId, entry);
+  }
 
   const pag = usePagination(data, 10);
 
@@ -80,6 +100,9 @@ export default function Sedes() {
               </th>
               <th className="text-left px-6 py-4 text-[11px] font-semibold text-slate-400 uppercase tracking-widest">
                 Estado
+              </th>
+              <th className="text-center px-6 py-4 text-[11px] font-semibold text-slate-400 uppercase tracking-widest">
+                SUNAT
               </th>
               {esSuperadmin && (
                 <th className="text-right px-6 py-4 text-[11px] font-semibold text-slate-400 uppercase tracking-widest">
@@ -145,6 +168,39 @@ export default function Sedes() {
                     {s.activa ? 'Activa' : 'Inactiva'}
                   </span>
                 </td>
+                <td className="px-6 py-4 text-center">
+                  {(() => {
+                    const sunat = sunatBySede.get(s.id);
+                    const tieneAlgo = sunat?.boleta || sunat?.factura;
+                    return (
+                      <button
+                        onClick={() =>
+                          setSunatPara({ id: s.id, nombre: s.nombre })
+                        }
+                        className={`inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg transition btn-press ${
+                          tieneAlgo
+                            ? 'bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200'
+                            : 'bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-300 animate-pulse'
+                        }`}
+                        title={
+                          tieneAlgo
+                            ? `B: ${sunat?.boleta ? '✓' : '×'} · F: ${sunat?.factura ? '✓' : '×'}`
+                            : 'Sin series configuradas — toca para empezar'
+                        }
+                      >
+                        {tieneAlgo ? (
+                          <>
+                            <FileText size={12} /> Configurar
+                          </>
+                        ) : (
+                          <>
+                            <AlertCircle size={12} /> Configurar SUNAT
+                          </>
+                        )}
+                      </button>
+                    );
+                  })()}
+                </td>
                 {esSuperadmin && (
                   <td className="px-6 py-4 text-right">
                     {!s.esPrincipal ? (
@@ -167,7 +223,7 @@ export default function Sedes() {
             {data?.length === 0 && !isLoading && (
               <tr>
                 <td
-                  colSpan={esSuperadmin ? 6 : 5}
+                  colSpan={esSuperadmin ? 7 : 6}
                   className="px-6 py-16 text-center text-slate-400"
                 >
                   <Building
@@ -235,6 +291,115 @@ export default function Sedes() {
                   Crear
                 </button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal SUNAT por sede — onboarding amigable */}
+      {sunatPara && (
+        <div
+          className="fixed inset-0 bg-slate-950/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-fade-in"
+          onClick={() => setSunatPara(null)}
+        >
+          <div
+            className="bg-white dark:bg-slate-900 rounded-3xl w-full max-w-3xl max-h-[90vh] overflow-y-auto shadow-2xl animate-scale-in"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="sticky top-0 bg-gradient-to-r from-violet-600 to-violet-700 text-white p-5 flex justify-between items-start z-10">
+              <div className="flex items-start gap-3">
+                <div className="w-11 h-11 rounded-xl bg-white/15 flex items-center justify-center">
+                  <FileText size={22} />
+                </div>
+                <div>
+                  <h2 className="font-hotel text-lg font-bold">
+                    Series SUNAT · {sunatPara.nombre}
+                  </h2>
+                  <div className="text-xs opacity-90 mt-0.5">
+                    Configura las series de boleta y factura para esta sede
+                  </div>
+                </div>
+              </div>
+              <button
+                onClick={() => setSunatPara(null)}
+                className="w-8 h-8 rounded-lg hover:bg-white/15 flex items-center justify-center"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <div className="p-5">
+              {(() => {
+                const sunat = sunatBySede.get(sunatPara.id);
+                const tieneAlgo = sunat?.boleta || sunat?.factura;
+                if (!tieneAlgo) {
+                  return (
+                    <div className="bg-amber-50 dark:bg-amber-900/30 border border-amber-300 dark:border-amber-700 rounded-xl p-4 mb-4">
+                      <div className="flex items-start gap-3">
+                        <AlertCircle
+                          size={20}
+                          className="text-amber-600 shrink-0 mt-0.5"
+                        />
+                        <div className="text-sm text-amber-900 dark:text-amber-100">
+                          <div className="font-bold mb-1">
+                            Sin series configuradas
+                          </div>
+                          <div className="text-xs leading-relaxed">
+                            Esta sede aún no tiene series SUNAT. Para empezar:
+                            <ol className="list-decimal ml-5 mt-2 space-y-1">
+                              <li>
+                                Entrá a NubeFact con la cuenta de esta sede
+                              </li>
+                              <li>
+                                Mirá el último correlativo emitido (ej. B003 →
+                                15946)
+                              </li>
+                              <li>
+                                Tocá <b>"Nueva serie"</b> abajo y cargá esos
+                                datos
+                              </li>
+                            </ol>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                }
+                return (
+                  <div className="grid grid-cols-2 gap-3 mb-4">
+                    <div
+                      className={`rounded-xl p-3 border ${
+                        sunat?.boleta
+                          ? 'bg-emerald-50 border-emerald-300 text-emerald-800'
+                          : 'bg-slate-50 border-slate-200 text-slate-500'
+                      }`}
+                    >
+                      <div className="text-[10px] uppercase tracking-widest font-bold">
+                        Boletas
+                      </div>
+                      <div className="text-xl font-bold">
+                        {sunat?.boleta ? '✓ Configurada' : '⚠ Sin serie'}
+                      </div>
+                    </div>
+                    <div
+                      className={`rounded-xl p-3 border ${
+                        sunat?.factura
+                          ? 'bg-emerald-50 border-emerald-300 text-emerald-800'
+                          : 'bg-slate-50 border-slate-200 text-slate-500'
+                      }`}
+                    >
+                      <div className="text-[10px] uppercase tracking-widest font-bold">
+                        Facturas
+                      </div>
+                      <div className="text-xl font-bold">
+                        {sunat?.factura ? '✓ Configurada' : '⚠ Sin serie'}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })()}
+
+              <SunatSeriesSection sedeId={sunatPara.id} embebido />
             </div>
           </div>
         </div>

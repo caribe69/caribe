@@ -27,7 +27,14 @@ interface Sede {
  * y ADMIN_SEDE administrar las series de boleta/factura. Cada sede tiene
  * su propia secuencia de correlativos que el sistema incrementa al emitir.
  */
-export default function SunatSeriesSection() {
+interface Props {
+  /** Si está, filtra y oculta el selector de sede en el modal de crear. */
+  sedeId?: number;
+  /** Render compacto sin header (para embeber dentro de otro modal). */
+  embebido?: boolean;
+}
+
+export default function SunatSeriesSection({ sedeId, embebido }: Props = {}) {
   const qc = useQueryClient();
   const { show: toast } = useToast();
   const usuario = useAuthStore((s) => s.usuario);
@@ -37,15 +44,21 @@ export default function SunatSeriesSection() {
   const [editar, setEditar] = useState<SunatSerie | null>(null);
 
   const seriesQ = useQuery<SunatSerie[]>({
-    queryKey: ['sunat-series'],
-    queryFn: async () => (await api.get('/sunat-series')).data,
+    queryKey: ['sunat-series', sedeId ?? 'all'],
+    queryFn: async () =>
+      (
+        await api.get('/sunat-series', {
+          params: sedeId ? { sedeId } : undefined,
+        })
+      ).data,
   });
 
-  // Sedes solo si soy SUPERADMIN (para poder elegir en el modal de crear)
+  // Si hay sedeId fijo (ya elegida), no necesitamos pedir sedes.
+  // Para SUPERADMIN sin filtro, traemos la lista para el dropdown del modal.
   const sedesQ = useQuery<Sede[]>({
     queryKey: ['sedes'],
     queryFn: async () => (await api.get('/sedes')).data,
-    enabled: isSuper,
+    enabled: isSuper && !sedeId,
   });
 
   const eliminar = useMutation({
@@ -63,14 +76,28 @@ export default function SunatSeriesSection() {
       }),
   });
 
+  const Wrapper: React.FC<{ children: React.ReactNode }> = ({ children }) =>
+    embebido ? (
+      <div>{children}</div>
+    ) : (
+      <section className="bg-white dark:bg-slate-900 rounded-3xl p-6 shadow-sm">
+        {children}
+      </section>
+    );
+
   return (
-    <section className="bg-white dark:bg-slate-900 rounded-3xl p-6 shadow-sm">
+    <Wrapper>
+      {!embebido && (
+        <p className="sr-only">Series SUNAT</p>
+      )}
       <div className="flex items-center justify-between gap-2 mb-1">
         <div className="flex items-center gap-2">
-          <FileText size={18} className="text-violet-600" />
-          <h2 className="font-hotel text-lg font-bold text-slate-900 dark:text-slate-100">
-            Series SUNAT por sede
-          </h2>
+          {!embebido && <FileText size={18} className="text-violet-600" />}
+          {!embebido && (
+            <h2 className="font-hotel text-lg font-bold text-slate-900 dark:text-slate-100">
+              Series SUNAT por sede
+            </h2>
+          )}
         </div>
         <button
           onClick={() => setCrearOpen(true)}
@@ -215,13 +242,14 @@ export default function SunatSeriesSection() {
           sedes={sedesQ.data || []}
           isSuper={isSuper}
           serieEditar={editar}
+          sedeIdFijo={sedeId}
           onClose={() => {
             setCrearOpen(false);
             setEditar(null);
           }}
         />
       )}
-    </section>
+    </Wrapper>
   );
 }
 
@@ -232,11 +260,14 @@ function SerieModal({
   sedes,
   isSuper,
   serieEditar,
+  sedeIdFijo,
   onClose,
 }: {
   sedes: Sede[];
   isSuper: boolean;
   serieEditar: SunatSerie | null;
+  /** Si está, la sede queda forzada y el dropdown no aparece. */
+  sedeIdFijo?: number;
   onClose: () => void;
 }) {
   const qc = useQueryClient();
@@ -245,7 +276,7 @@ function SerieModal({
 
   const esEdit = !!serieEditar;
   const [sedeId, setSedeId] = useState<number | ''>(
-    serieEditar?.sedeId ?? usuario?.sedeId ?? (isSuper ? '' : 0),
+    serieEditar?.sedeId ?? sedeIdFijo ?? usuario?.sedeId ?? (isSuper ? '' : 0),
   );
   const [tipo, setTipo] = useState<'BOLETA' | 'FACTURA'>(
     serieEditar?.tipo ?? 'BOLETA',
@@ -329,7 +360,7 @@ function SerieModal({
           </button>
         </div>
         <div className="p-4 space-y-3">
-          {isSuper && !esEdit && (
+          {isSuper && !esEdit && !sedeIdFijo && (
             <div>
               <label className="text-[10px] font-semibold text-slate-500 uppercase tracking-widest">
                 Sede

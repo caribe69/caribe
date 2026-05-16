@@ -1,5 +1,14 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Building, Plus, Star, FileText, X, AlertCircle } from 'lucide-react';
+import {
+  Building,
+  Plus,
+  Star,
+  FileText,
+  X,
+  AlertCircle,
+  Pencil,
+  Power,
+} from 'lucide-react';
 import { useState } from 'react';
 import { api } from '@/lib/api';
 import { useAuthStore } from '@/store/auth';
@@ -15,6 +24,7 @@ export default function Sedes() {
   const esSuperadmin = usuario?.rol === 'SUPERADMIN';
   const [show, setShow] = useState(false);
   const [form, setForm] = useState({ nombre: '', direccion: '', telefono: '' });
+  const [editar, setEditar] = useState<any | null>(null);
   const [sunatPara, setSunatPara] = useState<{
     id: number;
     nombre: string;
@@ -62,6 +72,47 @@ export default function Sedes() {
         description: `${data.nombre} es ahora la sede principal`,
       });
     },
+  });
+
+  const actualizar = useMutation({
+    mutationFn: async (payload: {
+      id: number;
+      nombre: string;
+      direccion: string;
+      telefono: string;
+    }) => {
+      const { id, ...data } = payload;
+      return (await api.patch(`/sedes/${id}`, data)).data;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['sedes'] });
+      setEditar(null);
+      toast({ type: 'success', title: 'Sede actualizada' });
+    },
+    onError: (err: any) =>
+      toast({
+        type: 'error',
+        title: 'No se pudo actualizar',
+        description: err.response?.data?.message || err.message,
+      }),
+  });
+
+  const toggleActiva = useMutation({
+    mutationFn: async (id: number) =>
+      (await api.patch(`/sedes/${id}/toggle`)).data,
+    onSuccess: (data: any) => {
+      qc.invalidateQueries({ queryKey: ['sedes'] });
+      toast({
+        type: 'success',
+        title: data.activa ? 'Sede activada' : 'Sede desactivada',
+      });
+    },
+    onError: (err: any) =>
+      toast({
+        type: 'error',
+        title: 'No se pudo cambiar el estado',
+        description: err.response?.data?.message || err.message,
+      }),
   });
 
   return (
@@ -203,19 +254,50 @@ export default function Sedes() {
                 </td>
                 {esSuperadmin && (
                   <td className="px-6 py-4 text-right">
-                    {!s.esPrincipal ? (
+                    <div className="inline-flex items-center gap-1.5 flex-wrap justify-end">
                       <button
-                        onClick={() => marcarPrincipal.mutate(s.id)}
-                        disabled={marcarPrincipal.isPending}
-                        className="inline-flex items-center gap-1 text-xs bg-amber-50 hover:bg-amber-100 text-amber-800 dark:text-amber-200 border border-amber-300 dark:border-amber-700 px-3 py-1.5 rounded-lg transition btn-press"
+                        onClick={() => setEditar(s)}
+                        className="inline-flex items-center gap-1 text-xs bg-violet-50 hover:bg-violet-100 text-violet-700 border border-violet-200 px-2.5 py-1.5 rounded-lg transition btn-press"
+                        title="Editar datos"
                       >
-                        <Star size={12} /> Marcar principal
+                        <Pencil size={12} /> Editar
                       </button>
-                    ) : (
-                      <span className="text-[10px] text-amber-600 dark:text-amber-300 font-bold">
-                        ✓ Principal
-                      </span>
-                    )}
+                      <button
+                        onClick={() => {
+                          if (
+                            confirm(
+                              s.activa
+                                ? `¿Desactivar "${s.nombre}"? Los usuarios de esta sede no podrán operar.`
+                                : `¿Reactivar "${s.nombre}"?`,
+                            )
+                          )
+                            toggleActiva.mutate(s.id);
+                        }}
+                        disabled={toggleActiva.isPending}
+                        className={`inline-flex items-center gap-1 text-xs px-2.5 py-1.5 rounded-lg border transition btn-press ${
+                          s.activa
+                            ? 'bg-slate-50 hover:bg-slate-100 text-slate-700 border-slate-200'
+                            : 'bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border-emerald-300'
+                        }`}
+                        title={s.activa ? 'Desactivar' : 'Activar'}
+                      >
+                        <Power size={12} />
+                        {s.activa ? 'Pausar' : 'Activar'}
+                      </button>
+                      {!s.esPrincipal ? (
+                        <button
+                          onClick={() => marcarPrincipal.mutate(s.id)}
+                          disabled={marcarPrincipal.isPending}
+                          className="inline-flex items-center gap-1 text-xs bg-amber-50 hover:bg-amber-100 text-amber-800 dark:text-amber-200 border border-amber-300 dark:border-amber-700 px-2.5 py-1.5 rounded-lg transition btn-press"
+                        >
+                          <Star size={12} /> Principal
+                        </button>
+                      ) : (
+                        <span className="text-[10px] text-amber-600 dark:text-amber-300 font-bold px-2">
+                          ✓ Principal
+                        </span>
+                      )}
+                    </div>
                   </td>
                 )}
               </tr>
@@ -294,6 +376,18 @@ export default function Sedes() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Modal editar sede */}
+      {editar && (
+        <EditarSedeModal
+          sede={editar}
+          onClose={() => setEditar(null)}
+          onGuardar={(data) =>
+            actualizar.mutate({ id: editar.id, ...data })
+          }
+          guardando={actualizar.isPending}
+        />
       )}
 
       {/* Modal SUNAT por sede — onboarding amigable */}
@@ -404,6 +498,108 @@ export default function Sedes() {
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+// ────────────────────────────────────────────────────────────
+// Modal editar sede
+// ────────────────────────────────────────────────────────────
+function EditarSedeModal({
+  sede,
+  onClose,
+  onGuardar,
+  guardando,
+}: {
+  sede: { id: number; nombre: string; direccion?: string | null; telefono?: string | null };
+  onClose: () => void;
+  onGuardar: (data: { nombre: string; direccion: string; telefono: string }) => void;
+  guardando: boolean;
+}) {
+  const [nombre, setNombre] = useState(sede.nombre);
+  const [direccion, setDireccion] = useState(sede.direccion ?? '');
+  const [telefono, setTelefono] = useState(sede.telefono ?? '');
+
+  const cambios =
+    nombre !== sede.nombre ||
+    direccion !== (sede.direccion ?? '') ||
+    telefono !== (sede.telefono ?? '');
+
+  return (
+    <div
+      className="fixed inset-0 bg-slate-950/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-fade-in"
+      onClick={onClose}
+    >
+      <div
+        className="bg-white dark:bg-slate-900 rounded-2xl w-full max-w-md shadow-2xl animate-scale-in"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex justify-between items-center p-5 border-b border-slate-100 dark:border-slate-800">
+          <div>
+            <h3 className="font-hotel text-lg font-bold text-slate-900 dark:text-slate-100">
+              Editar sede
+            </h3>
+            <div className="text-xs text-slate-500">
+              Cambia el nombre, dirección o teléfono
+            </div>
+          </div>
+          <button
+            onClick={onClose}
+            className="w-8 h-8 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center justify-center"
+          >
+            <X size={18} />
+          </button>
+        </div>
+        <div className="p-5 space-y-3">
+          <div>
+            <label className="text-[10px] font-semibold uppercase tracking-widest text-slate-500">
+              Nombre
+            </label>
+            <input
+              value={nombre}
+              onChange={(e) => setNombre(e.target.value)}
+              className="w-full mt-1 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm bg-white dark:bg-slate-800"
+            />
+          </div>
+          <div>
+            <label className="text-[10px] font-semibold uppercase tracking-widest text-slate-500">
+              Dirección
+            </label>
+            <input
+              value={direccion}
+              onChange={(e) => setDireccion(e.target.value)}
+              placeholder="Av. Principal 123, Lima"
+              className="w-full mt-1 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm bg-white dark:bg-slate-800"
+            />
+          </div>
+          <div>
+            <label className="text-[10px] font-semibold uppercase tracking-widest text-slate-500">
+              Teléfono
+            </label>
+            <input
+              value={telefono}
+              onChange={(e) => setTelefono(e.target.value)}
+              placeholder="999-999-999"
+              className="w-full mt-1 font-mono border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm bg-white dark:bg-slate-800"
+            />
+          </div>
+          <div className="flex gap-2 pt-2">
+            <button
+              onClick={onClose}
+              className="flex-1 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 py-2 rounded-lg text-sm font-medium text-slate-700 dark:text-slate-200"
+            >
+              Cancelar
+            </button>
+            <button
+              onClick={() => onGuardar({ nombre, direccion, telefono })}
+              disabled={guardando || !nombre.trim() || !cambios}
+              className="flex-1 bg-violet-600 hover:bg-violet-700 text-white py-2 rounded-lg text-sm font-semibold disabled:opacity-50"
+            >
+              {guardando ? 'Guardando…' : 'Guardar cambios'}
+            </button>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

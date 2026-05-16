@@ -177,6 +177,23 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
     [show, toggleMute, muted],
   );
 
+  // Bug fix: el interceptor de api.ts emite 'session:expired' cuando el
+  // backend devuelve 401. Mostramos un toast warning así el usuario sabe
+  // por qué se cerró su sesión.
+  useEffect(() => {
+    const onExpired = (e: Event) => {
+      const detail = (e as CustomEvent).detail as { message?: string };
+      show({
+        type: 'warning',
+        title: 'Sesión expirada',
+        description: detail?.message || 'Inicia sesión de nuevo para continuar',
+        duration: 8000,
+      });
+    };
+    window.addEventListener('session:expired', onExpired);
+    return () => window.removeEventListener('session:expired', onExpired);
+  }, [show]);
+
   return (
     <ToastContext.Provider value={ctxValue}>
       {children}

@@ -341,7 +341,17 @@ export class NubeFactService {
     }
 
     if (resp.errors) {
-      // Persistir el intento fallido también (para debugging) sin marcar emitido
+      // CRÍTICO: si NubeFact rechazó por algo distinto a "ya existe" (cód 23)
+      // — token inválido, red caída, monto mal, etc. — el correlativo
+      // reservado NO se usó realmente en SUNAT. Revertimos para evitar
+      // saltos en la secuencia (violación normativa SUNAT).
+      if (serieId && opts.numeroOverride == null && resp.codigo !== 23) {
+        await this.sunatSeries
+          .revertirReserva(serieId, numero)
+          .catch((err) =>
+            this.log.error(`No se pudo revertir reserva: ${err.message}`),
+          );
+      }
       await this.prisma.alquiler.update({
         where: { id: alquilerId },
         data: {
@@ -504,6 +514,16 @@ export class NubeFactService {
       return { ...consulta, _idempotent: true };
     }
     if (resp.errors) {
+      // Revertir reserva de correlativo si la emisión falló por algo que
+      // no es colisión (token, red, formato). Ver detalle en
+      // emitirDesdeAlquiler — misma lógica.
+      if (serieId && opts.numeroOverride == null && resp.codigo !== 23) {
+        await this.sunatSeries
+          .revertirReserva(serieId, numero)
+          .catch((err) =>
+            this.log.error(`No se pudo revertir reserva venta: ${err.message}`),
+          );
+      }
       await this.prisma.venta.update({
         where: { id: ventaId },
         data: {

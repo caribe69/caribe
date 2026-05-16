@@ -208,6 +208,29 @@ export class SunatSeriesService {
   }
 
   /**
+   * Revierte la última reserva si la emisión falló (NubeFact rechazó por
+   * algo distinto a colisión, ej. red caída o token inválido). Solo hace
+   * decrement si el correlativo actual coincide con el que se reservó —
+   * si entre medio otro proceso ya reservó otro número, no tocamos nada
+   * para no romper la secuencia.
+   *
+   * SUNAT exige correlativos secuenciales sin saltos: si un comprobante
+   * "fue reservado" pero nunca se envió, hay que recuperar ese número.
+   */
+  async revertirReserva(serieId: number, numeroReservado: number) {
+    const actual = await this.prisma.sunatSerie.findUnique({
+      where: { id: serieId },
+    });
+    if (!actual) return null;
+    // Solo retrocedemos si nadie más avanzó después de nosotros.
+    if (actual.ultimoCorrelativo !== numeroReservado) return actual;
+    return this.prisma.sunatSerie.update({
+      where: { id: serieId },
+      data: { ultimoCorrelativo: numeroReservado - 1 },
+    });
+  }
+
+  /**
    * Setea el correlativo de una serie a un valor específico (por recovery
    * después de un error 23, o ajuste manual). Solo avanza, nunca retrocede
    * por seguridad — para retroceder hay que usar actualizar() explícitamente.
@@ -220,6 +243,30 @@ export class SunatSeriesService {
     });
     if (!actual) throw new NotFoundException('Serie no encontrada');
     if (nuevoUltimoCorrelativo <= actual.ultimoCorrelativo) return actual;
+
+    // Bug fix: si en algún Alquiler/Venta local ya existe un comprobante
+    // con un número >= al nuevo, sincronizar hacia ese valor pisaría
+    // correlativos ya emitidos. Validamos antes de avanzar.
+    const [maxAlq, maxVen] = await Promise.all([
+      this.prisma.alquiler.aggregate({
+        where: { sunatSerie: actual.serie },
+        _max: { sunatNumero: true },
+      }),
+      this.prisma.venta.aggregate({
+        where: { sunatSerie: actual.serie },
+        _max: { sunatNumero: true },
+      }),
+    ]);
+    const maxUsado = Math.max(
+      maxAlq._max.sunatNumero ?? 0,
+      maxVen._max.sunatNumero ?? 0,
+    );
+    if (nuevoUltimoCorrelativo < maxUsado) {
+      throw new BadRequestException(
+        `No se puede sincronizar a ${nuevoUltimoCorrelativo}: ya hay un comprobante local con número ${maxUsado} en la serie ${actual.serie}`,
+      );
+    }
+
     return this.prisma.sunatSerie.update({
       where: { id: serieId },
       data: { ultimoCorrelativo: nuevoUltimoCorrelativo },

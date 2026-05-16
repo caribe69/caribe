@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ConflictException,
   ForbiddenException,
   Injectable,
   NotFoundException,
@@ -188,10 +189,17 @@ export class LimpiezaService {
         // Incluye el producto para que el cliente pueda mostrar nombre + unidad
         include: { producto: true },
       });
-      await tx.productoLimpieza.update({
-        where: { id: producto.id },
-        data: { stock: producto.stock - dto.cantidad },
+      // Bug fix: decrement atómico con guard para evitar stock negativo en
+      // carrera (dos limpiadoras consumiendo el mismo producto a la vez).
+      const updated = await tx.productoLimpieza.updateMany({
+        where: { id: producto.id, stock: { gte: dto.cantidad } },
+        data: { stock: { decrement: dto.cantidad } },
       });
+      if (updated.count === 0) {
+        throw new ConflictException(
+          `Stock insuficiente para "${producto.nombre}" (otra persona acaba de consumirlo)`,
+        );
+      }
       return uso;
     });
   }

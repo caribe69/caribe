@@ -30,11 +30,35 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
+// Flag para evitar mostrar 20 toasts si varias requests pendientes pegan 401
+// al mismo tiempo cuando el token expiró.
+let sesionExpiradaToastShown = false;
+
 api.interceptors.response.use(
   (r) => r,
   (error) => {
     if (error.response?.status === 401) {
-      useAuthStore.getState().logout();
+      const state = useAuthStore.getState();
+      // Si había un usuario logueado, era una sesión válida que expiró —
+      // avisar al usuario en lugar de hacer logout silencioso.
+      if (state.token && !sesionExpiradaToastShown) {
+        sesionExpiradaToastShown = true;
+        try {
+          // Evento custom: cualquier ToastProvider montado lo recoge.
+          window.dispatchEvent(
+            new CustomEvent('session:expired', {
+              detail: { message: 'Tu sesión expiró. Inicia sesión de nuevo.' },
+            }),
+          );
+        } catch {
+          /* fail silent en SSR/test */
+        }
+        // Reset del flag tras unos segundos para futuros logins
+        setTimeout(() => {
+          sesionExpiradaToastShown = false;
+        }, 5_000);
+      }
+      state.logout();
     }
     return Promise.reject(error);
   },

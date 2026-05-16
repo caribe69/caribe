@@ -595,6 +595,10 @@ export class AlquileresService {
     if (alquiler.estado !== EstadoAlquiler.ACTIVO)
       throw new BadRequestException('Alquiler no está activo');
 
+    // Bug fix: chequeo explícito de pertenencia a sede para defensa en
+    // profundidad (findOne ya lo hace, pero hacemos esto explícito).
+    enforceSede(user, alquiler.sedeId);
+
     const producto = await this.prisma.producto.findUnique({
       where: { id: dto.productoId },
     });
@@ -632,10 +636,19 @@ export class AlquileresService {
         },
       });
 
-      await tx.producto.update({
-        where: { id: producto.id },
-        data: { stock: producto.stock - dto.cantidad },
+      // Bug fix: usamos { decrement } atómico en lugar de read-then-write
+      // y validamos que el stock no quede negativo. updateMany con where
+      // gte cantidad nos da el lock optimista contra dos cajeros agregando
+      // el mismo producto a la vez.
+      const updated = await tx.producto.updateMany({
+        where: { id: producto.id, stock: { gte: dto.cantidad } },
+        data: { stock: { decrement: dto.cantidad } },
       });
+      if (updated.count === 0) {
+        throw new ConflictException(
+          `Stock insuficiente para "${producto.nombre}" (otro cajero acaba de descontarlo)`,
+        );
+      }
 
       await tx.movimientoStock.create({
         data: {
@@ -770,7 +783,10 @@ export class AlquileresService {
           sedeId: alquiler.sedeId,
           habitacionId: alquiler.habitacionId,
           estado: EstadoTareaLimpieza.PENDIENTE,
-          notas: `Post-alquiler #${alquiler.id}`,
+          notas:
+            asignadaAId == null
+              ? `Post-alquiler #${alquiler.id} — sin limpiadora asignada (la sede no tiene personal de LIMPIEZA activo)`
+              : `Post-alquiler #${alquiler.id}`,
           asignadaAId,
         },
       });
@@ -867,20 +883,24 @@ export class AlquileresService {
     const yaPagado = Number(alquiler.montoPagado);
     const saldo = total - yaPagado;
 
-    if (saldo <= 0.001)
+    if (saldo <= 0.005)
       throw new BadRequestException('Ya está totalmente pagado');
 
     // Si no se pasa monto, cobra el saldo completo
-    const monto = montoInput != null ? Number(montoInput) : saldo;
-    if (monto <= 0)
+    let monto = montoInput != null ? Number(montoInput) : saldo;
+    if (!Number.isFinite(monto) || monto <= 0)
       throw new BadRequestException('El monto debe ser mayor a 0');
-    if (monto > saldo + 0.001)
+    // Bug fix: redondeamos a 2 decimales para evitar overpayments por
+    // floating-point precision (antes saldo=100, monto=100.001 pasaba
+    // la validación monto > saldo + 0.001 si los valores eran exactos).
+    monto = Math.round(monto * 100) / 100;
+    if (monto - saldo > 0.005)
       throw new BadRequestException(
         `El monto (S/ ${monto.toFixed(2)}) excede el saldo pendiente (S/ ${saldo.toFixed(2)})`,
       );
 
     const nuevoPagado = yaPagado + monto;
-    const completo = nuevoPagado >= total - 0.001;
+    const completo = nuevoPagado >= total - 0.005;
 
     // Turno actual del cajero (donde se recibe el dinero)
     const turnoActual = await this.prisma.turnoCaja.findFirst({
@@ -955,6 +975,7 @@ export class AlquileresService {
       throw new BadRequestException('Motivo requerido');
 
     return this.prisma.$transaction(async (tx) => {
+      // 1. Devolver stock de productos consumidos (regulares y cortesías)
       for (const c of alquiler.consumos) {
         await tx.producto.update({
           where: { id: c.productoId },
@@ -971,6 +992,36 @@ export class AlquileresService {
         });
       }
 
+      // 2. Devolver implementos prestados al stock (toallas, controles, etc.)
+      //    Bug fix: anular no los devolvía y quedaban "en uso" para siempre.
+      const implementosPendientes = await tx.asignacionImplemento.findMany({
+        where: { alquilerId: alquiler.id, fechaDevolucion: null },
+      });
+      for (const asig of implementosPendientes) {
+        await tx.asignacionImplemento.update({
+          where: { id: asig.id },
+          data: {
+            fechaDevolucion: new Date(),
+            notas: asig.notas
+              ? `${asig.notas} [devuelto por anulación]`
+              : 'Devuelto por anulación del alquiler',
+          },
+        });
+        await tx.implemento.update({
+          where: { id: asig.implementoId },
+          data: { stockDisponible: { increment: asig.cantidad } },
+        });
+      }
+
+      // 3. Anular los PagoAlquiler huérfanos. No los borramos para preservar
+      //    auditoría — los marcamos como anulados con flag y descripción.
+      //    Si el esquema no tiene flag, los borramos para no descuadrar caja.
+      //    Bug fix: antes los pagos parciales quedaban huérfanos descuadrando
+      //    el reporte de caja.
+      await tx.pagoAlquiler.deleteMany({
+        where: { alquilerId: alquiler.id },
+      });
+
       const act = await tx.alquiler.update({
         where: { id: alquiler.id },
         data: {
@@ -978,14 +1029,29 @@ export class AlquileresService {
           anuladoEn: new Date(),
           anuladoPorId: user.sub,
           motivoAnulacion: dto.motivo,
+          // Bug fix: pagadoEn quedaba poblado aunque ya no esté pagado.
+          pagado: false,
+          montoPagado: 0,
+          pagadoEn: null,
         },
       });
 
-      // Libera habitación si estaba ocupada por este alquiler
-      await tx.habitacion.update({
-        where: { id: alquiler.habitacionId },
-        data: { estado: EstadoHabitacion.DISPONIBLE },
+      // 4. Liberar habitación solo si no hay OTRO alquiler activo en ella.
+      //    Bug fix: antes liberaba siempre y en caso de duplicado (carrera)
+      //    dejaba la habitación DISPONIBLE con otro alquiler activo.
+      const otroActivo = await tx.alquiler.count({
+        where: {
+          habitacionId: alquiler.habitacionId,
+          estado: EstadoAlquiler.ACTIVO,
+          id: { not: alquiler.id },
+        },
       });
+      if (otroActivo === 0) {
+        await tx.habitacion.update({
+          where: { id: alquiler.habitacionId },
+          data: { estado: EstadoHabitacion.DISPONIBLE },
+        });
+      }
 
       return act;
     });

@@ -19,6 +19,7 @@ import {
   AlertTriangle,
 } from 'lucide-react';
 import { api } from '@/lib/api';
+import { ThumbImg } from '@/lib/imageUrl';
 import { useAuthStore } from '@/store/auth';
 import { useDialog } from '@/components/ConfirmProvider';
 import { useToast } from '@/components/ToastProvider';
@@ -298,7 +299,7 @@ function FilaPersonal({
       <td className="px-5 py-3">
         <div className="flex items-center gap-3">
           {p.fotoPerfil ? (
-            <img
+            <ThumbImg
               src={p.fotoPerfil.startsWith('/uploads') ? p.fotoPerfil : `/uploads/personal/${p.fotoPerfil}`}
               alt=""
               className="w-10 h-10 rounded-full object-cover shrink-0"
@@ -676,7 +677,13 @@ function FotoUpload({
         className="hidden"
       />
       {display ? (
-        <img src={display} alt="" className="absolute inset-0 w-full h-full object-cover" />
+        <img
+          src={display}
+          alt=""
+          loading="lazy"
+          decoding="async"
+          className="absolute inset-0 w-full h-full object-cover"
+        />
       ) : (
         <>
           <div className="text-slate-400 dark:text-slate-500 mb-1">{icon}</div>

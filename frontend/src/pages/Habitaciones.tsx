@@ -14,6 +14,7 @@ import {
   Camera,
 } from 'lucide-react';
 import { api } from '@/lib/api';
+import { ThumbImg } from '@/lib/imageUrl';
 import FotosHabitacionModal from '@/components/FotosHabitacionModal';
 
 interface Habitacion {
@@ -259,7 +260,7 @@ export default function Habitaciones() {
                   className="relative h-32 w-full bg-slate-200 overflow-hidden cursor-pointer"
                   onClick={() => setFotosHab(h)}
                 >
-                  <img
+                  <ThumbImg
                     src={h.fotos[0].path}
                     alt=""
                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"

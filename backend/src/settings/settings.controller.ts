@@ -30,6 +30,7 @@ import { Roles } from '../auth/roles.decorator';
 import { CurrentUser } from '../auth/current-user.decorator';
 import { JwtPayload } from '../auth/auth.service';
 import { SettingsService } from './settings.service';
+import { ImageProcessorService } from '../common/image-processor.service';
 
 const LOGO_DIR = join(process.cwd(), 'uploads', 'logos');
 try {
@@ -61,7 +62,10 @@ class UpdateSettingsDto {
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('settings')
 export class SettingsController {
-  constructor(private readonly service: SettingsService) {}
+  constructor(
+    private readonly service: SettingsService,
+    private readonly imageProcessor: ImageProcessorService,
+  ) {}
 
   /** Lectura pública (para el branding del sidebar/login) */
   @Get()
@@ -111,6 +115,7 @@ export class SettingsController {
     }),
   )
   async subirLogo(@UploadedFile() file: Express.Multer.File) {
+    await this.imageProcessor.processUploadedImage(file.path);
     const path = `/uploads/logos/${file.filename}`;
     return this.service.update({ logoPath: path });
   }

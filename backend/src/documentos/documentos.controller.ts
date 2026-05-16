@@ -26,6 +26,7 @@ import { Roles } from '../auth/roles.decorator';
 import { CurrentUser } from '../auth/current-user.decorator';
 import { JwtPayload } from '../auth/auth.service';
 import { DocumentosService } from './documentos.service';
+import { ImageProcessorService } from '../common/image-processor.service';
 
 const DIR = join(process.cwd(), 'uploads', 'documentos');
 try {
@@ -53,7 +54,10 @@ class UpdateDocumentoDto {
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('documentos')
 export class DocumentosController {
-  constructor(private readonly service: DocumentosService) {}
+  constructor(
+    private readonly service: DocumentosService,
+    private readonly imageProcessor: ImageProcessorService,
+  ) {}
 
   @Get()
   listar(
@@ -107,6 +111,11 @@ export class DocumentosController {
       : /^\.(png|jpe?g|webp|gif|heic|tiff?)$/.test(ext)
         ? 'IMAGEN'
         : 'OTRO';
+
+    // Solo procesa si es imagen (PDFs/otros se ignoran silenciosamente).
+    if (tipo === 'IMAGEN') {
+      await this.imageProcessor.processUploadedImage(file.path);
+    }
 
     return this.service.crear(
       {

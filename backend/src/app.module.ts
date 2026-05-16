@@ -27,10 +27,12 @@ import { DocumentosModule } from './documentos/documentos.module';
 import { PersonalModule } from './personal/personal.module';
 import { NubeFactModule } from './nubefact/nubefact.module';
 import { ImplementosModule } from './implementos/implementos.module';
+import { CommonModule } from './common/common.module';
 
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
+    CommonModule,
     ServeStaticModule.forRoot({
       rootPath: join(process.cwd(), 'uploads'),
       serveRoot: '/uploads',

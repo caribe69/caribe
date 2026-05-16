@@ -36,6 +36,7 @@ import { Roles } from '../auth/roles.decorator';
 import { CurrentUser } from '../auth/current-user.decorator';
 import { JwtPayload } from '../auth/auth.service';
 import { PersonalService } from './personal.service';
+import { ImageProcessorService } from '../common/image-processor.service';
 
 const DIR = join(process.cwd(), 'uploads', 'personal');
 try {
@@ -103,7 +104,10 @@ class TransferirDto {
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('personal')
 export class PersonalController {
-  constructor(private readonly service: PersonalService) {}
+  constructor(
+    private readonly service: PersonalService,
+    private readonly imageProcessor: ImageProcessorService,
+  ) {}
 
   @Get()
   listar(
@@ -186,12 +190,22 @@ export class PersonalController {
     if (!files || Object.keys(files).length === 0)
       throw new BadRequestException('Sube al menos una foto');
     const paths: any = {};
-    if (files.fotoPerfil?.[0])
+    const filesToProcess: string[] = [];
+    if (files.fotoPerfil?.[0]) {
       paths.fotoPerfil = `/uploads/personal/${files.fotoPerfil[0].filename}`;
-    if (files.fotoDniFrente?.[0])
+      filesToProcess.push(files.fotoPerfil[0].path);
+    }
+    if (files.fotoDniFrente?.[0]) {
       paths.fotoDniFrente = `/uploads/personal/${files.fotoDniFrente[0].filename}`;
-    if (files.fotoDniReverso?.[0])
+      filesToProcess.push(files.fotoDniFrente[0].path);
+    }
+    if (files.fotoDniReverso?.[0]) {
       paths.fotoDniReverso = `/uploads/personal/${files.fotoDniReverso[0].filename}`;
+      filesToProcess.push(files.fotoDniReverso[0].path);
+    }
+    // Optimiza imágenes y genera thumbnails en paralelo (no bloquea
+    // si alguna falla — queda el original sin tocar).
+    await this.imageProcessor.processMany(filesToProcess);
     return this.service.actualizarFotos(id, paths);
   }
 

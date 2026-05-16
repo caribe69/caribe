@@ -456,11 +456,20 @@ function FotosModal({ tarea, onClose }: { tarea: Tarea; onClose: () => void }) {
                   className="group relative aspect-square bg-slate-100 rounded-xl overflow-hidden hover:shadow-lg transition"
                 >
                   <img
-                    src={f.path}
+                    src={f.path.replace(/(\.(jpe?g|png|webp))$/i, '_thumb$1')}
                     alt=""
+                    loading="lazy"
+                    decoding="async"
                     className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                     onError={(e) => {
                       const t = e.currentTarget as HTMLImageElement;
+                      // Fallback al original si el thumbnail no existe (fotos
+                      // viejas pre-sharp). Marca el flag para no loopear.
+                      if (!t.dataset.fallback && t.src !== f.path) {
+                        t.dataset.fallback = '1';
+                        t.src = f.path;
+                        return;
+                      }
                       t.style.display = 'none';
                       const sib = t.nextElementSibling as HTMLElement | null;
                       if (sib) sib.style.display = 'flex';

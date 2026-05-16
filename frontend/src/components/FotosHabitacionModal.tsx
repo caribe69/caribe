@@ -10,6 +10,7 @@ import {
   Camera,
 } from 'lucide-react';
 import { api } from '@/lib/api';
+import { ThumbImg } from '@/lib/imageUrl';
 import { useToast } from '@/components/ToastProvider';
 import { useDialog } from '@/components/ConfirmProvider';
 
@@ -222,7 +223,7 @@ export default function FotosHabitacionModal({
                     onDragOver={(e) => e.preventDefault()}
                     className="relative aspect-square rounded-xl overflow-hidden group shadow-sm border border-slate-200 cursor-move"
                   >
-                    <img
+                    <ThumbImg
                       src={foto.path}
                       alt=""
                       className="w-full h-full object-cover"
@@ -279,7 +280,7 @@ export default function FotosHabitacionModal({
                     onDragOver={(e) => e.preventDefault()}
                     className="relative aspect-square rounded-lg overflow-hidden group shadow-sm border border-slate-200 cursor-move"
                   >
-                    <img
+                    <ThumbImg
                       src={foto.path}
                       alt=""
                       className="w-full h-full object-cover"

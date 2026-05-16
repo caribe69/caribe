@@ -18,6 +18,7 @@ import { api } from '@/lib/api';
 import { useToast } from '@/components/ToastProvider';
 import { useAuthStore } from '@/store/auth';
 import SunatSeriesSection from '@/components/SunatSeriesSection';
+import { ThumbImg } from '@/lib/imageUrl';
 
 interface Config {
   id: number;
@@ -275,7 +276,10 @@ export default function Configuracion() {
           <div className="flex items-center gap-4">
             <div className="w-24 h-24 rounded-2xl bg-slate-100 border border-slate-200 flex items-center justify-center overflow-hidden shrink-0">
               {form.logoPath ? (
-                <img src={form.logoPath} className="max-w-full max-h-full" />
+                <ThumbImg
+                  src={form.logoPath}
+                  className="max-w-full max-h-full"
+                />
               ) : (
                 <Building size={32} className="text-slate-400" />
               )}

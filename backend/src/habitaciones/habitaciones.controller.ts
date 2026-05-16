@@ -21,6 +21,7 @@ import { Roles } from '../auth/roles.decorator';
 import { CurrentUser } from '../auth/current-user.decorator';
 import { JwtPayload } from '../auth/auth.service';
 import { HabitacionesService } from './habitaciones.service';
+import { ImageProcessorService } from '../common/image-processor.service';
 import {
   CreateHabitacionDto,
   UpdateHabitacionDto,
@@ -30,7 +31,10 @@ import {
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('habitaciones')
 export class HabitacionesController {
-  constructor(private readonly service: HabitacionesService) {}
+  constructor(
+    private readonly service: HabitacionesService,
+    private readonly imageProcessor: ImageProcessorService,
+  ) {}
 
   @Get()
   findAll(
@@ -107,6 +111,9 @@ export class HabitacionesController {
     @CurrentUser() user: JwtPayload,
   ) {
     if (!file) throw new BadRequestException('Archivo requerido');
+    // Optimiza la imagen y genera thumbnail _thumb. Si falla, queda el
+    // original sin tocar — no rompe el upload.
+    await this.imageProcessor.processUploadedImage(file.path);
     return this.service.subirFoto(id, file.filename, user);
   }
 

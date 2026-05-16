@@ -292,6 +292,7 @@ model Alquiler {
 
   amenitiesEntregados Boolean     @default(false) // chocolates/bienvenida
   amenitiesNotas      String?
+  conCochera          Boolean     @default(false) // huésped trae auto y usa cochera
 
   creadoPorId     Int
   creadoPor       Usuario         @relation("AlquilerCreadoPor", fields: [creadoPorId], references: [id])

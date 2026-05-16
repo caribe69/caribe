@@ -43,6 +43,7 @@ export class CreateAlquilerDto {
   // Si false → alquiler a crédito/pendiente. Default true (pago inmediato).
   @IsOptional() @IsBoolean() pagado?: boolean;
   @IsOptional() @IsBoolean() amenitiesEntregados?: boolean;
+  @IsOptional() @IsBoolean() conCochera?: boolean;
 
   // Datos fiscales opcionales al crear (si ya viene como factura)
   @IsOptional() @IsEnum({ BOLETA: 'BOLETA', FACTURA: 'FACTURA' } as const)

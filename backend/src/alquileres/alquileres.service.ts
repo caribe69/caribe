@@ -483,6 +483,7 @@ export class AlquileresService {
           turnoPagoId: pagadoNow ? turno.id : null,
           cobradoPorId: pagadoNow ? user.sub : null,
           amenitiesEntregados: dto.amenitiesEntregados ?? false,
+          conCochera: dto.conCochera ?? false,
           tipoComprobante: dto.tipoComprobante || 'BOLETA',
           clienteRuc: dto.clienteRuc || null,
           clienteRazonSocial: dto.clienteRazonSocial || null,

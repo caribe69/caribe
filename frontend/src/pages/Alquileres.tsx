@@ -71,6 +71,7 @@ interface Alquiler {
   cobradoPor?: { id?: number; nombre: string } | null;
   amenitiesEntregados?: boolean;
   amenitiesNotas?: string | null;
+  conCochera?: boolean;
   fechaIngreso: string;
   fechaSalida: string;
   total: string;
@@ -763,6 +764,11 @@ function AlquilerActivoModal({
                         🍫 chocolates ✓
                       </span>
                     )}
+                    {alquiler.conCochera && (
+                      <span className="text-[10px] bg-blue-50 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 font-semibold px-2 py-0.5 rounded">
+                        🚗 con cochera
+                      </span>
+                    )}
                   </div>
 
                   {/* Fechas */}
@@ -1122,7 +1128,14 @@ function NuevoAlquilerModal({
     notas: '',
     pagado: true,
     amenitiesEntregados: false,
+    conCochera: false,
   });
+  // RUC manual: cuando SUNAT externa no encuentra, el usuario puede tipear
+  // razón social y dirección a mano. Se persiste en el alquiler y la próxima
+  // búsqueda lo encuentra en el historial local automáticamente.
+  const [rucManual, setRucManual] = useState(false);
+  const [rucManualRazonSocial, setRucManualRazonSocial] = useState('');
+  const [rucManualDireccion, setRucManualDireccion] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [buscando, setBuscando] = useState(false);
   const [lookup, setLookup] = useState<any | null>(null);
@@ -1291,15 +1304,27 @@ function NuevoAlquilerModal({
         notas: form.notas || undefined,
         pagado: form.pagado,
         amenitiesEntregados: form.amenitiesEntregados,
+        conCochera: form.conCochera,
         deseaEmitirSunat: emitirSunat,
         cortesias: cortesias.length ? cortesias : undefined,
         implementos: implementos.length ? implementos : undefined,
       };
-      if (conRuc && rucData?.encontrado) {
-        payload.tipoComprobante = 'FACTURA';
-        payload.clienteRuc = ruc;
-        payload.clienteRazonSocial = rucData.razonSocial;
-        payload.clienteDireccionFiscal = rucData.direccion || undefined;
+      if (conRuc) {
+        if (rucData?.encontrado) {
+          // Datos vienen de SUNAT/local: usar tal cual
+          payload.tipoComprobante = 'FACTURA';
+          payload.clienteRuc = ruc;
+          payload.clienteRazonSocial = rucData.razonSocial;
+          payload.clienteDireccionFiscal = rucData.direccion || undefined;
+        } else if (rucManual && rucManualRazonSocial.trim()) {
+          // RUC nuevo cargado a mano: se persiste y la próxima vez
+          // la búsqueda lo encuentra en el historial local.
+          payload.tipoComprobante = 'FACTURA';
+          payload.clienteRuc = ruc;
+          payload.clienteRazonSocial = rucManualRazonSocial.trim().toUpperCase();
+          payload.clienteDireccionFiscal =
+            rucManualDireccion.trim() || undefined;
+        }
       }
       const alq = (await api.post('/alquileres', payload)).data;
 
@@ -1540,8 +1565,8 @@ function NuevoAlquilerModal({
             onChange={(e) => setForm({ ...form, notas: e.target.value })}
           />
 
-          {/* Operación: pago + amenities */}
-          <div className="border border-slate-200 rounded-xl p-3 bg-slate-50 space-y-2">
+          {/* Operación: pago + cochera */}
+          <div className="border border-slate-200 dark:border-slate-700 rounded-xl p-3 bg-slate-50 dark:bg-slate-800/40 space-y-2">
             <label className="flex items-center gap-2 cursor-pointer select-none">
               <input
                 type="checkbox"
@@ -1551,11 +1576,27 @@ function NuevoAlquilerModal({
                 }
                 className="w-4 h-4 accent-emerald-600"
               />
-              <span className="text-sm font-medium text-slate-700">
+              <span className="text-sm font-medium text-slate-700 dark:text-slate-200">
                 💰 Pago recibido ahora
               </span>
               <span className="text-[10px] text-slate-500">
                 (desmarcar si queda pendiente)
+              </span>
+            </label>
+            <label className="flex items-center gap-2 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={form.conCochera}
+                onChange={(e) =>
+                  setForm({ ...form, conCochera: e.target.checked })
+                }
+                className="w-4 h-4 accent-blue-600"
+              />
+              <span className="text-sm font-medium text-slate-700 dark:text-slate-200">
+                🚗 Con cochera
+              </span>
+              <span className="text-[10px] text-slate-500">
+                (el huésped trae auto y ocupa un puesto)
               </span>
             </label>
           </div>
@@ -1633,9 +1674,71 @@ function NuevoAlquilerModal({
                   !rucData.encontrado &&
                   ruc.length === 11 &&
                   !buscandoRuc && (
-                    <div className="bg-amber-50 border border-amber-200 rounded-lg p-2.5 text-xs text-amber-800 dark:text-amber-200">
-                      <b>No encontrado</b> · no está en el sistema ni en SUNAT.
-                      Completa la razón social manualmente.
+                    <div className="bg-amber-50 dark:bg-amber-900/30 border border-amber-200 dark:border-amber-800/50 rounded-lg p-2.5 text-xs text-amber-800 dark:text-amber-200 space-y-2">
+                      <div>
+                        <b>No encontrado en SUNAT ni en el sistema.</b>
+                        {!rucManual && (
+                          <>
+                            {' '}Podés cargarlo a mano y se guardará para la
+                            próxima.
+                          </>
+                        )}
+                      </div>
+                      {!rucManual && (
+                        <button
+                          type="button"
+                          onClick={() => setRucManual(true)}
+                          className="w-full bg-amber-600 hover:bg-amber-700 text-white font-semibold py-1.5 rounded text-[11px]"
+                        >
+                          + Cargar razón social manualmente
+                        </button>
+                      )}
+                      {rucManual && (
+                        <div className="space-y-2 bg-white dark:bg-slate-800 border border-amber-300 dark:border-amber-700 rounded p-2">
+                          <div>
+                            <label className="text-[10px] font-semibold text-slate-500 uppercase tracking-widest">
+                              Razón social *
+                            </label>
+                            <input
+                              value={rucManualRazonSocial}
+                              onChange={(e) =>
+                                setRucManualRazonSocial(e.target.value)
+                              }
+                              placeholder="EJ: COMERCIAL SAN MIGUEL SAC"
+                              className="w-full mt-1 border border-slate-200 dark:border-slate-700 rounded px-2 py-1.5 text-xs uppercase font-medium bg-white dark:bg-slate-900 dark:text-slate-100"
+                            />
+                          </div>
+                          <div>
+                            <label className="text-[10px] font-semibold text-slate-500 uppercase tracking-widest">
+                              Dirección fiscal (opcional)
+                            </label>
+                            <input
+                              value={rucManualDireccion}
+                              onChange={(e) =>
+                                setRucManualDireccion(e.target.value)
+                              }
+                              placeholder="EJ: AV. JAVIER PRADO 1234, LIMA"
+                              className="w-full mt-1 border border-slate-200 dark:border-slate-700 rounded px-2 py-1.5 text-xs uppercase bg-white dark:bg-slate-900 dark:text-slate-100"
+                            />
+                          </div>
+                          <div className="text-[10px] text-emerald-700 dark:text-emerald-300 leading-snug">
+                            ✓ Se guardará en este alquiler. La próxima vez que
+                            tipees el RUC <b>{ruc}</b> el sistema lo encuentra
+                            solo (sin consultar SUNAT).
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setRucManual(false);
+                              setRucManualRazonSocial('');
+                              setRucManualDireccion('');
+                            }}
+                            className="text-[10px] text-slate-500 underline"
+                          >
+                            Cancelar carga manual
+                          </button>
+                        </div>
+                      )}
                     </div>
                   )}
               </div>
@@ -1727,8 +1830,9 @@ function NuevoAlquilerModal({
             </div>
           )}
 
-          {/* ────── Implementos prestados (toallas, controles, etc.) ────── */}
-          {(implementosQ.data?.length || 0) > 0 && (
+          {/* Implementos prestados: desactivado a pedido — el hotel no usa
+              préstamos de toallas/controles desde el alquiler. */}
+          {false && (implementosQ.data?.length || 0) > 0 && (
             <div className="border-t border-slate-200 dark:border-slate-700 pt-3 mt-2">
               <div className="flex items-center justify-between mb-2">
                 <div className="flex items-center gap-2">

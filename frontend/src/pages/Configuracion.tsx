@@ -185,8 +185,12 @@ export default function Configuracion() {
     setProbandoDni(true);
     setResultadoProbar(null);
     try {
-      // usa guardado (no el del form) para probar con el último que se guardó
-      await api.patch('/settings', { apiDniToken: form.apiDniToken });
+      // Guarda token + URL del form antes de probar (no la versión persistida)
+      // así el botón refleja exactamente lo que hay en pantalla.
+      await api.patch('/settings', {
+        apiDniToken: form.apiDniToken,
+        apiDniUrl: form.apiDniUrl,
+      });
       const r = await api.get('/alquileres/clientes/buscar', {
         params: { dni: '10000001' },
       });
@@ -395,10 +399,12 @@ export default function Configuracion() {
           </button>
           {resultadoProbar && (
             <div
-              className={`text-xs px-3 py-1.5 rounded-lg ${
+              className={`text-xs px-3 py-2 rounded-lg max-w-2xl ${
                 resultadoProbar.encontrado
                   ? 'bg-emerald-100 text-emerald-800 dark:text-emerald-200'
-                  : 'bg-amber-100 text-amber-800 dark:text-amber-200'
+                  : resultadoProbar.fuente === 'api_error'
+                    ? 'bg-rose-100 text-rose-800 dark:text-rose-200'
+                    : 'bg-amber-100 text-amber-800 dark:text-amber-200'
               }`}
             >
               {resultadoProbar.encontrado ? (
@@ -408,10 +414,33 @@ export default function Configuracion() {
                   {resultadoProbar.nombre}
                 </>
               ) : (
-                <>
-                  Fuente: <b>{resultadoProbar.fuente || 'desconocida'}</b>
-                  {resultadoProbar.error ? ` · ${resultadoProbar.error}` : ''}
-                </>
+                <div className="space-y-0.5">
+                  <div>
+                    Fuente: <b>{resultadoProbar.fuente || 'desconocida'}</b>
+                    {resultadoProbar.statusCode
+                      ? ` · HTTP ${resultadoProbar.statusCode}`
+                      : ''}
+                  </div>
+                  {resultadoProbar.error && (
+                    <div className="font-semibold">
+                      ⚠ {resultadoProbar.error}
+                    </div>
+                  )}
+                  {resultadoProbar.detalle && (
+                    <div className="opacity-80 font-mono text-[10px] mt-1 break-all">
+                      Respuesta del proveedor: {resultadoProbar.detalle}
+                    </div>
+                  )}
+                  {resultadoProbar.fuente === 'api_error' &&
+                    !resultadoProbar.statusCode && (
+                      <div className="opacity-75 mt-1">
+                        Sugerencia: verifica que la URL sea accesible y que el
+                        token esté vigente. perudevs y apisperu requieren
+                        registrarse en su web para obtener el key real (no
+                        sirve un valor de prueba).
+                      </div>
+                    )}
+                </div>
               )}
             </div>
           )}

@@ -66,7 +66,20 @@ export class AlquileresService {
     }
 
     const cfg = await this.settings.getDniConfig();
-    if (!cfg.token) return { fuente: 'ninguna', encontrado: false, dni };
+    if (!cfg.token)
+      return {
+        fuente: 'ninguna',
+        encontrado: false,
+        dni,
+        error: 'No hay token configurado',
+      };
+    if (!cfg.url)
+      return {
+        fuente: 'ninguna',
+        encontrado: false,
+        dni,
+        error: 'No hay URL de API configurada',
+      };
 
     try {
       // Detectar proveedor según la URL configurada
@@ -76,7 +89,42 @@ export class AlquileresService {
         : `${cfg.url}/${dni}?token=${encodeURIComponent(cfg.token)}`;
 
       const resp = await fetch(url, { signal: AbortSignal.timeout(8000) });
-      if (!resp.ok) return { fuente: 'api_error', encontrado: false, dni };
+      if (!resp.ok) {
+        // Capturar el cuerpo de la respuesta upstream para diagnosticar
+        // (token inválido, plan vencido, endpoint cambiado, etc.)
+        let detalleUpstream: string | null = null;
+        try {
+          const txt = await resp.text();
+          // Si es JSON, intentamos extraer mensaje legible
+          try {
+            const j = JSON.parse(txt);
+            detalleUpstream =
+              j.message || j.mensaje || j.error || j.detail || txt;
+          } catch {
+            detalleUpstream = txt;
+          }
+        } catch {
+          /* sin body */
+        }
+        const hint =
+          resp.status === 401 || resp.status === 403
+            ? 'Token inválido o sin permisos'
+            : resp.status === 404
+              ? 'URL incorrecta o DNI no existe en la fuente'
+              : resp.status === 429
+                ? 'Plan agotado o demasiadas consultas'
+                : `HTTP ${resp.status}`;
+        return {
+          fuente: 'api_error',
+          encontrado: false,
+          dni,
+          statusCode: resp.status,
+          error: hint,
+          detalle: detalleUpstream
+            ? String(detalleUpstream).slice(0, 300)
+            : null,
+        };
+      }
       const data: any = await resp.json();
 
       // perudevs devuelve { estado, mensaje, resultado: {...} }
@@ -139,8 +187,18 @@ export class AlquileresService {
         edad,
         genero: r.genero || r.sexo || null,
       };
-    } catch {
-      return { fuente: 'api_error', encontrado: false, dni };
+    } catch (err: any) {
+      const msg = err?.name === 'TimeoutError' || err?.name === 'AbortError'
+        ? 'Tiempo de espera agotado (8s) — la API no respondió'
+        : err?.cause?.code === 'ENOTFOUND'
+          ? 'No se pudo resolver el dominio — revisa la URL'
+          : err?.message || 'Error de red al consultar la API';
+      return {
+        fuente: 'api_error',
+        encontrado: false,
+        dni,
+        error: msg,
+      };
     }
   }
 
@@ -197,7 +255,39 @@ export class AlquileresService {
     try {
       const url = `${cfg.url}/${ruc}?token=${encodeURIComponent(cfg.token)}`;
       const resp = await fetch(url, { signal: AbortSignal.timeout(8000) });
-      if (!resp.ok) return { fuente: 'api_error', encontrado: false, ruc };
+      if (!resp.ok) {
+        let detalleUpstream: string | null = null;
+        try {
+          const txt = await resp.text();
+          try {
+            const j = JSON.parse(txt);
+            detalleUpstream =
+              j.message || j.mensaje || j.error || j.detail || txt;
+          } catch {
+            detalleUpstream = txt;
+          }
+        } catch {
+          /* sin body */
+        }
+        const hint =
+          resp.status === 401 || resp.status === 403
+            ? 'Token inválido o sin permisos'
+            : resp.status === 404
+              ? 'URL incorrecta o RUC no existe en SUNAT'
+              : resp.status === 429
+                ? 'Plan agotado o demasiadas consultas'
+                : `HTTP ${resp.status}`;
+        return {
+          fuente: 'api_error',
+          encontrado: false,
+          ruc,
+          statusCode: resp.status,
+          error: hint,
+          detalle: detalleUpstream
+            ? String(detalleUpstream).slice(0, 300)
+            : null,
+        };
+      }
       const data: any = await resp.json();
       const razonSocial =
         data.razonSocial || data.razon_social || data.nombreComercial;
@@ -214,8 +304,19 @@ export class AlquileresService {
         estado: data.estado || null, // ACTIVO / BAJA / SUSPENSION
         condicion: data.condicion || null, // HABIDO / NO HABIDO
       };
-    } catch {
-      return { fuente: 'api_error', encontrado: false, ruc };
+    } catch (err: any) {
+      const msg =
+        err?.name === 'TimeoutError' || err?.name === 'AbortError'
+          ? 'Tiempo de espera agotado (8s) — la API SUNAT no respondió'
+          : err?.cause?.code === 'ENOTFOUND'
+            ? 'No se pudo resolver el dominio — revisa la URL'
+            : err?.message || 'Error de red al consultar SUNAT';
+      return {
+        fuente: 'api_error',
+        encontrado: false,
+        ruc,
+        error: msg,
+      };
     }
   }
 

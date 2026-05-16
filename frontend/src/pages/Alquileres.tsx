@@ -158,64 +158,72 @@ interface EstadoStyle {
   label: string;
 }
 
+// Paleta agresiva: cada estado tiene un color completamente distinto
+// para que el cajero distinga de un vistazo desde lejos.
 const ESTADO_STYLES: Record<string, EstadoStyle> = {
+  // Verde brillante: tiene plata para ofrecer
   DISPONIBLE: {
     gradient:
-      'from-emerald-50 via-white to-emerald-100 dark:from-emerald-950/60 dark:via-slate-900 dark:to-emerald-950/40',
-    border: 'border-emerald-200 dark:border-emerald-800/50',
+      'from-emerald-100 via-emerald-50 to-white dark:from-emerald-950/60 dark:via-slate-900 dark:to-emerald-950/40',
+    border: 'border-emerald-300 dark:border-emerald-700',
     iconBg: 'bg-emerald-500',
-    badgeBg: 'bg-emerald-100 dark:bg-emerald-900/50',
-    badgeText: 'text-emerald-700 dark:text-emerald-300',
-    dot: 'bg-emerald-500',
+    badgeBg: 'bg-emerald-500',
+    badgeText: 'text-white',
+    dot: 'bg-emerald-300',
     numberText: 'text-emerald-700 dark:text-emerald-300',
-    pricePill: 'bg-emerald-500 text-white',
+    pricePill: 'bg-emerald-600 text-white',
     label: 'Disponible',
   },
+  // Rojo intenso: ocupada, no se puede tocar para nueva venta
   OCUPADA: {
     gradient:
-      'from-rose-50 via-white to-rose-100 dark:from-rose-950/60 dark:via-slate-900 dark:to-rose-950/40',
-    border: 'border-rose-200 dark:border-rose-800/50',
+      'from-rose-100 via-rose-50 to-white dark:from-rose-950/60 dark:via-slate-900 dark:to-rose-950/40',
+    border: 'border-rose-300 dark:border-rose-700',
     iconBg: 'bg-rose-500',
-    badgeBg: 'bg-rose-100 dark:bg-rose-900/50',
-    badgeText: 'text-rose-700 dark:text-rose-300',
-    dot: 'bg-rose-500',
+    badgeBg: 'bg-rose-500',
+    badgeText: 'text-white',
+    dot: 'bg-rose-300',
     numberText: 'text-rose-700 dark:text-rose-300',
-    pricePill: 'bg-rose-500 text-white',
+    pricePill: 'bg-rose-600 text-white',
     label: 'Ocupada',
   },
+  // Naranja eléctrico: en limpieza
   ALISTANDO: {
     gradient:
-      'from-amber-50 via-white to-amber-100 dark:from-amber-950/60 dark:via-slate-900 dark:to-amber-950/40',
-    border: 'border-amber-200 dark:border-amber-800/50',
-    iconBg: 'bg-amber-500',
-    badgeBg: 'bg-amber-100 dark:bg-amber-900/50',
-    badgeText: 'text-amber-800 dark:text-amber-300',
-    dot: 'bg-amber-500',
-    numberText: 'text-amber-700 dark:text-amber-300',
-    pricePill: 'bg-amber-500 text-white',
+      'from-orange-100 via-orange-50 to-white dark:from-orange-950/60 dark:via-slate-900 dark:to-orange-950/40',
+    border: 'border-orange-300 dark:border-orange-700',
+    iconBg: 'bg-orange-500',
+    badgeBg: 'bg-orange-500',
+    badgeText: 'text-white',
+    dot: 'bg-orange-300',
+    numberText: 'text-orange-700 dark:text-orange-300',
+    pricePill: 'bg-orange-600 text-white',
     label: 'Alistando',
   },
+  // Azul: mantenimiento
   MANTENIMIENTO: {
     gradient:
-      'from-blue-50 via-white to-blue-100 dark:from-blue-950/60 dark:via-slate-900 dark:to-blue-950/40',
-    border: 'border-blue-200 dark:border-blue-800/50',
+      'from-blue-100 via-blue-50 to-white dark:from-blue-950/60 dark:via-slate-900 dark:to-blue-950/40',
+    border: 'border-blue-300 dark:border-blue-700',
     iconBg: 'bg-blue-500',
-    badgeBg: 'bg-blue-100 dark:bg-blue-900/50',
-    badgeText: 'text-blue-700 dark:text-blue-300',
-    dot: 'bg-blue-500',
+    badgeBg: 'bg-blue-500',
+    badgeText: 'text-white',
+    dot: 'bg-blue-300',
     numberText: 'text-blue-700 dark:text-blue-300',
-    pricePill: 'bg-blue-500 text-white',
+    pricePill: 'bg-blue-600 text-white',
     label: 'Mantenimiento',
   },
+  // Gris desaturado: fuera de servicio
   FUERA_SERVICIO: {
-    gradient: 'from-slate-50 via-white to-slate-100 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900',
-    border: 'border-slate-200',
+    gradient:
+      'from-slate-200 via-slate-100 to-white dark:from-slate-900 dark:via-slate-800 dark:to-slate-900',
+    border: 'border-slate-300 dark:border-slate-700',
     iconBg: 'bg-slate-500',
-    badgeBg: 'bg-slate-200',
-    badgeText: 'text-slate-700',
-    dot: 'bg-slate-500',
-    numberText: 'text-slate-700',
-    pricePill: 'bg-slate-500 text-white',
+    badgeBg: 'bg-slate-500',
+    badgeText: 'text-white',
+    dot: 'bg-slate-300',
+    numberText: 'text-slate-700 dark:text-slate-300',
+    pricePill: 'bg-slate-600 text-white',
     label: 'Fuera servicio',
   },
 };
@@ -338,7 +346,7 @@ function MapaHabitaciones() {
         </div>
       )}
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 stagger-children">
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-7 gap-3 stagger-children">
         {habitacionesFiltradas.map((h) => {
           const s = ESTADO_STYLES[h.estado] || ESTADO_STYLES.FUERA_SERVICIO;
           const clickable = h.estado === 'DISPONIBLE' || h.estado === 'OCUPADA';
@@ -386,16 +394,16 @@ function MapaHabitaciones() {
                 if (h.estado === 'DISPONIBLE') setReservar(h);
                 else if (h.estado === 'OCUPADA') setVerAlquiler(h);
               }}
-              className={`group relative text-left bg-gradient-to-br ${s.gradient} border ${s.border} rounded-2xl p-5 shadow-sm transition-all duration-300 overflow-hidden ${
+              className={`group relative text-left bg-gradient-to-br ${s.gradient} border ${s.border} rounded-xl p-3 shadow-sm transition-all duration-200 overflow-hidden ${
                 clickable
-                  ? 'hover:shadow-xl hover:-translate-y-1 cursor-pointer'
-                  : 'cursor-not-allowed opacity-80'
-              } ${alistandoAtrasada ? 'ring-2 ring-rose-400 shadow-rose-300' : ''}`}
+                  ? 'hover:shadow-lg hover:-translate-y-0.5 cursor-pointer'
+                  : 'cursor-not-allowed opacity-90'
+              } ${alistandoAtrasada ? 'ring-2 ring-rose-500 shadow-rose-300' : ''}`}
             >
-              {/* Foto de fondo (si existe) */}
+              {/* Foto de fondo (si existe) — más sutil */}
               {h.fotos && h.fotos.length > 0 && (
                 <div
-                  className="absolute inset-0 opacity-15 group-hover:opacity-25 transition-opacity pointer-events-none"
+                  className="absolute inset-0 opacity-10 group-hover:opacity-20 transition-opacity pointer-events-none"
                   style={{
                     backgroundImage: `url(${h.fotos[0].path})`,
                     backgroundSize: 'cover',
@@ -406,132 +414,96 @@ function MapaHabitaciones() {
 
               {/* Badge de atraso para ALISTANDO */}
               {alistandoAtrasada && (
-                <div className="absolute -top-2 -right-2 z-10 bg-rose-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-lg animate-bounce">
+                <div className="absolute -top-1.5 -right-1.5 z-10 bg-rose-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full shadow-lg animate-bounce">
                   ATRASADO
                 </div>
               )}
 
-              {/* Top row: badge + icon */}
-              <div className="flex items-start justify-between mb-3">
+              {/* Header compacto: estado + precio en una sola fila */}
+              <div className="flex items-center justify-between gap-1.5 mb-2">
                 <div
-                  className={`inline-flex items-center gap-1.5 ${s.badgeBg} ${s.badgeText} text-[10px] uppercase tracking-widest font-bold px-2.5 py-1 rounded-full`}
+                  className={`inline-flex items-center gap-1 ${s.badgeBg} ${s.badgeText} text-[9px] uppercase tracking-widest font-bold px-1.5 py-0.5 rounded`}
                 >
-                  <span className={`w-1.5 h-1.5 rounded-full ${s.iconBg}`} />
+                  <span className={`w-1 h-1 rounded-full ${s.dot}`} />
                   {s.label}
                 </div>
                 <div
-                  className={`w-11 h-11 rounded-xl ${s.iconBg} flex items-center justify-center shadow-md ${clickable ? 'group-hover:scale-110' : ''} transition-transform`}
-                >
-                  <BedDouble size={22} className="text-white" />
-                </div>
-              </div>
-
-              {/* Número grande */}
-              <div className="flex items-baseline gap-1">
-                <span className="text-xs font-semibold text-slate-400 uppercase tracking-widest">
-                  Nro
-                </span>
-                <span
-                  className={`font-hotel text-4xl font-bold leading-none ${s.numberText}`}
-                >
-                  {h.numero}
-                </span>
-              </div>
-
-              {/* Descripción */}
-              <div className="mt-2 text-sm text-slate-700 font-medium line-clamp-1">
-                {h.descripcion || 'Habitación estándar'}
-              </div>
-              {h.caracteristicas && (
-                <div className="mt-0.5 text-xs text-slate-500 line-clamp-1">
-                  {h.caracteristicas}
-                </div>
-              )}
-
-              {/* Info del huésped (solo OCUPADA) */}
-              {h.estado === 'OCUPADA' && alquilerRef && (
-                <div className="mt-3 bg-white/70 dark:bg-slate-900/60 backdrop-blur-sm border border-white dark:border-slate-700 rounded-xl px-2.5 py-1.5">
-                  <div className="flex items-start justify-between gap-1.5">
-                    <div className="min-w-0 flex-1">
-                      <div className="text-[10px] text-slate-500 uppercase tracking-widest font-semibold">
-                        Huésped
-                      </div>
-                      <div className="text-xs font-bold text-slate-800 truncate">
-                        {alquilerRef.clienteNombre}
-                      </div>
-                    </div>
-                    <div className="flex flex-col gap-0.5 items-end shrink-0">
-                      {(() => {
-                        const totalA = Number(alquilerRef.total);
-                        const pagadoA = Number(
-                          alquilerRef.montoPagado ??
-                            (alquilerRef.pagado ? totalA : 0),
-                        );
-                        const saldoA = totalA - pagadoA;
-                        if (saldoA > 0.01 && pagadoA > 0) {
-                          return (
-                            <span
-                              className="text-[9px] bg-amber-500 text-white font-bold px-1.5 py-0.5 rounded-full"
-                              title={`Pagado S/ ${pagadoA.toFixed(2)} de ${totalA.toFixed(2)} · saldo S/ ${saldoA.toFixed(2)}`}
-                            >
-                              PARCIAL
-                            </span>
-                          );
-                        }
-                        if (saldoA > 0.01) {
-                          return (
-                            <span className="text-[9px] bg-rose-500 text-white font-bold px-1.5 py-0.5 rounded-full animate-pulse">
-                              POR COBRAR
-                            </span>
-                          );
-                        }
-                        return null;
-                      })()}
-                      {alquilerRef.amenitiesEntregados && (
-                        <span title="Chocolates entregados" className="text-[10px]">
-                          🍫
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-1 text-[10px] text-slate-500 mt-0.5 font-medium">
-                    <Clock3 size={10} />
-                    {formatDuracion(minutosEn)}
-                  </div>
-                </div>
-              )}
-
-              {/* Tiempo de ALISTANDO */}
-              {h.estado === 'ALISTANDO' && tiempoBase && (
-                <div
-                  className={`mt-3 rounded-xl px-2.5 py-1.5 text-[11px] font-semibold flex items-center gap-1.5 ${
-                    alistandoAtrasada
-                      ? 'bg-rose-100 text-rose-700 border border-rose-300'
-                      : 'bg-white/70 dark:bg-slate-900/60 text-slate-700 border border-white dark:border-slate-700'
-                  }`}
-                >
-                  <Clock3 size={11} />
-                  {alistandoAtrasada ? '⚠ Limpiando hace' : 'En limpieza hace'}{' '}
-                  {formatDuracion(minutosEn)}
-                </div>
-              )}
-
-              {/* Footer: piso + precio */}
-              <div className="mt-4 pt-3 border-t border-slate-200/60 flex items-center justify-between">
-                <div className="flex items-center gap-1.5 text-xs text-slate-500">
-                  <span className="w-1 h-1 rounded-full bg-slate-400" />
-                  Piso {h.piso.numero}
-                </div>
-                <div
-                  className={`text-xs font-bold px-2.5 py-1 rounded-full ${s.pricePill} shadow-sm`}
+                  className={`text-[11px] font-bold px-2 py-0.5 rounded-full ${s.pricePill} shadow-sm whitespace-nowrap`}
                 >
                   S/ {Number(h.precioHora).toFixed(0)}/h
                 </div>
               </div>
 
-              {/* Hover indicator */}
-              {clickable && (
-                <div className="absolute inset-x-0 bottom-0 h-1 bg-gradient-to-r from-transparent via-white to-transparent opacity-0 group-hover:opacity-60 transition-opacity" />
+              {/* Número GRANDE protagonista */}
+              <div className="flex items-baseline gap-1.5 leading-none">
+                <span className="text-[9px] font-semibold text-slate-400 uppercase tracking-widest">
+                  Nro
+                </span>
+                <span
+                  className={`font-hotel text-3xl font-bold leading-none ${s.numberText}`}
+                >
+                  {h.numero}
+                </span>
+                <span className="text-[10px] text-slate-500 ml-auto">
+                  P{h.piso.numero}
+                </span>
+              </div>
+
+              {/* Descripción en 1 línea */}
+              <div className="mt-1.5 text-[11px] text-slate-600 dark:text-slate-300 font-medium line-clamp-1">
+                {h.descripcion || 'Habitación estándar'}
+              </div>
+
+              {/* Info del huésped (solo OCUPADA) — compacto */}
+              {h.estado === 'OCUPADA' && alquilerRef && (
+                <div className="mt-2 bg-white/80 dark:bg-slate-900/70 backdrop-blur-sm border border-white/60 dark:border-slate-700 rounded-lg px-2 py-1.5">
+                  <div className="flex items-center justify-between gap-1.5">
+                    <div className="text-[11px] font-bold text-slate-800 dark:text-slate-100 truncate flex-1">
+                      {alquilerRef.clienteNombre}
+                    </div>
+                    {(() => {
+                      const totalA = Number(alquilerRef.total);
+                      const pagadoA = Number(alquilerRef.montoPagado ?? 0);
+                      const saldoA = totalA - pagadoA;
+                      if (saldoA > 0.01 && pagadoA > 0) {
+                        return (
+                          <span
+                            className="text-[8px] bg-amber-500 text-white font-bold px-1 py-0.5 rounded shrink-0"
+                            title={`Pagado S/ ${pagadoA.toFixed(2)} · saldo S/ ${saldoA.toFixed(2)}`}
+                          >
+                            PARCIAL
+                          </span>
+                        );
+                      }
+                      if (saldoA > 0.01) {
+                        return (
+                          <span className="text-[8px] bg-rose-500 text-white font-bold px-1 py-0.5 rounded shrink-0 animate-pulse">
+                            POR COBRAR
+                          </span>
+                        );
+                      }
+                      return null;
+                    })()}
+                  </div>
+                  <div className="flex items-center gap-1 text-[10px] text-slate-500 mt-0.5 font-medium">
+                    <Clock3 size={9} />
+                    {formatDuracion(minutosEn)}
+                  </div>
+                </div>
+              )}
+
+              {/* Tiempo de ALISTANDO — compacto */}
+              {h.estado === 'ALISTANDO' && tiempoBase && (
+                <div
+                  className={`mt-2 rounded-lg px-2 py-1 text-[10px] font-semibold flex items-center gap-1 ${
+                    alistandoAtrasada
+                      ? 'bg-rose-500 text-white'
+                      : 'bg-white/80 dark:bg-slate-900/70 text-slate-700 dark:text-slate-200 border border-white/60 dark:border-slate-700'
+                  }`}
+                >
+                  <Clock3 size={10} />
+                  {alistandoAtrasada ? '⚠' : ''} {formatDuracion(minutosEn)}
+                </div>
               )}
             </button>
           );

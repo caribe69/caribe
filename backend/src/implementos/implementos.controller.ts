@@ -77,6 +77,18 @@ class RetornarLavanderiaDto {
   @IsOptional() @IsString() notas?: string;
 }
 
+class MarcarLavadoDto {
+  @IsArray() @ArrayNotEmpty() @Type(() => Number) @IsInt({ each: true })
+  unidadIds!: number[];
+  @IsOptional() @IsString() notas?: string;
+}
+
+class EntregarHabitacionesDto {
+  @IsArray() @ArrayNotEmpty() @Type(() => Number) @IsInt({ each: true })
+  unidadIds!: number[];
+  @IsOptional() @IsString() notas?: string;
+}
+
 class MarcarPerdidoDto {
   @IsOptional() @IsString() notas?: string;
 }
@@ -221,6 +233,32 @@ export class ImplementosController {
     @CurrentUser() user: JwtPayload,
   ) {
     return this.service.retornarDeLavanderia(dto.unidadIds, user, dto.notas);
+  }
+
+  // ─── Lavandería (rol LAVANDERIA + admin) ───
+
+  @Roles(Rol.SUPERADMIN, Rol.ADMIN_SEDE, Rol.HOTELERO, Rol.LAVANDERIA)
+  @Post('marcar-lavado')
+  marcarComoLavado(
+    @Body() dto: MarcarLavadoDto,
+    @CurrentUser() user: JwtPayload,
+  ) {
+    return this.service.marcarComoLavado(dto.unidadIds, user, dto.notas);
+  }
+
+  @Roles(Rol.SUPERADMIN, Rol.ADMIN_SEDE, Rol.HOTELERO, Rol.LAVANDERIA)
+  @Post('entregar-habitaciones')
+  entregarAHabitaciones(
+    @Body() dto: EntregarHabitacionesDto,
+    @CurrentUser() user: JwtPayload,
+  ) {
+    return this.service.entregarAHabitaciones(dto.unidadIds, user, dto.notas);
+  }
+
+  @Roles(Rol.SUPERADMIN, Rol.ADMIN_SEDE, Rol.HOTELERO, Rol.LAVANDERIA)
+  @Get('estadisticas-lavanderia')
+  estadisticasLavanderia(@CurrentUser() user: JwtPayload) {
+    return this.service.estadisticasLavanderia(user);
   }
 
   @Roles(Rol.SUPERADMIN, Rol.ADMIN_SEDE, Rol.HOTELERO)

@@ -288,6 +288,7 @@ export class ImplementosService {
       EN_HABITACION: 0,
       EN_TRANSITO: 0,
       EN_LAVANDERIA: 0,
+      LAVADO: 0,
       PERDIDO: 0,
     };
     for (const g of grupos) {
@@ -435,6 +436,167 @@ export class ImplementosService {
       }
       return { actualizados };
     });
+  }
+
+  // ───────────────────────────────────────────────────────────
+  // LAVANDERÍA (flujo del usuario LAVANDERIA)
+  // ───────────────────────────────────────────────────────────
+
+  /**
+   * El lavandero marca un conjunto de unidades SUCIAS como YA LAVADAS.
+   * Estado: EN_LAVANDERIA → LAVADO. Sigue en la lavandería pero ya lista
+   * para devolverse a las habitaciones.
+   */
+  async marcarComoLavado(
+    unidadIds: number[],
+    user: JwtPayload,
+    notas?: string,
+  ) {
+    if (!Array.isArray(unidadIds) || unidadIds.length === 0)
+      return { actualizados: 0 };
+
+    return this.prisma.$transaction(async (tx) => {
+      const unidades = await tx.implementoUnidad.findMany({
+        where: { id: { in: unidadIds } },
+        include: { tipo: true },
+      });
+      for (const u of unidades) enforceSede(user, u.tipo.sedeId);
+
+      let actualizados = 0;
+      for (const u of unidades) {
+        if (u.estado !== EstadoImplementoUnidad.EN_LAVANDERIA) continue;
+        await tx.implementoUnidad.update({
+          where: { id: u.id },
+          data: { estado: EstadoImplementoUnidad.LAVADO },
+        });
+        await tx.movimientoImplemento.create({
+          data: {
+            unidadId: u.id,
+            estadoAnterior: u.estado,
+            estadoNuevo: EstadoImplementoUnidad.LAVADO,
+            usuarioId: user.sub,
+            notas: notas ?? null,
+          },
+        });
+        actualizados++;
+      }
+      return { actualizados };
+    });
+  }
+
+  /**
+   * El lavandero entrega unidades LAVADAS de vuelta a sus habitaciones.
+   * Cada unidad vuelve EXCLUSIVAMENTE a su habitación original (la que
+   * tiene asignada en `habitacionId`). Pasan a EN_HABITACION.
+   */
+  async entregarAHabitaciones(
+    unidadIds: number[],
+    user: JwtPayload,
+    notas?: string,
+  ) {
+    if (!Array.isArray(unidadIds) || unidadIds.length === 0)
+      return { actualizados: 0, sinHabitacion: 0 };
+
+    return this.prisma.$transaction(async (tx) => {
+      const unidades = await tx.implementoUnidad.findMany({
+        where: { id: { in: unidadIds } },
+        include: { tipo: true },
+      });
+      for (const u of unidades) enforceSede(user, u.tipo.sedeId);
+
+      let actualizados = 0;
+      let sinHabitacion = 0;
+      for (const u of unidades) {
+        if (u.estado !== EstadoImplementoUnidad.LAVADO) continue;
+        if (!u.habitacionId) {
+          // Si la unidad no tiene habitación asignada (raro pero posible),
+          // vuelve al almacén central. El admin la asigna manualmente.
+          await tx.implementoUnidad.update({
+            where: { id: u.id },
+            data: { estado: EstadoImplementoUnidad.SIN_ASIGNAR },
+          });
+          sinHabitacion++;
+        } else {
+          await tx.implementoUnidad.update({
+            where: { id: u.id },
+            data: { estado: EstadoImplementoUnidad.EN_HABITACION },
+          });
+          actualizados++;
+        }
+        await tx.movimientoImplemento.create({
+          data: {
+            unidadId: u.id,
+            estadoAnterior: u.estado,
+            estadoNuevo: u.habitacionId
+              ? EstadoImplementoUnidad.EN_HABITACION
+              : EstadoImplementoUnidad.SIN_ASIGNAR,
+            usuarioId: user.sub,
+            notas: notas ?? null,
+          },
+        });
+      }
+      return { actualizados, sinHabitacion };
+    });
+  }
+
+  /**
+   * Estadísticas de lavandería para el usuario actual.
+   * Cuántas unidades marcó como LAVADO en distintas ventanas:
+   * hoy, esta semana, este mes.
+   */
+  async estadisticasLavanderia(user: JwtPayload) {
+    const ahora = new Date();
+    const inicioHoy = new Date(ahora);
+    inicioHoy.setHours(0, 0, 0, 0);
+
+    const inicioSemana = new Date(inicioHoy);
+    // Lunes como inicio (en Perú la semana se cuenta así)
+    const diaSemana = (inicioSemana.getDay() + 6) % 7; // 0=Lunes
+    inicioSemana.setDate(inicioSemana.getDate() - diaSemana);
+
+    const inicioMes = new Date(ahora.getFullYear(), ahora.getMonth(), 1);
+
+    const baseWhere = {
+      usuarioId: user.sub,
+      estadoNuevo: EstadoImplementoUnidad.LAVADO,
+    };
+
+    const [hoy, semana, mes, totalEnLavanderia, totalLavados] =
+      await Promise.all([
+        this.prisma.movimientoImplemento.count({
+          where: { ...baseWhere, fecha: { gte: inicioHoy } },
+        }),
+        this.prisma.movimientoImplemento.count({
+          where: { ...baseWhere, fecha: { gte: inicioSemana } },
+        }),
+        this.prisma.movimientoImplemento.count({
+          where: { ...baseWhere, fecha: { gte: inicioMes } },
+        }),
+        // Pendientes de lavar AHORA (sucios) en la sede del usuario
+        this.prisma.implementoUnidad.count({
+          where: {
+            estado: EstadoImplementoUnidad.EN_LAVANDERIA,
+            activo: true,
+            tipo: { sedeId: user.sedeId ?? undefined },
+          },
+        }),
+        // Lavados pero aún no entregados
+        this.prisma.implementoUnidad.count({
+          where: {
+            estado: EstadoImplementoUnidad.LAVADO,
+            activo: true,
+            tipo: { sedeId: user.sedeId ?? undefined },
+          },
+        }),
+      ]);
+
+    return {
+      lavadosPorMi: { hoy, semana, mes },
+      pendientes: {
+        sucios: totalEnLavanderia,
+        lavados: totalLavados,
+      },
+    };
   }
 
   /** Marca una unidad como PERDIDA (no aparece en su habitación ni en lavandería) */

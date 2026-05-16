@@ -16,6 +16,7 @@ enum Rol {
   HOTELERO
   LIMPIEZA
   CAJERO
+  LAVANDERIA
 }
 
 model Sede {
@@ -907,7 +908,10 @@ enum EstadoImplementoUnidad {
   SIN_ASIGNAR
   EN_HABITACION
   EN_TRANSITO
+  /// Sucio: limpieza lo marcó para lavar, en la lavandería esperando turno.
   EN_LAVANDERIA
+  /// Ya lavado por la lavandería, esperando entregarse a las habitaciones.
+  LAVADO
   PERDIDO
 }
 

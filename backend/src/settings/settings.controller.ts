@@ -74,11 +74,15 @@ export class SettingsController {
   @Roles(Rol.SUPERADMIN, Rol.ADMIN_SEDE)
   @Patch()
   update(@Body() dto: UpdateSettingsDto) {
-    // Si nubefactToken viene como '' (vacío) no lo sobrescribimos a null;
-    // si viene null lo limpiamos. Idem ruta.
+    // Defensa: si un token viene como '' (vacío) no lo sobrescribimos.
+    // Esto bloquea el caso donde el password manager del navegador limpia
+    // el input por error. Para limpiar a propósito hay que mandar null
+    // explícitamente (no string vacío).
     const data: any = { ...dto };
     if (dto.nubefactToken === '') delete data.nubefactToken;
     if (dto.nubefactRuta === '') delete data.nubefactRuta;
+    if (dto.apiDniToken === '') delete data.apiDniToken;
+    if (dto.apiRucToken === '') delete data.apiRucToken;
     return this.service.update(data);
   }
 

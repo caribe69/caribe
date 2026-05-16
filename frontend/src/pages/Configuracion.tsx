@@ -333,6 +333,26 @@ export default function Configuracion() {
           </div>
         </div>
 
+        {/* Honeypot: inputs ocultos que absorben el autorrelleno del browser.
+            Sin esto, el password manager rellena los tokens reales con la
+            contraseña del usuario cada vez que se guarda algo. */}
+        <input
+          type="text"
+          name="username"
+          autoComplete="username"
+          tabIndex={-1}
+          aria-hidden="true"
+          style={{ position: 'absolute', left: -9999, opacity: 0, height: 0 }}
+        />
+        <input
+          type="password"
+          name="password"
+          autoComplete="current-password"
+          tabIndex={-1}
+          aria-hidden="true"
+          style={{ position: 'absolute', left: -9999, opacity: 0, height: 0 }}
+        />
+
         <div className="grid md:grid-cols-2 gap-4">
           <Field label="Token / Key API DNI">
             <div className="relative">
@@ -344,6 +364,12 @@ export default function Configuracion() {
                 onChange={(e) =>
                   setForm({ ...form, apiDniToken: e.target.value })
                 }
+                name="dni-api-key"
+                autoComplete="off"
+                data-lpignore="true"
+                data-form-type="other"
+                data-1p-ignore="true"
+                spellCheck={false}
               />
               <button
                 type="button"
@@ -371,6 +397,12 @@ export default function Configuracion() {
                 onChange={(e) =>
                   setForm({ ...form, apiRucToken: e.target.value })
                 }
+                name="ruc-api-key"
+                autoComplete="off"
+                data-lpignore="true"
+                data-form-type="other"
+                data-1p-ignore="true"
+                spellCheck={false}
               />
               <button
                 type="button"
@@ -559,6 +591,12 @@ export default function Configuracion() {
                 onChange={(e) =>
                   setForm({ ...form, nubefactToken: e.target.value })
                 }
+                name="nubefact-api-key"
+                autoComplete="off"
+                data-lpignore="true"
+                data-form-type="other"
+                data-1p-ignore="true"
+                spellCheck={false}
               />
               <button
                 type="button"

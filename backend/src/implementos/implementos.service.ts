@@ -26,14 +26,19 @@ interface UpdateTipoInput {
 interface CrearUnidadInput {
   tipoId: number;
   codigo: string;
-  habitacionId: number;
+  /** Si se omite, la unidad queda SIN_ASIGNAR en el almacén. */
+  habitacionId?: number | null;
   notas?: string | null;
 }
 
 interface UpdateUnidadInput {
-  habitacionId?: number;
+  habitacionId?: number | null;
   notas?: string | null;
   activo?: boolean;
+}
+
+interface AsignarHabitacionInput {
+  habitacionId: number | null;
 }
 
 /**
@@ -161,25 +166,38 @@ export class ImplementosService {
     if (!dto.codigo?.trim())
       throw new BadRequestException('Código requerido');
 
-    // Validar que el tipo y la habitación existan y pertenezcan a la sede
-    const [tipo, habitacion] = await Promise.all([
-      this.prisma.tipoImplemento.findUnique({ where: { id: dto.tipoId } }),
-      this.prisma.habitacion.findUnique({ where: { id: dto.habitacionId } }),
-    ]);
+    const tipo = await this.prisma.tipoImplemento.findUnique({
+      where: { id: dto.tipoId },
+    });
     if (!tipo) throw new BadRequestException('Tipo de implemento inválido');
-    if (!habitacion) throw new BadRequestException('Habitación inválida');
-    if (tipo.sedeId !== habitacion.sedeId)
-      throw new BadRequestException(
-        'El tipo y la habitación deben ser de la misma sede',
-      );
     enforceSede(user, tipo.sedeId);
+
+    // Si se pasa habitacionId, validar que pertenezca a la misma sede.
+    // Si no, la unidad queda SIN_ASIGNAR (en el almacén central).
+    let habitacionIdValido: number | null = null;
+    if (dto.habitacionId) {
+      const habitacion = await this.prisma.habitacion.findUnique({
+        where: { id: dto.habitacionId },
+      });
+      if (!habitacion) throw new BadRequestException('Habitación inválida');
+      if (habitacion.sedeId !== tipo.sedeId)
+        throw new BadRequestException(
+          'El tipo y la habitación deben ser de la misma sede',
+        );
+      habitacionIdValido = habitacion.id;
+    }
 
     try {
       return await this.prisma.implementoUnidad.create({
         data: {
           tipoId: dto.tipoId,
           codigo: dto.codigo.trim().toUpperCase(),
-          habitacionId: dto.habitacionId,
+          habitacionId: habitacionIdValido,
+          // Si la creamos sin habitación queda en el stock central; si tiene
+          // habitación arranca lista para usarse.
+          estado: habitacionIdValido
+            ? EstadoImplementoUnidad.EN_HABITACION
+            : EstadoImplementoUnidad.SIN_ASIGNAR,
           notas: dto.notas?.trim() || null,
         },
         include: {
@@ -194,6 +212,89 @@ export class ImplementosService {
         );
       throw e;
     }
+  }
+
+  /**
+   * Asigna una unidad a una habitación (o la desasigna pasando null).
+   * Pasa la unidad a EN_HABITACION o SIN_ASIGNAR según corresponda y
+   * registra el movimiento para auditoría.
+   */
+  async asignarAHabitacion(
+    id: number,
+    dto: AsignarHabitacionInput,
+    user: JwtPayload,
+  ) {
+    const u = await this.prisma.implementoUnidad.findUnique({
+      where: { id },
+      include: { tipo: true },
+    });
+    if (!u) throw new NotFoundException('Unidad no encontrada');
+    enforceSede(user, u.tipo.sedeId);
+
+    if (dto.habitacionId) {
+      const hab = await this.prisma.habitacion.findUnique({
+        where: { id: dto.habitacionId },
+      });
+      if (!hab || hab.sedeId !== u.tipo.sedeId)
+        throw new BadRequestException(
+          'La habitación debe ser de la misma sede que el tipo',
+        );
+    }
+
+    const nuevoEstado = dto.habitacionId
+      ? EstadoImplementoUnidad.EN_HABITACION
+      : EstadoImplementoUnidad.SIN_ASIGNAR;
+
+    return this.prisma.$transaction(async (tx) => {
+      const updated = await tx.implementoUnidad.update({
+        where: { id },
+        data: {
+          habitacionId: dto.habitacionId ?? null,
+          estado: nuevoEstado,
+        },
+        include: {
+          tipo: { select: { id: true, nombre: true, icono: true, color: true } },
+          habitacion: { select: { id: true, numero: true } },
+        },
+      });
+      await tx.movimientoImplemento.create({
+        data: {
+          unidadId: id,
+          estadoAnterior: u.estado,
+          estadoNuevo: nuevoEstado,
+          usuarioId: user.sub,
+          notas: dto.habitacionId
+            ? `Asignada a habitación`
+            : `Vuelta al almacén (sin asignar)`,
+        },
+      });
+      return updated;
+    });
+  }
+
+  /**
+   * Resumen agregado por estado para el dashboard:
+   * cuántas unidades hay en cada estado de la sede del usuario.
+   */
+  async resumen(user: JwtPayload, sedeIdQuery?: number) {
+    const sedeId = resolveSedeId(user, sedeIdQuery);
+    const grupos = await this.prisma.implementoUnidad.groupBy({
+      by: ['estado'],
+      where: { activo: true, tipo: { sedeId } },
+      _count: { _all: true },
+    });
+    const resumen: Record<EstadoImplementoUnidad, number> = {
+      SIN_ASIGNAR: 0,
+      EN_HABITACION: 0,
+      EN_TRANSITO: 0,
+      EN_LAVANDERIA: 0,
+      PERDIDO: 0,
+    };
+    for (const g of grupos) {
+      resumen[g.estado] = g._count._all;
+    }
+    const total = Object.values(resumen).reduce((s, n) => s + n, 0);
+    return { total, porEstado: resumen };
   }
 
   async actualizarUnidad(
@@ -221,7 +322,8 @@ export class ImplementosService {
     return this.prisma.implementoUnidad.update({
       where: { id },
       data: {
-        habitacionId: dto.habitacionId ?? undefined,
+        habitacionId:
+          dto.habitacionId !== undefined ? dto.habitacionId : undefined,
         notas: dto.notas !== undefined ? dto.notas?.trim() || null : undefined,
         activo: dto.activo ?? undefined,
       },

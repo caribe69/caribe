@@ -48,7 +48,8 @@ class UpdateTipoDto {
 class CrearUnidadDto {
   @Type(() => Number) @IsInt() @Min(1) tipoId!: number;
   @IsString() codigo!: string;
-  @Type(() => Number) @IsInt() @Min(1) habitacionId!: number;
+  /** Opcional: si no se pasa, la unidad queda SIN_ASIGNAR en el almacén */
+  @IsOptional() @Type(() => Number) @IsInt() @Min(1) habitacionId?: number;
   @IsOptional() @IsString() notas?: string;
 }
 
@@ -56,6 +57,11 @@ class UpdateUnidadDto {
   @IsOptional() @Type(() => Number) @IsInt() habitacionId?: number;
   @IsOptional() @IsString() notas?: string;
   @IsOptional() @IsBoolean() activo?: boolean;
+}
+
+class AsignarHabitacionDto {
+  /** null o número. Si null/omitido: desasigna (vuelve a SIN_ASIGNAR). */
+  @IsOptional() @Type(() => Number) @IsInt() habitacionId?: number | null;
 }
 
 class MarcarLavanderiaDto {
@@ -122,6 +128,18 @@ export class ImplementosController {
 
   // ─── Unidades ───
 
+  /** Resumen agregado por estado (para el dashboard de "control total") */
+  @Get('resumen')
+  resumen(
+    @CurrentUser() user: JwtPayload,
+    @Query('sedeId') sedeIdQuery?: string,
+  ) {
+    return this.service.resumen(
+      user,
+      sedeIdQuery ? Number(sedeIdQuery) : undefined,
+    );
+  }
+
   @Get()
   listarUnidades(
     @CurrentUser() user: JwtPayload,
@@ -136,6 +154,21 @@ export class ImplementosController {
       estado,
       tipoId: tipoId ? Number(tipoId) : undefined,
     });
+  }
+
+  /** Asigna una unidad a una habitación (o la desasigna pasando null) */
+  @Roles(Rol.SUPERADMIN, Rol.ADMIN_SEDE, Rol.HOTELERO)
+  @Patch(':id/asignar-habitacion')
+  asignarAHabitacion(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: AsignarHabitacionDto,
+    @CurrentUser() user: JwtPayload,
+  ) {
+    return this.service.asignarAHabitacion(
+      id,
+      { habitacionId: dto.habitacionId ?? null },
+      user,
+    );
   }
 
   @Roles(Rol.SUPERADMIN, Rol.ADMIN_SEDE)

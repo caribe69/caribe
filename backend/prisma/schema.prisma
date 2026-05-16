@@ -903,6 +903,8 @@ model AuditLog {
 // ============================================================
 
 enum EstadoImplementoUnidad {
+  /// Recién creado o devuelto al stock central, sin habitación asignada.
+  SIN_ASIGNAR
   EN_HABITACION
   EN_TRANSITO
   EN_LAVANDERIA
@@ -935,11 +937,12 @@ model ImplementoUnidad {
   tipo            TipoImplemento         @relation(fields: [tipoId], references: [id])
   /// Código único impreso/etiquetado (ej. "TBG-047", "SAB-012")
   codigo          String                 @unique
-  /// Habitación a la que PERTENECE (su "casa"). Aunque esté en lavandería,
-  /// vuelve acá cuando se confirme el retorno.
-  habitacionId    Int
-  habitacion      Habitacion             @relation(fields: [habitacionId], references: [id])
-  estado          EstadoImplementoUnidad @default(EN_HABITACION)
+  /// Habitación a la que PERTENECE (su "casa"). Nullable: cuando se
+  /// crea recién o vuelve al stock central, no tiene habitación. El
+  /// admin la asigna después con asignar-habitacion.
+  habitacionId    Int?
+  habitacion      Habitacion?            @relation(fields: [habitacionId], references: [id])
+  estado          EstadoImplementoUnidad @default(SIN_ASIGNAR)
   notas           String?
   activo          Boolean                @default(true)
   creadoEn        DateTime               @default(now())

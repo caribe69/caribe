@@ -22,7 +22,12 @@ import { useToast } from '@/components/ToastProvider';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { EmptyState } from '@/components/ui/EmptyState';
 
-type Estado = 'EN_HABITACION' | 'EN_TRANSITO' | 'EN_LAVANDERIA' | 'PERDIDO';
+type Estado =
+  | 'SIN_ASIGNAR'
+  | 'EN_HABITACION'
+  | 'EN_TRANSITO'
+  | 'EN_LAVANDERIA'
+  | 'PERDIDO';
 
 interface TipoImplemento {
   id: number;
@@ -43,15 +48,21 @@ interface ImplementoUnidad {
   id: number;
   tipoId: number;
   codigo: string;
-  habitacionId: number;
+  habitacionId: number | null;
   estado: Estado;
   notas: string | null;
   activo: boolean;
   tipo: { id: number; nombre: string; icono: string | null; color: string | null };
-  habitacion: { id: number; numero: string };
+  habitacion: { id: number; numero: string } | null;
+}
+
+interface Resumen {
+  total: number;
+  porEstado: Record<Estado, number>;
 }
 
 const ESTADO_LABEL: Record<Estado, string> = {
+  SIN_ASIGNAR: 'Sin asignar',
   EN_HABITACION: 'En habitación',
   EN_TRANSITO: 'En tránsito',
   EN_LAVANDERIA: 'En lavandería',
@@ -59,10 +70,19 @@ const ESTADO_LABEL: Record<Estado, string> = {
 };
 
 const ESTADO_COLOR: Record<Estado, string> = {
+  SIN_ASIGNAR: 'bg-slate-500',
   EN_HABITACION: 'bg-emerald-500',
   EN_TRANSITO: 'bg-amber-500',
   EN_LAVANDERIA: 'bg-blue-500',
   PERDIDO: 'bg-rose-500',
+};
+
+const ESTADO_EMOJI: Record<Estado, string> = {
+  SIN_ASIGNAR: '📦',
+  EN_HABITACION: '🏠',
+  EN_TRANSITO: '🚚',
+  EN_LAVANDERIA: '🧼',
+  PERDIDO: '❓',
 };
 
 export default function ImplementosPage() {
@@ -73,12 +93,15 @@ export default function ImplementosPage() {
   const puedeEditar =
     usuario?.rol === 'SUPERADMIN' || usuario?.rol === 'ADMIN_SEDE';
 
-  const [tab, setTab] = useState<'unidades' | 'tipos' | 'lavanderia'>(
-    'unidades',
-  );
+  const [tab, setTab] = useState<
+    'unidades' | 'tipos' | 'lavanderia' | 'almacen'
+  >('unidades');
   const [busqueda, setBusqueda] = useState('');
   const [showCrearTipo, setShowCrearTipo] = useState(false);
   const [showCrearUnidad, setShowCrearUnidad] = useState(false);
+  const [asignarUnidad, setAsignarUnidad] = useState<ImplementoUnidad | null>(
+    null,
+  );
 
   const tiposQ = useQuery<TipoImplemento[]>({
     queryKey: ['implementos', 'tipos'],
@@ -95,6 +118,11 @@ export default function ImplementosPage() {
     queryFn: async () => (await api.get('/habitaciones')).data,
   });
 
+  const resumenQ = useQuery<Resumen>({
+    queryKey: ['implementos', 'resumen'],
+    queryFn: async () => (await api.get('/implementos/resumen')).data,
+  });
+
   // ─── Tab UNIDADES (lista completa con filtro) ───
   const unidadesFiltradas = useMemo(() => {
     const q = busqueda.trim().toLowerCase();
@@ -104,13 +132,18 @@ export default function ImplementosPage() {
       (u) =>
         u.codigo.toLowerCase().includes(q) ||
         u.tipo.nombre.toLowerCase().includes(q) ||
-        u.habitacion.numero.toLowerCase().includes(q),
+        (u.habitacion?.numero?.toLowerCase().includes(q) ?? false),
     );
   }, [busqueda, unidadesQ.data]);
 
   // ─── Tab LAVANDERÍA (solo EN_LAVANDERIA + selección bulk) ───
   const enLavanderia = useMemo(
     () => (unidadesQ.data || []).filter((u) => u.estado === 'EN_LAVANDERIA'),
+    [unidadesQ.data],
+  );
+  // ─── Tab ALMACÉN (SIN_ASIGNAR) ───
+  const sinAsignar = useMemo(
+    () => (unidadesQ.data || []).filter((u) => u.estado === 'SIN_ASIGNAR'),
     [unidadesQ.data],
   );
   const [seleccion, setSeleccion] = useState<Set<number>>(new Set());
@@ -154,14 +187,61 @@ export default function ImplementosPage() {
         </div>
       </div>
 
+      {/* Dashboard: control total con conteos por estado */}
+      {resumenQ.data && (
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2">
+          {(
+            [
+              ['SIN_ASIGNAR', 'slate'],
+              ['EN_HABITACION', 'emerald'],
+              ['EN_TRANSITO', 'amber'],
+              ['EN_LAVANDERIA', 'blue'],
+              ['PERDIDO', 'rose'],
+            ] as Array<[Estado, string]>
+          ).map(([estado, color]) => {
+            const n = resumenQ.data!.porEstado[estado] || 0;
+            const tabDestino: typeof tab | null =
+              estado === 'SIN_ASIGNAR'
+                ? 'almacen'
+                : estado === 'EN_LAVANDERIA'
+                  ? 'lavanderia'
+                  : estado === 'EN_HABITACION'
+                    ? 'unidades'
+                    : null;
+            return (
+              <button
+                key={estado}
+                onClick={() => tabDestino && setTab(tabDestino)}
+                className={`bg-white dark:bg-slate-900 rounded-xl p-3 text-left shadow-sm border border-slate-200 dark:border-slate-700 transition ${
+                  tabDestino ? 'hover:shadow-md hover:-translate-y-0.5' : ''
+                }`}
+              >
+                <div className="flex items-center gap-2">
+                  <span className="text-xl">{ESTADO_EMOJI[estado]}</span>
+                  <div className="flex-1">
+                    <div className={`text-2xl font-bold tabular-nums text-${color}-700 dark:text-${color}-300`}>
+                      {n}
+                    </div>
+                    <div className="text-[10px] uppercase tracking-widest font-semibold text-slate-500">
+                      {ESTADO_LABEL[estado]}
+                    </div>
+                  </div>
+                </div>
+              </button>
+            );
+          })}
+        </div>
+      )}
+
       {/* Tabs */}
-      <div className="flex gap-1 bg-slate-100 dark:bg-slate-800/60 rounded-xl p-1 w-fit">
-        {(['unidades', 'tipos', 'lavanderia'] as const).map((t) => (
+      <div className="flex gap-1 bg-slate-100 dark:bg-slate-800/60 rounded-xl p-1 w-fit flex-wrap">
+        {(['unidades', 'almacen', 'tipos', 'lavanderia'] as const).map((t) => (
           <button
             key={t}
             onClick={() => {
               setTab(t);
               setBusqueda('');
+              setSeleccion(new Set());
             }}
             className={`px-4 py-1.5 rounded-lg text-xs font-semibold transition ${
               tab === t
@@ -169,14 +249,26 @@ export default function ImplementosPage() {
                 : 'text-slate-600 dark:text-slate-300'
             }`}
           >
-            {t === 'unidades' && '🧺 Por habitación'}
+            {t === 'unidades' && '🏠 En habitaciones'}
+            {t === 'almacen' && (
+              <>
+                📦 Almacén
+                {sinAsignar.length > 0 && (
+                  <span className="text-[10px] bg-slate-500 text-white rounded-full px-1.5 ml-1">
+                    {sinAsignar.length}
+                  </span>
+                )}
+              </>
+            )}
             {t === 'tipos' && '📋 Tipos'}
             {t === 'lavanderia' && (
               <>
-                🧼 Lavandería{' '}
-                <span className="text-[10px] bg-blue-500 text-white rounded-full px-1.5 ml-1">
-                  {enLavanderia.length}
-                </span>
+                🧼 Lavandería
+                {enLavanderia.length > 0 && (
+                  <span className="text-[10px] bg-blue-500 text-white rounded-full px-1.5 ml-1">
+                    {enLavanderia.length}
+                  </span>
+                )}
               </>
             )}
           </button>
@@ -244,7 +336,9 @@ export default function ImplementosPage() {
                         </span>
                       </td>
                       <td className="px-4 py-2.5 font-semibold text-violet-700 dark:text-violet-300">
-                        {u.habitacion.numero}
+                        {u.habitacion?.numero ?? (
+                          <span className="text-slate-400 italic">—</span>
+                        )}
                       </td>
                       <td className="px-4 py-2.5 text-center">
                         <span
@@ -302,6 +396,79 @@ export default function ImplementosPage() {
       )}
 
       {/* ═══════════ TAB: TIPOS ═══════════ */}
+      {/* ═══════════ TAB: ALMACÉN (SIN_ASIGNAR) ═══════════ */}
+      {tab === 'almacen' && (
+        <div className="space-y-3">
+          <div className="bg-slate-100 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-xl p-3 text-xs text-slate-700 dark:text-slate-300 flex items-start gap-2">
+            <Package size={16} className="shrink-0 mt-0.5" />
+            <div>
+              Unidades en el <b>almacén central</b> sin asignar a ninguna
+              habitación. Acá aparecen las que recién creaste o las que
+              desasignaste. Tocá <b>"Asignar"</b> para mandarlas a una
+              habitación específica.
+            </div>
+          </div>
+          {puedeEditar && (
+            <button
+              onClick={() => setShowCrearUnidad(true)}
+              className="inline-flex items-center gap-1.5 bg-violet-600 hover:bg-violet-700 text-white text-xs font-semibold px-3 py-2 rounded-lg"
+            >
+              <Plus size={14} /> Nueva unidad
+            </button>
+          )}
+          {sinAsignar.length === 0 ? (
+            <EmptyState
+              title="Almacén vacío"
+              description="No hay unidades sin asignar. Cuando creas una nueva unidad sin elegir habitación, aparece acá."
+            />
+          ) : (
+            <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-sm overflow-hidden">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="text-left text-[10px] uppercase tracking-widest text-slate-500 border-b border-slate-200 dark:border-slate-700">
+                    <th className="px-4 py-3">Código</th>
+                    <th className="px-4 py-3">Tipo</th>
+                    <th className="px-4 py-3">Notas</th>
+                    {puedeEditar && <th className="px-4 py-3 text-right">Acc.</th>}
+                  </tr>
+                </thead>
+                <tbody>
+                  {sinAsignar.map((u) => (
+                    <tr
+                      key={u.id}
+                      className="border-b border-slate-100 dark:border-slate-800/60 hover:bg-slate-50/60 dark:hover:bg-slate-800/30"
+                    >
+                      <td className="px-4 py-2.5 font-mono font-bold text-slate-800 dark:text-slate-100">
+                        {u.codigo}
+                      </td>
+                      <td className="px-4 py-2.5">
+                        {u.tipo.icono && (
+                          <span className="mr-1">{u.tipo.icono}</span>
+                        )}
+                        {u.tipo.nombre}
+                      </td>
+                      <td className="px-4 py-2.5 text-slate-500 text-xs">
+                        {u.notas ?? '—'}
+                      </td>
+                      {puedeEditar && (
+                        <td className="px-4 py-2.5 text-right">
+                          <button
+                            onClick={() => setAsignarUnidad(u)}
+                            className="inline-flex items-center gap-1 text-xs font-semibold bg-emerald-600 hover:bg-emerald-700 text-white px-2.5 py-1 rounded"
+                          >
+                            <ArrowLeftRight size={12} /> Asignar
+                          </button>
+                        </td>
+                      )}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
+
       {tab === 'tipos' && (
         <div className="space-y-3">
           {puedeEditar && (
@@ -487,7 +654,7 @@ export default function ImplementosPage() {
                             {u.tipo.nombre}
                           </td>
                           <td className="px-4 py-2.5 font-semibold text-violet-700 dark:text-violet-300">
-                            {u.habitacion.numero}
+                            {u.habitacion?.numero ?? '—'}
                           </td>
                         </tr>
                       );
@@ -521,6 +688,124 @@ export default function ImplementosPage() {
           }}
         />
       )}
+      {asignarUnidad && (
+        <AsignarHabitacionModal
+          unidad={asignarUnidad}
+          habitaciones={habitacionesQ.data || []}
+          onClose={() => setAsignarUnidad(null)}
+          onAsignado={() => {
+            setAsignarUnidad(null);
+            qc.invalidateQueries({ queryKey: ['implementos'] });
+          }}
+        />
+      )}
+    </div>
+  );
+}
+
+// ────────────────────────────────────────────────────────────
+// Modal asignar a habitación
+// ────────────────────────────────────────────────────────────
+function AsignarHabitacionModal({
+  unidad,
+  habitaciones,
+  onClose,
+  onAsignado,
+}: {
+  unidad: ImplementoUnidad;
+  habitaciones: Habitacion[];
+  onClose: () => void;
+  onAsignado: () => void;
+}) {
+  const { show: toast } = useToast();
+  const [habitacionId, setHabitacionId] = useState<number | ''>(
+    unidad.habitacionId ?? '',
+  );
+  const [error, setError] = useState<string | null>(null);
+
+  const asignar = useMutation({
+    mutationFn: async () =>
+      (
+        await api.patch(`/implementos/${unidad.id}/asignar-habitacion`, {
+          habitacionId: habitacionId === '' ? null : Number(habitacionId),
+        })
+      ).data,
+    onSuccess: () => {
+      toast({
+        type: 'success',
+        title: habitacionId
+          ? `Asignado a Hab. ${habitaciones.find((h) => h.id === habitacionId)?.numero}`
+          : 'Vuelto al almacén',
+      });
+      onAsignado();
+    },
+    onError: (err: any) =>
+      setError(err.response?.data?.message || err.message),
+  });
+
+  return (
+    <div
+      className="fixed inset-0 bg-slate-950/60 backdrop-blur-sm flex items-center justify-center p-4 z-[100]"
+      onClick={onClose}
+    >
+      <div
+        className="bg-white dark:bg-slate-900 rounded-2xl w-full max-w-sm shadow-2xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex justify-between items-center p-4 border-b border-slate-100 dark:border-slate-800">
+          <div>
+            <h3 className="font-semibold">Asignar a habitación</h3>
+            <div className="text-xs text-slate-500">
+              {unidad.tipo.icono} {unidad.tipo.nombre} · <b className="font-mono">{unidad.codigo}</b>
+            </div>
+          </div>
+          <button onClick={onClose} className="p-1.5 hover:bg-slate-100 rounded">
+            <X size={16} />
+          </button>
+        </div>
+        <div className="p-4 space-y-3">
+          <div>
+            <label className="text-[10px] font-semibold uppercase tracking-widest text-slate-500">
+              Habitación destino
+            </label>
+            <select
+              value={habitacionId}
+              onChange={(e) => {
+                const v = e.target.value;
+                setHabitacionId(v === '' ? '' : Number(v));
+              }}
+              className="w-full mt-1 border border-slate-200 rounded-lg px-3 py-2 text-sm bg-white"
+            >
+              <option value="">📦 Almacén (sin asignar)</option>
+              {habitaciones.map((h) => (
+                <option key={h.id} value={h.id}>
+                  🏠 Hab. {h.numero}
+                </option>
+              ))}
+            </select>
+          </div>
+          {error && (
+            <div className="text-xs text-rose-700 bg-rose-50 p-2 rounded">
+              {error}
+            </div>
+          )}
+          <div className="flex gap-2 pt-2">
+            <button
+              onClick={onClose}
+              className="flex-1 bg-slate-100 hover:bg-slate-200 py-2 rounded-lg text-sm font-medium"
+            >
+              Cancelar
+            </button>
+            <button
+              onClick={() => asignar.mutate()}
+              disabled={asignar.isPending}
+              className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white py-2 rounded-lg text-sm font-semibold disabled:opacity-50"
+            >
+              {asignar.isPending ? 'Asignando…' : 'Confirmar'}
+            </button>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
@@ -692,13 +977,14 @@ function CrearUnidadModal({
           n === 1
             ? codigo.trim().toUpperCase()
             : `${codigo.trim().toUpperCase()}-${String(i + 1).padStart(2, '0')}`;
-        promises.push(
-          api.post('/implementos', {
-            tipoId: Number(tipoId),
-            codigo: code,
-            habitacionId: Number(habitacionId),
-          }),
-        );
+        const payload: any = {
+          tipoId: Number(tipoId),
+          codigo: code,
+        };
+        // habitacionId es opcional: si no se elige, la unidad queda
+        // SIN_ASIGNAR en el almacén central.
+        if (habitacionId) payload.habitacionId = Number(habitacionId);
+        promises.push(api.post('/implementos', payload));
       }
       return Promise.all(promises);
     },
@@ -756,20 +1042,27 @@ function CrearUnidadModal({
           </div>
           <div>
             <label className="text-[10px] font-semibold uppercase tracking-widest text-slate-500">
-              Habitación
+              Habitación (opcional)
             </label>
             <select
               value={habitacionId}
-              onChange={(e) => setHabitacionId(Number(e.target.value))}
+              onChange={(e) => {
+                const v = e.target.value;
+                setHabitacionId(v === '' ? '' : Number(v));
+              }}
               className="w-full mt-1 border border-slate-200 rounded-lg px-3 py-2 text-sm bg-white"
             >
-              <option value="">— Elegir habitación —</option>
+              <option value="">📦 Dejar en almacén (sin asignar)</option>
               {habitaciones.map((h) => (
                 <option key={h.id} value={h.id}>
-                  Hab. {h.numero}
+                  🏠 Hab. {h.numero}
                 </option>
               ))}
             </select>
+            <div className="text-[10px] text-slate-500 mt-1">
+              Si la dejás en almacén, después la podés asignar desde la
+              pestaña "Almacén".
+            </div>
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
@@ -823,7 +1116,7 @@ function CrearUnidadModal({
             <button
               onClick={() => crear.mutate()}
               disabled={
-                crear.isPending || !tipoId || !habitacionId || !codigo.trim()
+                crear.isPending || !tipoId || !codigo.trim()
               }
               className="flex-1 bg-violet-600 hover:bg-violet-700 text-white py-2 rounded-lg text-sm font-semibold disabled:opacity-50"
             >

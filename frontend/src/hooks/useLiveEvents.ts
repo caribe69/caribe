@@ -111,6 +111,35 @@ export function useLiveEvents() {
     s.on('transferencia:rechazada', onTransfRechazada);
     s.on('transferencia:cancelada', onTransfCancelada);
 
+    // --- Lavandería ---
+    const onLavLavado = (p: any) => {
+      showRef.current({
+        type: 'info',
+        title: `🧼 ${p.cantidad} implemento${p.cantidad === 1 ? '' : 's'} lavado${p.cantidad === 1 ? '' : 's'}`,
+        description: `${p.porUsuario} terminó de lavar — listos para entregar a las habitaciones`,
+      });
+      qcRef.current.invalidateQueries({ queryKey: ['implementos'] });
+      qcRef.current.invalidateQueries({ queryKey: ['habitaciones'] });
+    };
+
+    const onLavEntregado = (p: any) => {
+      const habs = Array.isArray(p.habitaciones) ? p.habitaciones : [];
+      const desc =
+        habs.length > 0
+          ? `${p.porUsuario} repuso ${p.cantidad} en hab. ${habs.join(', ')}`
+          : `${p.porUsuario} entregó ${p.cantidad} implemento${p.cantidad === 1 ? '' : 's'}`;
+      showRef.current({
+        type: 'success',
+        title: `✨ Lavandería entregó implementos`,
+        description: desc,
+      });
+      qcRef.current.invalidateQueries({ queryKey: ['implementos'] });
+      qcRef.current.invalidateQueries({ queryKey: ['habitaciones'] });
+    };
+
+    s.on('lavanderia:lavado', onLavLavado);
+    s.on('lavanderia:entregado', onLavEntregado);
+
     // Presencia en vivo
     const { setList, addOnline, removeOnline } = usePresence.getState();
     const onList = (ids: number[]) => setList(ids);
@@ -128,6 +157,8 @@ export function useLiveEvents() {
       s.off('transferencia:recibida', onTransfRecibida);
       s.off('transferencia:rechazada', onTransfRechazada);
       s.off('transferencia:cancelada', onTransfCancelada);
+      s.off('lavanderia:lavado', onLavLavado);
+      s.off('lavanderia:entregado', onLavEntregado);
       s.off('presence:list', onList);
       s.off('presence:online', onOnline);
       s.off('presence:offline', onOffline);

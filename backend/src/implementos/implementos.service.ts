@@ -8,6 +8,7 @@ import { EstadoImplementoUnidad } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { JwtPayload } from '../auth/auth.service';
 import { enforceSede, resolveSedeId } from '../common/sede-scope';
+import { EventsGateway } from '../events/events.gateway';
 
 interface CrearTipoInput {
   nombre: string;
@@ -51,7 +52,10 @@ interface AsignarHabitacionInput {
  */
 @Injectable()
 export class ImplementosService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private events: EventsGateway,
+  ) {}
 
   // ───────────────────────────────────────────────────────────
   // TIPOS DE IMPLEMENTO (catálogo por sede)
@@ -455,7 +459,7 @@ export class ImplementosService {
     if (!Array.isArray(unidadIds) || unidadIds.length === 0)
       return { actualizados: 0 };
 
-    return this.prisma.$transaction(async (tx) => {
+    const result = await this.prisma.$transaction(async (tx) => {
       const unidades = await tx.implementoUnidad.findMany({
         where: { id: { in: unidadIds } },
         include: { tipo: true },
@@ -463,6 +467,7 @@ export class ImplementosService {
       for (const u of unidades) enforceSede(user, u.tipo.sedeId);
 
       let actualizados = 0;
+      const sedesAfectadas = new Set<number>();
       for (const u of unidades) {
         if (u.estado !== EstadoImplementoUnidad.EN_LAVANDERIA) continue;
         await tx.implementoUnidad.update({
@@ -479,9 +484,19 @@ export class ImplementosService {
           },
         });
         actualizados++;
+        sedesAfectadas.add(u.tipo.sedeId);
       }
-      return { actualizados };
+      return { actualizados, sedesAfectadas };
     });
+
+    // Notificar a cada sede afectada (admin/hotelero ven el toast en vivo)
+    for (const sedeId of result.sedesAfectadas) {
+      this.events.emitToSede(sedeId, 'lavanderia:lavado', {
+        cantidad: result.actualizados,
+        porUsuario: user.username,
+      });
+    }
+    return { actualizados: result.actualizados };
   }
 
   /**
@@ -497,20 +512,21 @@ export class ImplementosService {
     if (!Array.isArray(unidadIds) || unidadIds.length === 0)
       return { actualizados: 0, sinHabitacion: 0 };
 
-    return this.prisma.$transaction(async (tx) => {
+    const result = await this.prisma.$transaction(async (tx) => {
       const unidades = await tx.implementoUnidad.findMany({
         where: { id: { in: unidadIds } },
-        include: { tipo: true },
+        include: { tipo: true, habitacion: { select: { numero: true } } },
       });
       for (const u of unidades) enforceSede(user, u.tipo.sedeId);
 
       let actualizados = 0;
       let sinHabitacion = 0;
+      // Para notificar al frontend cuántas vuelven a cada habitación
+      const porHabitacion = new Map<string, number>();
+      const sedesAfectadas = new Set<number>();
       for (const u of unidades) {
         if (u.estado !== EstadoImplementoUnidad.LAVADO) continue;
         if (!u.habitacionId) {
-          // Si la unidad no tiene habitación asignada (raro pero posible),
-          // vuelve al almacén central. El admin la asigna manualmente.
           await tx.implementoUnidad.update({
             where: { id: u.id },
             data: { estado: EstadoImplementoUnidad.SIN_ASIGNAR },
@@ -522,6 +538,8 @@ export class ImplementosService {
             data: { estado: EstadoImplementoUnidad.EN_HABITACION },
           });
           actualizados++;
+          const habNum = u.habitacion?.numero ?? '?';
+          porHabitacion.set(habNum, (porHabitacion.get(habNum) || 0) + 1);
         }
         await tx.movimientoImplemento.create({
           data: {
@@ -534,9 +552,24 @@ export class ImplementosService {
             notas: notas ?? null,
           },
         });
+        sedesAfectadas.add(u.tipo.sedeId);
       }
-      return { actualizados, sinHabitacion };
+      return { actualizados, sinHabitacion, porHabitacion, sedesAfectadas };
     });
+
+    // Notificar: "María entregó 5 implementos a habitaciones 102, 103, 201"
+    const habitacionesArr = Array.from(result.porHabitacion.keys()).sort();
+    for (const sedeId of result.sedesAfectadas) {
+      this.events.emitToSede(sedeId, 'lavanderia:entregado', {
+        cantidad: result.actualizados,
+        habitaciones: habitacionesArr,
+        porUsuario: user.username,
+      });
+    }
+    return {
+      actualizados: result.actualizados,
+      sinHabitacion: result.sinHabitacion,
+    };
   }
 
   /**

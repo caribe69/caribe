@@ -6,7 +6,8 @@ export type Rol =
   | 'ADMIN_SEDE'
   | 'HOTELERO'
   | 'LIMPIEZA'
-  | 'CAJERO';
+  | 'CAJERO'
+  | 'LAVANDERIA';
 
 export interface UsuarioInfo {
   id: number;

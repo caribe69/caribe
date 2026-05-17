@@ -18,7 +18,14 @@ import { useToast } from '@/components/ToastProvider';
 import { usePagination } from '@/hooks/usePagination';
 import Pagination from '@/components/Pagination';
 
-const ROLES = ['ADMIN_SEDE', 'HOTELERO', 'LIMPIEZA', 'CAJERO', 'SUPERADMIN'];
+const ROLES = [
+  'ADMIN_SEDE',
+  'HOTELERO',
+  'LIMPIEZA',
+  'LAVANDERIA',
+  'CAJERO',
+  'SUPERADMIN',
+];
 
 interface Usuario {
   id: number;
@@ -71,6 +78,7 @@ export default function Usuarios() {
       ADMIN_SEDE: 'bg-blue-100 text-blue-700 dark:text-blue-200',
       HOTELERO: 'bg-emerald-100 text-emerald-700 dark:text-emerald-200',
       LIMPIEZA: 'bg-amber-100 text-amber-800 dark:text-amber-200',
+      LAVANDERIA: 'bg-cyan-100 text-cyan-700 dark:text-cyan-200',
       CAJERO: 'bg-rose-100 text-rose-700 dark:text-rose-200',
     };
     return map[rol] || 'bg-slate-100 text-slate-700';

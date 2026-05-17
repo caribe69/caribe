@@ -54,7 +54,14 @@ interface Personal {
   sede?: { id: number; nombre: string } | null;
 }
 
-const ROLES = ['SUPERADMIN', 'ADMIN_SEDE', 'HOTELERO', 'CAJERO', 'LIMPIEZA'] as const;
+const ROLES = [
+  'SUPERADMIN',
+  'ADMIN_SEDE',
+  'HOTELERO',
+  'CAJERO',
+  'LIMPIEZA',
+  'LAVANDERIA',
+] as const;
 
 function edadDe(fechaNac?: string | null): number | null {
   if (!fechaNac) return null;

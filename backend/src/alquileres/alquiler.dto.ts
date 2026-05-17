@@ -9,6 +9,7 @@ import {
   IsNumber,
   IsOptional,
   IsString,
+  Matches,
   Min,
   MinLength,
   ValidateNested,
@@ -48,8 +49,13 @@ export class CreateAlquilerDto {
   // Datos fiscales opcionales al crear (si ya viene como factura)
   @IsOptional() @IsEnum({ BOLETA: 'BOLETA', FACTURA: 'FACTURA' } as const)
   tipoComprobante?: 'BOLETA' | 'FACTURA';
-  @IsOptional() @IsString() clienteRuc?: string;
-  @IsOptional() @IsString() clienteRazonSocial?: string;
+  // RUC peruano: 11 dígitos exactos empezando por 10/15/17/20.
+  // Si pasa la validación se puede emitir factura sin que SUNAT rechace.
+  @IsOptional() @IsString() @Matches(/^(10|15|17|20)\d{9}$/, {
+    message: 'RUC inválido (11 dígitos, debe empezar con 10/15/17/20)',
+  })
+  clienteRuc?: string;
+  @IsOptional() @IsString() @MinLength(3) clienteRazonSocial?: string;
   @IsOptional() @IsString() clienteDireccionFiscal?: string;
 
   /// Intención de emitir comprobante electrónico SUNAT al final del flujo.

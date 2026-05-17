@@ -212,11 +212,14 @@ export class AlquileresService {
         'RUC inválido (11 dígitos, debe empezar con 10/15/17/20)',
       );
 
-    const sedeId = resolveSedeId(user);
+    // Bug fix: un RUC es nacional (SUNAT). Si se cargó manualmente en
+    // sede 1, la sede 2 debe poder reutilizar esa razón social/dirección
+    // sin volver a tipearla. Búsqueda global por RUC ignorando sede.
+    void resolveSedeId(user); // valida que el user tenga acceso, pero no filtra
 
-    // 1. Empresa recurrente: busca en historial local
+    // 1. Empresa recurrente: busca en historial GLOBAL (todas las sedes)
     const previos = await this.prisma.alquiler.findMany({
-      where: { sedeId, clienteRuc: ruc, tipoComprobante: 'FACTURA' },
+      where: { clienteRuc: ruc, tipoComprobante: 'FACTURA' },
       orderBy: { creadoEn: 'desc' },
       select: {
         clienteRazonSocial: true,
@@ -435,6 +438,16 @@ export class AlquileresService {
 
   async create(dto: CreateAlquilerDto, user: JwtPayload) {
     const sedeId = resolveSedeId(user, dto.sedeId);
+
+    // Bug fix: si la sede fue pausada (activa=false), bloqueamos crear
+    // alquileres. El frontend lo ocultaba pero un POST directo lo
+    // dejaba pasar.
+    const sede = await this.prisma.sede.findUnique({ where: { id: sedeId } });
+    if (!sede) throw new BadRequestException('Sede inválida');
+    if (!sede.activa)
+      throw new ForbiddenException(
+        `La sede "${sede.nombre}" está pausada. Pedile al admin que la reactive antes de operar.`,
+      );
 
     const hab = await this.prisma.habitacion.findUnique({
       where: { id: dto.habitacionId },

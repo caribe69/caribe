@@ -578,6 +578,15 @@ export class ImplementosService {
    * hoy, esta semana, este mes.
    */
   async estadisticasLavanderia(user: JwtPayload) {
+    // Bug fix: si user.sedeId es null el filtro Prisma quedaba como
+    // `sedeId: undefined` (Prisma ignora undefined) → la lavandera vería
+    // pendientes de TODAS las sedes. Exigimos sede explícita.
+    if (user.sedeId == null) {
+      throw new BadRequestException(
+        'Tu usuario no tiene sede asignada. Pedile al admin que te asigne una sede en el panel de Usuarios.',
+      );
+    }
+
     const ahora = new Date();
     const inicioHoy = new Date(ahora);
     inicioHoy.setHours(0, 0, 0, 0);
@@ -610,7 +619,7 @@ export class ImplementosService {
           where: {
             estado: EstadoImplementoUnidad.EN_LAVANDERIA,
             activo: true,
-            tipo: { sedeId: user.sedeId ?? undefined },
+            tipo: { sedeId: user.sedeId },
           },
         }),
         // Lavados pero aún no entregados
@@ -618,7 +627,7 @@ export class ImplementosService {
           where: {
             estado: EstadoImplementoUnidad.LAVADO,
             activo: true,
-            tipo: { sedeId: user.sedeId ?? undefined },
+            tipo: { sedeId: user.sedeId },
           },
         }),
       ]);

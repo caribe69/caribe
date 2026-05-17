@@ -9,6 +9,7 @@ import {
   FileText,
   X,
   Printer,
+  Download,
   BedDouble,
   ShoppingCart,
   CreditCard,
@@ -16,12 +17,19 @@ import {
   Package,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { PDFDownloadLink } from '@react-pdf/renderer';
 import { api } from '@/lib/api';
 import { useAuthStore } from '@/store/auth';
 import { useDialog } from '@/components/ConfirmProvider';
 import { usePagination } from '@/hooks/usePagination';
 import Pagination from '@/components/Pagination';
 import { Skeleton } from '@/components/ui/Skeleton';
+import {
+  TurnoPDFDoc,
+  turnoPdfFileName,
+  type TurnoReporte,
+  type EmpresaConfig,
+} from '@/components/TurnoPDF';
 
 interface Turno {
   id: number;
@@ -356,6 +364,12 @@ function ModalDetalle({
 
   const fecha = new Date(turno.abiertoEn);
 
+  // Datos de empresa para el PDF (mismo endpoint que usa la boleta)
+  const { data: empresa } = useQuery<EmpresaConfig>({
+    queryKey: ['config'],
+    queryFn: async () => (await api.get('/settings')).data,
+  });
+
   return (
     <div className="fixed inset-0 bg-black/50 dark:bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 z-50 no-print animate-fade-in">
       <div className="bg-white dark:bg-slate-900 dark:ring-1 dark:ring-slate-800 rounded-2xl w-full max-w-4xl max-h-[92vh] overflow-hidden animate-scale-in shadow-2xl flex flex-col">
@@ -377,6 +391,23 @@ function ModalDetalle({
             </div>
           </div>
           <div className="flex items-center gap-2">
+            <PDFDownloadLink
+              document={
+                <TurnoPDFDoc
+                  reporte={reporte as TurnoReporte}
+                  empresa={empresa}
+                />
+              }
+              fileName={turnoPdfFileName(reporte as TurnoReporte)}
+              className="inline-flex items-center gap-1.5 bg-emerald-500/90 hover:bg-emerald-500 text-white px-3 py-2 rounded-lg text-sm btn-press no-underline"
+            >
+              {({ loading }) => (
+                <>
+                  <Download size={14} />
+                  {loading ? 'Generando…' : 'Exportar PDF'}
+                </>
+              )}
+            </PDFDownloadLink>
             <button
               onClick={() => window.print()}
               className="inline-flex items-center gap-1.5 bg-white/20 hover:bg-white/30 backdrop-blur text-white px-3 py-2 rounded-lg text-sm btn-press"

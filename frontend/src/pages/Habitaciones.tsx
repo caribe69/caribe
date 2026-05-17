@@ -814,13 +814,15 @@ function DetalleImplementosModal({
   onClose: () => void;
 }) {
   const qc = useQueryClient();
+  // Sheet inferior para acciones — más espacio, no se sale del modal
+  const [accionPara, setAccionPara] = useState<UnidadFull | null>(null);
+
   const unidadesQ = useQuery<UnidadFull[]>({
     queryKey: ['implementos', 'unidades', 'hab', habitacion.id],
     queryFn: async () =>
       (await api.get(`/implementos?habitacionId=${habitacion.id}`)).data,
   });
 
-  // Mutación genérica que después invalida todas las queries de implementos.
   const accion = useMutation({
     mutationFn: async (vars: {
       unidadId: number;
@@ -850,6 +852,7 @@ function DetalleImplementosModal({
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['implementos'] });
       qc.invalidateQueries({ queryKey: ['habitaciones'] });
+      setAccionPara(null);
     },
   });
 
@@ -952,152 +955,314 @@ function DetalleImplementosModal({
               </div>
             </div>
           )}
-          <div className="space-y-3">
-            {porTipo.map(([nombre, grupo]) => (
-              <div key={nombre}>
-                <div className="flex items-center gap-2 mb-1.5">
-                  <span className="text-xl">{grupo.icono}</span>
-                  <span className="font-semibold text-slate-800 dark:text-slate-200 text-sm">
-                    {nombre}
-                  </span>
-                  <span className="text-xs text-slate-500">
-                    ({grupo.unidades.length})
-                  </span>
-                </div>
-                <div className="space-y-1">
-                  {grupo.unidades.map((u) => {
-                    const s =
-                      ESTADO_LABELS[u.estado] || ESTADO_LABELS.SIN_ASIGNAR;
-                    // Solo se pueden tomar acciones si la unidad está
-                    // EN_HABITACION (activa en la pieza). Cuando está
-                    // EN_LAVANDERIA/LAVADO/PERDIDO/DANADO el flujo es por
-                    // otro módulo.
-                    const accionable = u.estado === 'EN_HABITACION';
-                    return (
-                      <div
-                        key={u.id}
-                        className="flex items-center justify-between bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2"
-                      >
-                        <div className="flex items-center gap-2 min-w-0 flex-1">
-                          <span className="font-mono font-bold text-slate-800 dark:text-slate-100 text-sm">
-                            {u.codigo}
-                          </span>
-                          {u.notas && (
-                            <span
-                              className="text-[10px] text-slate-500 truncate"
-                              title={u.notas}
-                            >
-                              · {u.notas}
-                            </span>
-                          )}
-                        </div>
-                        <div className="flex items-center gap-1.5 shrink-0">
-                          <span
-                            className={`inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded bg-${s.color}-100 text-${s.color}-700 dark:bg-${s.color}-900/40 dark:text-${s.color}-300`}
-                            title={s.label}
-                          >
-                            {s.emoji} {s.label}
-                          </span>
-                          {accionable && (
-                            <UnidadAccionesMenu
-                              codigo={u.codigo}
-                              onAccion={(tipo, notas) =>
-                                accion.mutate({ unidadId: u.id, tipo, notas })
-                              }
-                              loading={accion.isPending}
-                            />
-                          )}
-                        </div>
+          <div className="space-y-4">
+            {porTipo.map(([nombre, grupo]) => {
+              const aqui = grupo.unidades.filter(
+                (u) => u.estado === 'EN_HABITACION',
+              ).length;
+              const total = grupo.unidades.length;
+              const completo = aqui === total;
+              return (
+                <div
+                  key={nombre}
+                  className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl overflow-hidden"
+                >
+                  {/* Header del tipo */}
+                  <div className="flex items-center gap-3 px-4 py-2.5 bg-slate-50 dark:bg-slate-800/40 border-b border-slate-200 dark:border-slate-700">
+                    <div className="w-9 h-9 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 flex items-center justify-center text-xl shrink-0">
+                      {grupo.icono}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="font-semibold text-slate-900 dark:text-slate-100 text-sm capitalize truncate">
+                        {nombre}
                       </div>
-                    );
-                  })}
+                      <div className="text-[10px] text-slate-500 uppercase tracking-widest font-semibold">
+                        {total} unidad{total === 1 ? '' : 'es'}
+                      </div>
+                    </div>
+                    <span
+                      className={`text-[10px] uppercase tracking-wider font-bold px-2 py-1 rounded ${
+                        completo
+                          ? 'bg-emerald-100 text-emerald-700'
+                          : 'bg-amber-100 text-amber-700'
+                      }`}
+                    >
+                      {aqui}/{total} {completo ? '✓' : 'aquí'}
+                    </span>
+                  </div>
+
+                  {/* Unidades */}
+                  <div>
+                    {grupo.unidades.map((u, i) => {
+                      const s =
+                        ESTADO_LABELS[u.estado] || ESTADO_LABELS.SIN_ASIGNAR;
+                      const accionable = u.estado === 'EN_HABITACION';
+                      const isLast = i === grupo.unidades.length - 1;
+                      return (
+                        <div
+                          key={u.id}
+                          className={`flex items-center gap-3 px-4 py-2.5 hover:bg-slate-50 dark:hover:bg-slate-800/30 transition ${
+                            !isLast
+                              ? 'border-b border-slate-100 dark:border-slate-800/60'
+                              : ''
+                          }`}
+                        >
+                          {/* Código con dot de estado */}
+                          <div className="flex items-center gap-2 min-w-0 flex-1">
+                            <span
+                              className={`w-2 h-2 rounded-full shrink-0 bg-${s.color}-500`}
+                              title={s.label}
+                            />
+                            <div className="min-w-0">
+                              <div className="font-mono font-bold text-slate-800 dark:text-slate-100 text-sm leading-tight">
+                                {u.codigo}
+                              </div>
+                              {u.notas && (
+                                <div
+                                  className="text-[10px] text-slate-500 truncate"
+                                  title={u.notas}
+                                >
+                                  {u.notas}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+
+                          <span
+                            className={`shrink-0 inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-${s.color}-100 text-${s.color}-700 dark:bg-${s.color}-900/40 dark:text-${s.color}-300`}
+                          >
+                            <span>{s.emoji}</span>
+                            <span className="hidden sm:inline">{s.label}</span>
+                          </span>
+
+                          {accionable && (
+                            <button
+                              onClick={() => setAccionPara(u)}
+                              className="shrink-0 w-7 h-7 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-700 flex items-center justify-center text-slate-500 text-lg font-bold leading-none"
+                              title="Acciones"
+                            >
+                              ⋯
+                            </button>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       </div>
+
+      {/* Sheet inferior con acciones — no se sale del modal */}
+      {accionPara && (
+        <AccionesUnidadSheet
+          unidad={accionPara}
+          onClose={() => setAccionPara(null)}
+          onAccion={(tipo, notas) =>
+            accion.mutate({ unidadId: accionPara.id, tipo, notas })
+          }
+          loading={accion.isPending}
+        />
+      )}
     </div>
   );
 }
 
 // ────────────────────────────────────────────────────────────
-// Menú de acciones por unidad de implemento
+// Sheet inferior con acciones para una unidad de implemento
 // ────────────────────────────────────────────────────────────
-function UnidadAccionesMenu({
-  codigo,
+type AccionTipo = 'almacen' | 'danado' | 'perdido';
+
+function AccionesUnidadSheet({
+  unidad,
+  onClose,
   onAccion,
   loading,
 }: {
-  codigo: string;
-  onAccion: (tipo: 'almacen' | 'danado' | 'perdido', notas?: string) => void;
+  unidad: UnidadFull;
+  onClose: () => void;
+  onAccion: (tipo: AccionTipo, notas?: string) => void;
   loading: boolean;
 }) {
-  const [open, setOpen] = useState(false);
+  const [tipo, setTipo] = useState<AccionTipo | null>(null);
+  const [notas, setNotas] = useState('');
 
-  const pedirYEjecutar = (tipo: 'almacen' | 'danado' | 'perdido') => {
-    setOpen(false);
-    const titulos = {
-      almacen: `¿Mover "${codigo}" al almacén?`,
-      danado: `¿Marcar "${codigo}" como dañado?`,
-      perdido: `¿Marcar "${codigo}" como perdido?`,
-    };
-    const descripciones = {
-      almacen:
-        'La unidad sale de esta habitación y queda en el almacén central, lista para reasignar.',
-      danado:
-        'La unidad queda fuera de uso (rota o irrecuperable). No vuelve al ciclo de lavandería.',
-      perdido:
-        'La unidad queda fuera de uso (no aparece). Se preserva en el historial.',
-    };
-    if (!confirm(`${titulos[tipo]}\n\n${descripciones[tipo]}`)) return;
-    // Para dañado/perdido pedimos nota opcional
-    let notas: string | undefined;
-    if (tipo !== 'almacen') {
-      const n = prompt('Nota opcional (motivo, dónde se rompió, etc.):');
-      notas = n?.trim() || undefined;
-    }
-    onAccion(tipo, notas);
+  const opciones: Array<{
+    key: AccionTipo;
+    emoji: string;
+    titulo: string;
+    desc: string;
+    accent: string;
+    btn: string;
+  }> = [
+    {
+      key: 'almacen',
+      emoji: '📦',
+      titulo: 'Mover al almacén',
+      desc: 'La unidad sale de esta habitación y queda lista para reasignar.',
+      accent:
+        'border-slate-200 dark:border-slate-700 hover:border-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/60',
+      btn: 'bg-slate-700 hover:bg-slate-800 text-white',
+    },
+    {
+      key: 'danado',
+      emoji: '💔',
+      titulo: 'Marcar como dañada',
+      desc: 'Queda fuera de uso (rota o irrecuperable). No vuelve al ciclo.',
+      accent:
+        'border-orange-200 dark:border-orange-900/50 hover:border-orange-400 hover:bg-orange-50/70 dark:hover:bg-orange-950/30',
+      btn: 'bg-orange-600 hover:bg-orange-700 text-white',
+    },
+    {
+      key: 'perdido',
+      emoji: '❓',
+      titulo: 'Marcar como perdida',
+      desc: 'La unidad no aparece. Se preserva en el historial para revisión.',
+      accent:
+        'border-rose-200 dark:border-rose-900/50 hover:border-rose-400 hover:bg-rose-50/70 dark:hover:bg-rose-950/30',
+      btn: 'bg-rose-600 hover:bg-rose-700 text-white',
+    },
+  ];
+
+  const seleccionada = opciones.find((o) => o.key === tipo);
+
+  const confirmar = () => {
+    if (!tipo) return;
+    onAccion(tipo, tipo === 'almacen' ? undefined : notas.trim() || undefined);
   };
 
   return (
-    <div className="relative">
-      <button
-        onClick={() => setOpen((v) => !v)}
-        disabled={loading}
-        className="p-1 rounded hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-500 disabled:opacity-50"
-        title="Acciones"
+    <div
+      className="fixed inset-0 z-[60] bg-slate-950/70 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4 animate-fade-in"
+      onClick={(e) => {
+        e.stopPropagation();
+        if (!loading) onClose();
+      }}
+    >
+      <div
+        className="bg-white dark:bg-slate-900 w-full sm:max-w-md rounded-t-3xl sm:rounded-3xl shadow-2xl overflow-hidden animate-slide-up sm:animate-scale-in"
+        onClick={(e) => e.stopPropagation()}
       >
-        <span className="text-base leading-none">⋯</span>
-      </button>
-      {open && (
-        <>
-          <div
-            className="fixed inset-0 z-10"
-            onClick={() => setOpen(false)}
-          />
-          <div className="absolute right-0 top-7 z-20 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg shadow-xl min-w-[200px] py-1 text-xs">
-            <button
-              onClick={() => pedirYEjecutar('almacen')}
-              className="w-full text-left px-3 py-2 hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center gap-2"
-            >
-              📦 Mover al almacén
-            </button>
-            <button
-              onClick={() => pedirYEjecutar('danado')}
-              className="w-full text-left px-3 py-2 hover:bg-orange-50 text-orange-700 flex items-center gap-2"
-            >
-              💔 Marcar como dañado
-            </button>
-            <button
-              onClick={() => pedirYEjecutar('perdido')}
-              className="w-full text-left px-3 py-2 hover:bg-rose-50 text-rose-700 flex items-center gap-2"
-            >
-              ❓ Marcar como perdido
-            </button>
+        {/* Drag handle (mobile) */}
+        <div className="sm:hidden pt-2 pb-1 flex justify-center">
+          <div className="w-10 h-1 rounded-full bg-slate-300 dark:bg-slate-700" />
+        </div>
+
+        {/* Header */}
+        <div className="px-5 pt-3 pb-4 border-b border-slate-100 dark:border-slate-800 flex items-start gap-3">
+          <div className="w-11 h-11 rounded-xl bg-violet-100 dark:bg-violet-900/40 text-violet-700 dark:text-violet-300 flex items-center justify-center text-xl shrink-0">
+            ⚙️
           </div>
-        </>
-      )}
+          <div className="flex-1 min-w-0">
+            <div className="text-[10px] uppercase tracking-widest font-bold text-slate-500">
+              Acción sobre la unidad
+            </div>
+            <div className="font-mono font-bold text-slate-900 dark:text-slate-100 truncate">
+              {unidad.codigo}
+            </div>
+            <div className="text-xs text-slate-500 truncate capitalize">
+              {unidad.tipo.icono} {unidad.tipo.nombre}
+            </div>
+          </div>
+          <button
+            onClick={onClose}
+            disabled={loading}
+            className="w-8 h-8 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center justify-center text-slate-500 disabled:opacity-40"
+          >
+            <X size={18} />
+          </button>
+        </div>
+
+        {/* Lista de opciones */}
+        <div className="p-4 space-y-2">
+          {opciones.map((o) => {
+            const activa = tipo === o.key;
+            return (
+              <button
+                key={o.key}
+                onClick={() => setTipo(o.key)}
+                disabled={loading}
+                className={`w-full text-left flex items-start gap-3 p-3 rounded-2xl border-2 transition disabled:opacity-50 ${
+                  activa
+                    ? 'border-violet-500 bg-violet-50/70 dark:bg-violet-950/30 ring-2 ring-violet-200 dark:ring-violet-900/40'
+                    : o.accent
+                }`}
+              >
+                <div className="text-2xl shrink-0 leading-none mt-0.5">
+                  {o.emoji}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="font-semibold text-sm text-slate-900 dark:text-slate-100">
+                    {o.titulo}
+                  </div>
+                  <div className="text-[11px] text-slate-500 leading-snug mt-0.5">
+                    {o.desc}
+                  </div>
+                </div>
+                <div
+                  className={`w-5 h-5 rounded-full border-2 shrink-0 mt-1 flex items-center justify-center ${
+                    activa
+                      ? 'border-violet-600 bg-violet-600'
+                      : 'border-slate-300 dark:border-slate-600'
+                  }`}
+                >
+                  {activa && (
+                    <div className="w-2 h-2 rounded-full bg-white" />
+                  )}
+                </div>
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Nota opcional sólo para dañado/perdido */}
+        {tipo && tipo !== 'almacen' && (
+          <div className="px-4 pb-3">
+            <label className="block text-[10px] uppercase tracking-widest font-bold text-slate-500 mb-1.5">
+              Nota (opcional)
+            </label>
+            <textarea
+              value={notas}
+              onChange={(e) => setNotas(e.target.value)}
+              disabled={loading}
+              rows={2}
+              maxLength={200}
+              placeholder={
+                tipo === 'danado'
+                  ? 'Ej: rota la cremallera, mancha permanente, etc.'
+                  : 'Ej: no apareció en última revisión, etc.'
+              }
+              className="w-full text-sm px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 focus:outline-none focus:ring-2 focus:ring-violet-400 resize-none"
+            />
+          </div>
+        )}
+
+        {/* Footer */}
+        <div className="px-4 pb-5 pt-2 flex gap-2 border-t border-slate-100 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-950/30">
+          <button
+            onClick={onClose}
+            disabled={loading}
+            className="flex-1 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 text-sm font-semibold text-slate-700 dark:text-slate-200 hover:bg-white dark:hover:bg-slate-800 disabled:opacity-50"
+          >
+            Cancelar
+          </button>
+          <button
+            onClick={confirmar}
+            disabled={!tipo || loading}
+            className={`flex-[2] py-2.5 rounded-xl text-sm font-bold shadow disabled:opacity-40 disabled:cursor-not-allowed transition ${
+              seleccionada?.btn ?? 'bg-slate-300 text-slate-600'
+            }`}
+          >
+            {loading
+              ? 'Procesando…'
+              : seleccionada
+                ? `Confirmar · ${seleccionada.titulo}`
+                : 'Elegí una acción'}
+          </button>
+        </div>
+      </div>
     </div>
   );
 }

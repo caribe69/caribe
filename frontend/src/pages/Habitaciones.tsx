@@ -147,6 +147,7 @@ export default function Habitaciones() {
   const [showPisoModal, setShowPisoModal] = useState(false);
   const [cambiandoEstado, setCambiandoEstado] = useState<Habitacion | null>(null);
   const [fotosHab, setFotosHab] = useState<Habitacion | null>(null);
+  const [verImplementos, setVerImplementos] = useState<Habitacion | null>(null);
 
   const { data: habs, isLoading } = useQuery({
     queryKey: ['habitaciones'],
@@ -371,65 +372,41 @@ export default function Habitaciones() {
                 </div>
               )}
 
-              {/* Implementos de esta habitación */}
+              {/* Chip compacto de implementos — click para abrir detalle */}
               {(() => {
                 const impl = implPorHab.get(h.id);
                 if (!impl) return null;
-                const tipos = Array.from(impl.porTipo.entries());
+                const total = impl.aqui + impl.lavanderia + impl.lavado;
+                if (total === 0) return null;
+                const fuera = impl.lavanderia + impl.lavado;
+                const completa = fuera === 0;
                 return (
-                  <div className="mt-3 bg-white/60 dark:bg-slate-900/40 border border-white/80 dark:border-slate-700 rounded-xl px-3 py-2">
-                    <div className="flex items-center justify-between mb-1.5">
-                      <div className="text-[10px] uppercase tracking-widest font-bold text-slate-500">
-                        Implementos
-                      </div>
-                      {(impl.lavanderia > 0 || impl.lavado > 0) && (
-                        <div className="text-[10px] font-semibold text-blue-700 dark:text-blue-300">
-                          {impl.lavanderia > 0 && (
-                            <span title="Sucios en lavandería">
-                              🧼 {impl.lavanderia}
-                            </span>
-                          )}
-                          {impl.lavanderia > 0 && impl.lavado > 0 && (
-                            <span className="mx-1">·</span>
-                          )}
-                          {impl.lavado > 0 && (
-                            <span
-                              className="text-cyan-700 dark:text-cyan-300"
-                              title="Lavados, esperando volver"
-                            >
-                              ✨ {impl.lavado}
-                            </span>
-                          )}
-                        </div>
+                  <button
+                    onClick={() => setVerImplementos(h)}
+                    className={`mt-2 w-full inline-flex items-center justify-between gap-2 text-[11px] font-semibold px-2.5 py-1.5 rounded-lg transition ${
+                      completa
+                        ? 'bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-100'
+                        : 'bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 hover:bg-amber-100'
+                    }`}
+                    title="Ver detalle de implementos"
+                  >
+                    <span className="flex items-center gap-1.5">
+                      📦 {impl.aqui}/{total} aquí
+                    </span>
+                    <span className="flex items-center gap-1 text-[10px]">
+                      {impl.lavanderia > 0 && (
+                        <span className="text-blue-700 dark:text-blue-300">
+                          🧼 {impl.lavanderia}
+                        </span>
                       )}
-                    </div>
-                    <div className="flex flex-wrap gap-1.5">
-                      {tipos.map(([nombre, t]) => {
-                        const total = t.aqui + t.fuera;
-                        const completa = t.fuera === 0;
-                        return (
-                          <span
-                            key={nombre}
-                            title={
-                              completa
-                                ? `${t.aqui} ${nombre} aquí`
-                                : `${t.aqui} de ${total} ${nombre} aquí · ${t.fuera} fuera`
-                            }
-                            className={`inline-flex items-center gap-1 text-[10px] font-semibold px-1.5 py-0.5 rounded ${
-                              completa
-                                ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300'
-                                : 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300'
-                            }`}
-                          >
-                            <span>{t.icono}</span>
-                            <span className="tabular-nums">
-                              {t.aqui}/{total}
-                            </span>
-                          </span>
-                        );
-                      })}
-                    </div>
-                  </div>
+                      {impl.lavado > 0 && (
+                        <span className="text-cyan-700 dark:text-cyan-300">
+                          ✨ {impl.lavado}
+                        </span>
+                      )}
+                      <span className="opacity-60">→</span>
+                    </span>
+                  </button>
                 );
               })()}
 
@@ -507,6 +484,12 @@ export default function Habitaciones() {
           habitacionId={fotosHab.id}
           numero={fotosHab.numero}
           onClose={() => setFotosHab(null)}
+        />
+      )}
+      {verImplementos && (
+        <DetalleImplementosModal
+          habitacion={verImplementos}
+          onClose={() => setVerImplementos(null)}
         />
       )}
     </div>
@@ -794,6 +777,195 @@ function ErrorBox({ msg }: { msg: string }) {
   return (
     <div className="text-sm text-red-700 bg-red-50 border border-red-200 p-3 rounded-lg">
       {msg}
+    </div>
+  );
+}
+
+// ────────────────────────────────────────────────────────────
+// Modal de detalle de implementos por habitación
+// ────────────────────────────────────────────────────────────
+interface UnidadFull {
+  id: number;
+  codigo: string;
+  estado: string;
+  notas: string | null;
+  tipo: { id: number; nombre: string; icono: string | null };
+  habitacion: { id: number; numero: string } | null;
+}
+
+const ESTADO_LABELS: Record<
+  string,
+  { label: string; color: string; emoji: string }
+> = {
+  EN_HABITACION: { label: 'Aquí', color: 'emerald', emoji: '🏠' },
+  EN_LAVANDERIA: { label: 'Sucio · lavandería', color: 'blue', emoji: '🧼' },
+  LAVADO: { label: 'Lavado · esperando', color: 'cyan', emoji: '✨' },
+  EN_TRANSITO: { label: 'En tránsito', color: 'amber', emoji: '🚚' },
+  SIN_ASIGNAR: { label: 'Sin asignar', color: 'slate', emoji: '📦' },
+  PERDIDO: { label: 'Perdido', color: 'rose', emoji: '❓' },
+};
+
+function DetalleImplementosModal({
+  habitacion,
+  onClose,
+}: {
+  habitacion: Habitacion;
+  onClose: () => void;
+}) {
+  const unidadesQ = useQuery<UnidadFull[]>({
+    queryKey: ['implementos', 'unidades', 'hab', habitacion.id],
+    queryFn: async () =>
+      (await api.get(`/implementos?habitacionId=${habitacion.id}`)).data,
+  });
+
+  const porTipo = useMemo(() => {
+    const map = new Map<string, { icono: string; unidades: UnidadFull[] }>();
+    for (const u of unidadesQ.data || []) {
+      const key = u.tipo.nombre;
+      const entry =
+        map.get(key) || { icono: u.tipo.icono || '📦', unidades: [] };
+      entry.unidades.push(u);
+      map.set(key, entry);
+    }
+    return Array.from(map.entries());
+  }, [unidadesQ.data]);
+
+  const totales = useMemo(() => {
+    const r = { aqui: 0, sucio: 0, lavado: 0 };
+    for (const u of unidadesQ.data || []) {
+      if (u.estado === 'EN_HABITACION') r.aqui++;
+      else if (u.estado === 'EN_LAVANDERIA') r.sucio++;
+      else if (u.estado === 'LAVADO') r.lavado++;
+    }
+    return r;
+  }, [unidadesQ.data]);
+
+  return (
+    <div
+      className="fixed inset-0 bg-slate-950/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-fade-in"
+      onClick={onClose}
+    >
+      <div
+        className="bg-white dark:bg-slate-900 rounded-3xl w-full max-w-lg max-h-[90vh] overflow-y-auto shadow-2xl animate-scale-in"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="sticky top-0 bg-gradient-to-r from-violet-600 to-violet-700 text-white p-5 flex justify-between items-start z-10">
+          <div className="flex items-start gap-3">
+            <div className="w-12 h-12 rounded-xl bg-white/15 flex items-center justify-center text-2xl">
+              📦
+            </div>
+            <div>
+              <h2 className="font-hotel text-lg font-bold">
+                Implementos · Hab. {habitacion.numero}
+              </h2>
+              <div className="text-xs opacity-90 mt-0.5">
+                Detalle de cada pieza con su estado actual
+              </div>
+            </div>
+          </div>
+          <button
+            onClick={onClose}
+            className="w-8 h-8 rounded-lg hover:bg-white/15 flex items-center justify-center"
+          >
+            <X size={18} />
+          </button>
+        </div>
+
+        <div className="p-5 pb-3">
+          <div className="grid grid-cols-3 gap-2 text-center">
+            <div className="bg-emerald-50 dark:bg-emerald-900/30 rounded-lg p-2">
+              <div className="text-2xl font-bold text-emerald-700 dark:text-emerald-300 tabular-nums">
+                {totales.aqui}
+              </div>
+              <div className="text-[10px] uppercase tracking-widest font-semibold text-emerald-700 dark:text-emerald-300">
+                🏠 Aquí
+              </div>
+            </div>
+            <div className="bg-blue-50 dark:bg-blue-900/30 rounded-lg p-2">
+              <div className="text-2xl font-bold text-blue-700 dark:text-blue-300 tabular-nums">
+                {totales.sucio}
+              </div>
+              <div className="text-[10px] uppercase tracking-widest font-semibold text-blue-700 dark:text-blue-300">
+                🧼 Sucios
+              </div>
+            </div>
+            <div className="bg-cyan-50 dark:bg-cyan-900/30 rounded-lg p-2">
+              <div className="text-2xl font-bold text-cyan-700 dark:text-cyan-300 tabular-nums">
+                {totales.lavado}
+              </div>
+              <div className="text-[10px] uppercase tracking-widest font-semibold text-cyan-700 dark:text-cyan-300">
+                ✨ Lavados
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="px-5 pb-5">
+          {unidadesQ.isLoading && (
+            <div className="text-slate-400 text-sm text-center py-8">
+              Cargando…
+            </div>
+          )}
+          {!unidadesQ.isLoading && porTipo.length === 0 && (
+            <div className="text-center py-8">
+              <div className="text-4xl mb-2">📦</div>
+              <div className="text-sm font-semibold text-slate-700 dark:text-slate-200">
+                Sin implementos asignados
+              </div>
+              <div className="text-xs text-slate-500 mt-1">
+                Andá a Implementos → Nueva unidad para agregar a esta hab.
+              </div>
+            </div>
+          )}
+          <div className="space-y-3">
+            {porTipo.map(([nombre, grupo]) => (
+              <div key={nombre}>
+                <div className="flex items-center gap-2 mb-1.5">
+                  <span className="text-xl">{grupo.icono}</span>
+                  <span className="font-semibold text-slate-800 dark:text-slate-200 text-sm">
+                    {nombre}
+                  </span>
+                  <span className="text-xs text-slate-500">
+                    ({grupo.unidades.length})
+                  </span>
+                </div>
+                <div className="space-y-1">
+                  {grupo.unidades.map((u) => {
+                    const s =
+                      ESTADO_LABELS[u.estado] || ESTADO_LABELS.SIN_ASIGNAR;
+                    return (
+                      <div
+                        key={u.id}
+                        className="flex items-center justify-between bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2"
+                      >
+                        <div className="flex items-center gap-2 min-w-0 flex-1">
+                          <span className="font-mono font-bold text-slate-800 dark:text-slate-100 text-sm">
+                            {u.codigo}
+                          </span>
+                          {u.notas && (
+                            <span
+                              className="text-[10px] text-slate-500 truncate"
+                              title={u.notas}
+                            >
+                              · {u.notas}
+                            </span>
+                          )}
+                        </div>
+                        <span
+                          className={`shrink-0 inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded bg-${s.color}-100 text-${s.color}-700 dark:bg-${s.color}-900/40 dark:text-${s.color}-300`}
+                          title={s.label}
+                        >
+                          {s.emoji} {s.label}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

@@ -176,6 +176,10 @@ export class NubeFactService {
       },
     });
     if (!alquiler) throw new NotFoundException('Alquiler no encontrado');
+    if (alquiler.reservaGrupalId)
+      throw new BadRequestException(
+        `Este alquiler es parte de una reserva grupal (#${alquiler.reservaGrupalId}). Emití la factura consolidada desde reservas grupales.`,
+      );
     if (!opts.forzar && alquiler.sunatEmitido)
       throw new BadRequestException(
         `Este alquiler ya tiene comprobante emitido: ${alquiler.sunatSerie}-${alquiler.sunatNumero}. Usa forzar=true para reemitir.`,
@@ -376,6 +380,192 @@ export class NubeFactService {
   ) {
     await this.prisma.alquiler.update({
       where: { id: alquilerId },
+      data: {
+        sunatEmitido: true,
+        sunatAceptada: resp.aceptada_por_sunat ?? null,
+        sunatSerie: serie,
+        sunatNumero: numero,
+        sunatEnlace: resp.enlace ?? null,
+        sunatEnlacePdf: resp.enlace_del_pdf ?? null,
+        sunatEnlaceXml: resp.enlace_del_xml ?? null,
+        sunatEnlaceCdr: resp.enlace_del_cdr ?? null,
+        sunatHash: resp.codigo_hash ?? null,
+        sunatQrCadena: resp.cadena_para_codigo_qr ?? null,
+        sunatResponseCode: resp.sunat_responsecode ?? null,
+        sunatDescripcion: resp.sunat_description ?? null,
+        sunatEmitidoEn: new Date(),
+      },
+    });
+  }
+
+  // ─────────────────────────────────────────────────────────
+  // Emitir FACTURA CONSOLIDADA desde una Reserva Grupal.
+  // Una sola factura con N líneas (una por habitación), un solo
+  // correlativo, una sola request a NubeFact.
+  // ─────────────────────────────────────────────────────────
+  async emitirDesdeReservaGrupal(reservaId: number, opts: EmitirOpts = {}) {
+    const reserva = await this.prisma.reservaGrupal.findUnique({
+      where: { id: reservaId },
+      include: {
+        alquileres: {
+          include: { habitacion: true },
+        },
+        sede: true,
+      },
+    });
+    if (!reserva) throw new NotFoundException('Reserva grupal no encontrada');
+    if (!opts.forzar && reserva.sunatEmitido)
+      throw new BadRequestException(
+        `Esta reserva ya tiene factura: ${reserva.sunatSerie}-${reserva.sunatNumero}. Usa forzar=true para reemitir.`,
+      );
+    if (reserva.alquileres.length === 0)
+      throw new BadRequestException(
+        'La reserva no tiene habitaciones asociadas.',
+      );
+
+    const cfg = await this.getConfig();
+    const tipo: 1 = 1; // FACTURA siempre (grupal empresarial con RUC)
+    const tipoSerie: TipoComprobanteSerie = 'FACTURA';
+
+    let serie: string;
+    let numero: number;
+    let serieId: number | null = null;
+    if (opts.numeroOverride != null) {
+      if (!reserva.sunatSerie)
+        throw new BadRequestException(
+          'No se puede re-emitir con un número específico si la reserva no tiene serie previa.',
+        );
+      serie = reserva.sunatSerie;
+      numero = opts.numeroOverride;
+    } else {
+      const reservado = await this.sunatSeries.reservarSiguiente(
+        reserva.sedeId,
+        tipoSerie,
+      );
+      serie = reservado.serie;
+      numero = reservado.numero;
+      serieId = reservado.serieId;
+    }
+
+    const igvHospedajePct = Number(cfg.nubefactIgvHospedaje);
+
+    // 1 ítem por habitación (cada alquiler suma 1 línea)
+    const items: any[] = reserva.alquileres.map((a) => {
+      const precio = Number(a.precioHabitacion);
+      const valorUnitario = precio / (1 + igvHospedajePct / 100);
+      const igv = precio - valorUnitario;
+      return {
+        unidad_de_medida: 'ZZ',
+        codigo: 'HOSP',
+        codigo_producto_sunat: '90111500',
+        descripcion: `ALOJAMIENTO ${(a.habitacion.descripcion || 'HABITACION').toUpperCase()} Nº ${a.habitacion.numero}`,
+        cantidad: 1,
+        valor_unitario: round2(valorUnitario),
+        precio_unitario: round2(precio),
+        descuento: '',
+        subtotal: round2(valorUnitario),
+        tipo_de_igv: 1,
+        igv: round2(igv),
+        total: round2(precio),
+        anticipo_regularizacion: false,
+      };
+    });
+
+    const totalGravada = items.reduce((s, i) => s + i.subtotal, 0);
+    const totalIgv = items.reduce((s, i) => s + i.igv, 0);
+    const total = items.reduce((s, i) => s + i.total, 0);
+
+    const body: any = {
+      operacion: 'generar_comprobante',
+      tipo_de_comprobante: tipo,
+      serie,
+      numero,
+      sunat_transaction: 1,
+      cliente_tipo_de_documento: 6,
+      cliente_numero_de_documento: reserva.clienteRuc,
+      cliente_denominacion: reserva.clienteRazonSocial.toUpperCase(),
+      cliente_direccion:
+        reserva.clienteDireccionFiscal || reserva.sede.direccion || '-',
+      cliente_email: '',
+      fecha_de_emision: formatDateDDMMYYYY(new Date()),
+      moneda: 1,
+      porcentaje_de_igv: igvHospedajePct,
+      total_gravada: round2(totalGravada),
+      total_igv: round2(totalIgv),
+      total: round2(total),
+      enviar_automaticamente_a_la_sunat: true,
+      enviar_automaticamente_al_cliente: false,
+      medio_de_pago: reserva.metodoPago,
+      condiciones_de_pago: 'CONTADO',
+      formato_de_pdf: 'A4',
+      items,
+    };
+
+    // Mismo flujo que alquileres: hasta 10 reintentos avanzando correlativo
+    let resp = await this.post(body);
+    let intentos = 0;
+    while (
+      resp.errors &&
+      resp.codigo === 23 &&
+      intentos < 10 &&
+      serieId &&
+      opts.numeroOverride == null
+    ) {
+      intentos++;
+      const siguiente = await this.sunatSeries.reservarSiguiente(
+        reserva.sedeId,
+        tipoSerie,
+        serie,
+      );
+      numero = siguiente.numero;
+      body.numero = numero;
+      resp = await this.post(body);
+    }
+
+    if (resp.errors && resp.codigo === 23 && opts.numeroOverride != null) {
+      const consulta = await this.post({
+        operacion: 'consultar_comprobante',
+        tipo_de_comprobante: tipo,
+        serie,
+        numero,
+      });
+      await this.persistirEnReservaGrupal(reservaId, serie, numero, consulta);
+      return { ...consulta, _idempotent: true };
+    }
+
+    if (resp.errors) {
+      // Revertir correlativo si NubeFact rechazó por otro motivo
+      if (serieId && opts.numeroOverride == null && resp.codigo !== 23) {
+        await this.sunatSeries
+          .revertirReserva(serieId, numero)
+          .catch((err) =>
+            this.log.error(`No se pudo revertir reserva grupal: ${err.message}`),
+          );
+      }
+      await this.prisma.reservaGrupal.update({
+        where: { id: reservaId },
+        data: {
+          sunatResponseCode: String(resp.codigo ?? ''),
+          sunatDescripcion: resp.errors,
+        },
+      });
+      throw new BadRequestException(
+        `NubeFact rechazó tras ${intentos + 1} intento(s): [${resp.codigo}] ${resp.errors}`,
+      );
+    }
+
+    await this.persistirEnReservaGrupal(reservaId, serie, numero, resp);
+    return resp;
+  }
+
+  private async persistirEnReservaGrupal(
+    reservaId: number,
+    serie: string,
+    numero: number,
+    resp: NubeFactResponse,
+  ) {
+    await this.prisma.reservaGrupal.update({
+      where: { id: reservaId },
       data: {
         sunatEmitido: true,
         sunatAceptada: resp.aceptada_por_sunat ?? null,

@@ -892,6 +892,14 @@ export class AlquileresService {
     if (alquiler.estado === EstadoAlquiler.ANULADO)
       throw new BadRequestException('Alquiler anulado');
 
+    // Si pertenece a una reserva grupal, el cobro va por el endpoint
+    // POST /reservas-grupales/:id/cobrar para que sea 1 solo pago consolidado.
+    if (alquiler.reservaGrupalId) {
+      throw new BadRequestException(
+        `Este alquiler es parte de una reserva grupal (#${alquiler.reservaGrupalId}). Cobrá desde el panel de reservas grupales en lugar de cada habitación.`,
+      );
+    }
+
     const total = Number(alquiler.total);
     const yaPagado = Number(alquiler.montoPagado);
     const saldo = total - yaPagado;

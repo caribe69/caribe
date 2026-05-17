@@ -22,6 +22,7 @@ const Configuracion = lazy(() => import('@/pages/Configuracion'));
 const Chat = lazy(() => import('@/pages/Chat'));
 const Reportes = lazy(() => import('@/pages/Reportes'));
 const Transferencias = lazy(() => import('@/pages/Transferencias'));
+const ReservasGrupales = lazy(() => import('@/pages/ReservasGrupales'));
 const Auditoria = lazy(() => import('@/pages/Auditoria'));
 const Documentos = lazy(() => import('@/pages/Documentos'));
 const PersonalPage = lazy(() => import('@/pages/Personal'));
@@ -174,6 +175,14 @@ export default function App() {
           element={
             <Suspense fallback={<RouteFallback />}>
               <Transferencias />
+            </Suspense>
+          }
+        />
+        <Route
+          path="reservas-grupales"
+          element={
+            <Suspense fallback={<RouteFallback />}>
+              <ReservasGrupales />
             </Suspense>
           }
         />

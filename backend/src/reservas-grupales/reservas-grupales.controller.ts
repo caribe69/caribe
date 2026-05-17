@@ -67,4 +67,15 @@ export class ReservasGrupalesController {
   ) {
     return this.service.finalizar(id, user);
   }
+
+  /** Cobro consolidado: 1 solo pago por las N habitaciones del grupo */
+  @Roles(Rol.SUPERADMIN, Rol.ADMIN_SEDE, Rol.HOTELERO, Rol.CAJERO)
+  @Post(':id/cobrar')
+  cobrar(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() body: { monto?: number },
+    @CurrentUser() user: JwtPayload,
+  ) {
+    return this.service.cobrar(id, user, body?.monto);
+  }
 }

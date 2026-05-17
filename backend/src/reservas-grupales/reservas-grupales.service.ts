@@ -243,4 +243,87 @@ export class ReservasGrupalesService {
       });
     });
   }
+
+  /**
+   * Cobro consolidado: 1 solo pago que cubre las N habitaciones del grupo.
+   * No usa PagoAlquiler por cada alquiler (sería ruido en el reporte de
+   * caja); marca todos los alquileres como pagados y registra el monto
+   * y turno en la propia ReservaGrupal.
+   */
+  async cobrar(
+    id: number,
+    user: JwtPayload,
+    monto?: number,
+  ) {
+    const reserva = await this.prisma.reservaGrupal.findUnique({
+      where: { id },
+      include: { alquileres: true },
+    });
+    if (!reserva) throw new NotFoundException('Reserva grupal no encontrada');
+    enforceSede(user, reserva.sedeId);
+
+    const total = Number(reserva.total);
+    const yaPagado = Number(reserva.montoPagado);
+    const saldo = total - yaPagado;
+    if (saldo <= 0.005)
+      throw new BadRequestException('Esta reserva ya está totalmente pagada');
+
+    let cobro = monto != null ? Number(monto) : saldo;
+    if (!Number.isFinite(cobro) || cobro <= 0)
+      throw new BadRequestException('El monto debe ser mayor a 0');
+    cobro = Math.round(cobro * 100) / 100;
+    if (cobro - saldo > 0.005)
+      throw new BadRequestException(
+        `El monto (S/ ${cobro.toFixed(2)}) excede el saldo pendiente (S/ ${saldo.toFixed(2)})`,
+      );
+
+    const nuevoPagado = yaPagado + cobro;
+    const completo = nuevoPagado >= total - 0.005;
+
+    // Turno actual del cajero (ahí va el ingreso)
+    const turnoActual = await this.prisma.turnoCaja.findFirst({
+      where: {
+        sedeId: reserva.sedeId,
+        usuarioId: user.sub,
+        estado: EstadoTurno.ABIERTO,
+      },
+    });
+    if (!turnoActual)
+      throw new BadRequestException(
+        'No tienes turno de caja abierto. Abre caja primero.',
+      );
+
+    return this.prisma.$transaction(async (tx) => {
+      // Actualiza la reserva
+      const actualizada = await tx.reservaGrupal.update({
+        where: { id: reserva.id },
+        data: {
+          montoPagado: nuevoPagado,
+          pagado: completo,
+          pagadoEn: completo ? new Date() : reserva.pagadoEn,
+          cobradoPorId: user.sub,
+          turnoPagoId: turnoActual.id,
+        },
+      });
+      // Si quedó totalmente pagada, marcamos los N alquileres hijos
+      // como pagados también (para que el flujo de finalizar no rebote).
+      if (completo) {
+        for (const a of reserva.alquileres) {
+          const totalAlq = Number(a.total);
+          await tx.alquiler.update({
+            where: { id: a.id },
+            data: {
+              pagado: true,
+              montoPagado: totalAlq,
+              pagadoEn: new Date(),
+              cobradoPorId: user.sub,
+              turnoPagoId: turnoActual.id,
+            },
+          });
+        }
+      }
+      return actualizada;
+    });
+  }
+
 }

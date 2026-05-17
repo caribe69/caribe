@@ -75,6 +75,18 @@ export class NubeFactController {
     });
   }
 
+  /** Emitir FACTURA CONSOLIDADA de una reserva grupal (1 factura, N líneas). */
+  @Post('reservas-grupales/:id/emitir')
+  emitirReservaGrupal(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: EmitirDto,
+  ) {
+    return this.service.emitirDesdeReservaGrupal(id, {
+      forzar: dto.forzar,
+      numeroOverride: dto.numero,
+    });
+  }
+
   /** Consultar el estado de un comprobante en SUNAT. */
   @Get('consultar')
   consultar(

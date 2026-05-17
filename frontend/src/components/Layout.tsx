@@ -70,6 +70,12 @@ const groups: Group[] = [
         roles: ['SUPERADMIN', 'ADMIN_SEDE', 'HOTELERO', 'CAJERO'],
       },
       {
+        to: '/reservas-grupales',
+        label: 'Reservas grupales',
+        icon: Briefcase,
+        roles: ['SUPERADMIN', 'ADMIN_SEDE', 'HOTELERO', 'CAJERO'],
+      },
+      {
         to: '/habitaciones',
         label: 'Habitaciones',
         icon: BedDouble,

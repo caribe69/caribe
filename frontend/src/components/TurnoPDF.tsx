@@ -3,6 +3,7 @@ import {
   Page,
   Text,
   View,
+  Image,
   StyleSheet,
   Font,
 } from '@react-pdf/renderer';
@@ -44,273 +45,378 @@ export interface EmpresaConfig {
 }
 
 // ────────────────────────────────────────────────────────────
-// Paleta — estilo ficha pre-impresa
+// Paleta — ficha pre-impresa profesional
 // ────────────────────────────────────────────────────────────
 const C = {
-  ink: '#0a0a0a',         // tinta negra
+  ink: '#0a0a0a',
+  text: '#1f2937',
   border: '#0a0a0a',
-  pen: '#1e3a8a',         // azul birome para los valores
-  red: '#dc2626',
+  pen: '#1e3a8a',           // azul birome para los valores escritos
+  green: '#047857',
+  red: '#b91c1c',
   muted: '#525252',
-  paper: '#fffdf7',       // ligero crema (papel)
-  chip: '#fb923c',        // naranja del chip NOCH
+  soft: '#9ca3af',
+  line: '#e5e7eb',
+  paper: '#fffdf7',         // fondo papel crema sutil
+  bandLight: '#f3f4f6',
+  bandDark: '#e5e7eb',
+  chipNight: '#1e293b',
+  chipDay: '#f59e0b',
 };
 
-// ────────────────────────────────────────────────────────────
-// Estilos — ficha tipo cuaderno
-// ────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
   page: {
-    paddingTop: 24,
+    paddingTop: 28,
     paddingBottom: 24,
-    paddingHorizontal: 36,
+    paddingHorizontal: 32,
     fontSize: 10,
     fontFamily: 'Helvetica',
     color: C.ink,
     backgroundColor: '#ffffff',
-    lineHeight: 1.25,
+    lineHeight: 1.3,
   },
 
-  // ── Ficha contenedora
-  ficha: {
-    backgroundColor: C.paper,
-    borderWidth: 3,
-    borderColor: C.border,
-  },
-
-  // ── Cabecera (4 columnas con tabs)
-  cabecera: {
-    flexDirection: 'row',
-    borderBottomWidth: 3,
-    borderBottomColor: C.border,
-    backgroundColor: '#ffffff',
-    position: 'relative',
-  },
-  cabCell: {
-    paddingVertical: 8,
-    paddingHorizontal: 8,
-    borderRightWidth: 2,
-    borderRightColor: C.border,
+  // ── Header empresa + logo
+  empresaRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    marginBottom: 10,
+    gap: 12,
   },
-  cabLabel: {
-    fontSize: 9,
+  logo: { width: 42, height: 42, objectFit: 'contain' },
+  empresaTxt: { flex: 1 },
+  empresaNombre: {
+    fontSize: 12,
     fontFamily: 'Helvetica-Bold',
     color: C.ink,
     letterSpacing: 0.5,
   },
-  cabValue: {
-    fontSize: 11,
-    fontFamily: 'Helvetica-Bold',
-    color: C.pen,
+  empresaSub: { fontSize: 8.5, color: C.muted, marginTop: 1 },
+  reportTag: {
+    alignItems: 'flex-end',
   },
-  // Chip naranja "TURNO" (como el NOCH del cuaderno)
-  chip: {
-    position: 'absolute',
-    top: -10,
-    left: 12,
-    backgroundColor: C.chip,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderWidth: 1.5,
+  reportTagLabel: {
+    fontSize: 7.5,
+    color: C.muted,
+    textTransform: 'uppercase',
+    letterSpacing: 1.5,
+    fontFamily: 'Helvetica-Bold',
+  },
+  reportTagDate: { fontSize: 7.5, color: C.muted, marginTop: 1 },
+
+  // ── Ficha contenedora
+  ficha: {
+    borderWidth: 2.5,
     borderColor: C.border,
-    zIndex: 10,
+    backgroundColor: C.paper,
   },
-  chipText: {
+
+  // Banda superior (sello del turno)
+  banda: {
+    backgroundColor: C.ink,
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  bandaLeft: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  bandaLabel: {
+    color: '#cbd5e1',
     fontSize: 8,
+    textTransform: 'uppercase',
+    letterSpacing: 1.5,
     fontFamily: 'Helvetica-Bold',
+  },
+  bandaNum: {
     color: '#ffffff',
-    letterSpacing: 1,
-  },
-
-  // ── Bloque superior: 2 columnas (totales / digitales)
-  superRow: {
-    flexDirection: 'row',
-    borderBottomWidth: 3,
-    borderBottomColor: C.border,
-    minHeight: 130,
-  },
-  superLeft: {
-    flex: 1,
-    borderRightWidth: 3,
-    borderRightColor: C.border,
-    padding: 10,
-  },
-  superRight: {
-    flex: 1,
-    padding: 10,
-  },
-
-  // Filas H/B/O/G
-  hboRow: {
-    flexDirection: 'row',
-    alignItems: 'baseline',
-    marginBottom: 4,
-  },
-  hboLabel: {
-    width: 18,
-    fontSize: 13,
-    fontFamily: 'Helvetica-Bold',
-    color: C.ink,
-  },
-  hboValue: {
     fontSize: 14,
     fontFamily: 'Helvetica-Bold',
-    color: C.pen,
-    flex: 1,
   },
-  hboLine: {
+  bandaChip: {
+    fontSize: 7.5,
+    fontFamily: 'Helvetica-Bold',
+    paddingHorizontal: 7,
+    paddingVertical: 2.5,
+    borderRadius: 3,
+    textTransform: 'uppercase',
+    letterSpacing: 1.2,
+    color: '#ffffff',
+  },
+  bandaRight: { color: '#ffffff', fontSize: 11, fontFamily: 'Helvetica-Bold' },
+
+  // ── Cabecera fija (día / usuario / horario)
+  cabeceraRow: {
+    flexDirection: 'row',
+    borderBottomWidth: 2,
+    borderBottomColor: C.border,
+    backgroundColor: '#ffffff',
+  },
+  cabCell: {
+    flex: 1,
+    paddingVertical: 7,
+    paddingHorizontal: 10,
+    borderRightWidth: 1,
+    borderRightColor: C.border,
+  },
+  cabCellLast: { borderRightWidth: 0 },
+  cabK: {
+    fontSize: 7,
+    color: C.muted,
+    textTransform: 'uppercase',
+    letterSpacing: 1.3,
+    fontFamily: 'Helvetica-Bold',
+  },
+  cabV: {
+    fontSize: 11,
+    color: C.pen,
+    fontFamily: 'Helvetica-Bold',
+    marginTop: 1.5,
+  },
+
+  // ── Bloque principal: ingresos + cobros (2 columnas)
+  superRow: {
+    flexDirection: 'row',
+    borderBottomWidth: 2,
+    borderBottomColor: C.border,
+  },
+  superColLeft: {
+    flex: 1.05,
+    borderRightWidth: 2,
+    borderRightColor: C.border,
+    padding: 12,
+  },
+  superColRight: { flex: 1, padding: 12 },
+  blockTitle: {
+    fontSize: 8,
+    fontFamily: 'Helvetica-Bold',
+    color: C.muted,
+    textTransform: 'uppercase',
+    letterSpacing: 1.5,
+    marginBottom: 6,
+    paddingBottom: 3,
+    borderBottomWidth: 1,
+    borderBottomColor: C.ink,
+  },
+
+  // Filas etiqueta + valor
+  lineRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'baseline',
+    marginBottom: 3,
+  },
+  lineK: { fontSize: 10, color: C.ink, fontFamily: 'Helvetica-Bold' },
+  lineV: { fontSize: 11, color: C.pen, fontFamily: 'Helvetica-Bold' },
+  lineKSoft: { fontSize: 9.5, color: C.text },
+  lineDivider: {
     height: 1,
     backgroundColor: C.ink,
-    marginVertical: 4,
-    width: 130,
-    marginLeft: 18,
+    marginVertical: 5,
   },
-  hboLineDouble: {
-    width: 130,
-    marginLeft: 18,
+  lineDividerDouble: {
+    height: 3,
     borderTopWidth: 1,
     borderBottomWidth: 1,
     borderTopColor: C.ink,
     borderBottomColor: C.ink,
-    height: 3,
-    marginVertical: 2,
+    marginVertical: 4,
   },
 
-  // Visa / digital
-  digitalRow: {
-    flexDirection: 'row',
-    alignItems: 'baseline',
-    marginBottom: 6,
-  },
-  digitalLabel: {
-    fontSize: 12,
-    fontFamily: 'Helvetica-Bold',
-    color: C.ink,
-    width: 80,
-  },
-  digitalArrow: {
-    fontSize: 12,
-    color: C.ink,
-    marginHorizontal: 4,
-  },
-  digitalValue: {
-    fontSize: 13,
-    fontFamily: 'Helvetica-Bold',
-    color: C.pen,
-  },
-
-  // ── Fila estadísticas (P1 / P2 / WELCOME / N°)
-  statsRow: {
-    flexDirection: 'row',
-    borderBottomWidth: 3,
-    borderBottomColor: C.border,
-    backgroundColor: '#ffffff',
-  },
-  statCell: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 6,
-    paddingHorizontal: 8,
-    borderRightWidth: 2,
-    borderRightColor: C.border,
-    gap: 6,
-  },
-  statLabel: {
-    fontSize: 10,
-    fontFamily: 'Helvetica-Bold',
-    color: C.ink,
-    backgroundColor: '#ffffff',
+  totalEfectivoBox: {
+    marginTop: 4,
+    backgroundColor: '#ecfdf5',
     borderWidth: 1,
-    borderColor: C.border,
-    paddingHorizontal: 5,
-    paddingVertical: 1.5,
-  },
-  statValue: {
-    fontSize: 12,
-    fontFamily: 'Helvetica-Bold',
-    color: C.pen,
-    minWidth: 24,
-  },
-
-  // ── Bloque productos: 2 columnas
-  prodRow: {
+    borderColor: C.green,
+    padding: 6,
+    borderRadius: 3,
     flexDirection: 'row',
-  },
-  prodColLeft: {
-    flex: 1,
-    padding: 8,
-    borderRightWidth: 3,
-    borderRightColor: C.border,
-  },
-  prodColRight: {
-    flex: 1,
-    padding: 8,
-  },
-  prodLine: {
-    flexDirection: 'row',
-    alignItems: 'flex-end',
-    marginBottom: 6,
-    minHeight: 16,
-  },
-  prodCode: {
-    width: 46,
-    fontSize: 10,
-    fontFamily: 'Helvetica-Bold',
-    color: C.ink,
-    paddingBottom: 1,
-  },
-  prodQtyBox: {
-    width: 32,
-    borderBottomWidth: 1,
-    borderBottomColor: C.ink,
-    paddingBottom: 1,
-    paddingHorizontal: 3,
+    justifyContent: 'space-between',
     alignItems: 'center',
   },
-  prodQty: {
-    fontSize: 11,
+  totalEfectivoLbl: {
+    fontSize: 8,
+    color: C.green,
+    textTransform: 'uppercase',
+    letterSpacing: 1.2,
     fontFamily: 'Helvetica-Bold',
-    color: C.pen,
   },
-  prodGap: { width: 8 },
-  prodAmountBox: {
-    flex: 1,
-    borderBottomWidth: 1,
-    borderBottomColor: C.ink,
-    paddingBottom: 1,
-    paddingLeft: 4,
-  },
-  prodAmount: {
-    fontSize: 11,
+  totalEfectivoVal: {
+    fontSize: 14,
+    color: C.green,
     fontFamily: 'Helvetica-Bold',
-    color: C.pen,
   },
 
-  // ── Footer con metadata fuera de la ficha
+  // Cobros digitales: cada método en su línea
+  metodoLine: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'baseline',
+    paddingVertical: 3,
+    borderBottomWidth: 0.5,
+    borderBottomColor: C.line,
+  },
+  metodoLineLast: { borderBottomWidth: 0 },
+
+  totalDigitalBox: {
+    marginTop: 6,
+    backgroundColor: '#eff6ff',
+    borderWidth: 1,
+    borderColor: C.pen,
+    padding: 6,
+    borderRadius: 3,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  totalDigitalLbl: {
+    fontSize: 8,
+    color: C.pen,
+    textTransform: 'uppercase',
+    letterSpacing: 1.2,
+    fontFamily: 'Helvetica-Bold',
+  },
+  totalDigitalVal: {
+    fontSize: 14,
+    color: C.pen,
+    fontFamily: 'Helvetica-Bold',
+  },
+
+  // ── Conteo: cuartos / ventas / total transacciones
+  conteoRow: {
+    flexDirection: 'row',
+    borderBottomWidth: 2,
+    borderBottomColor: C.border,
+    backgroundColor: C.bandLight,
+  },
+  conteoCell: {
+    flex: 1,
+    paddingVertical: 8,
+    paddingHorizontal: 10,
+    borderRightWidth: 1,
+    borderRightColor: C.border,
+    alignItems: 'center',
+  },
+  conteoLast: { borderRightWidth: 0 },
+  conteoLabel: {
+    fontSize: 7,
+    color: C.muted,
+    textTransform: 'uppercase',
+    letterSpacing: 1.3,
+    fontFamily: 'Helvetica-Bold',
+  },
+  conteoValue: {
+    fontSize: 18,
+    color: C.ink,
+    fontFamily: 'Helvetica-Bold',
+    marginTop: 2,
+  },
+  conteoSub: { fontSize: 7, color: C.muted, marginTop: 1 },
+
+  // ── Sección productos
+  prodSection: {
+    padding: 12,
+  },
+  prodSectionTitle: {
+    fontSize: 9,
+    fontFamily: 'Helvetica-Bold',
+    color: C.ink,
+    textTransform: 'uppercase',
+    letterSpacing: 1.4,
+    marginBottom: 6,
+    paddingBottom: 3,
+    borderBottomWidth: 1,
+    borderBottomColor: C.ink,
+  },
+  prodHead: {
+    flexDirection: 'row',
+    backgroundColor: C.bandDark,
+    paddingVertical: 4,
+    paddingHorizontal: 6,
+  },
+  prodTh: {
+    fontSize: 7,
+    fontFamily: 'Helvetica-Bold',
+    color: C.muted,
+    textTransform: 'uppercase',
+    letterSpacing: 1.2,
+  },
+  prodRowItem: {
+    flexDirection: 'row',
+    paddingVertical: 4,
+    paddingHorizontal: 6,
+    borderBottomWidth: 0.5,
+    borderBottomColor: C.line,
+  },
+  prodTd: { fontSize: 9.5, color: C.text },
+  prodTdBold: { fontSize: 9.5, color: C.pen, fontFamily: 'Helvetica-Bold' },
+  pColIdx: { width: 18, color: C.soft },
+  pColName: { flex: 1, paddingRight: 6 },
+  pColQty: { width: 50, textAlign: 'right' },
+  pColUnit: { width: 60, textAlign: 'right' },
+  pColTotal: { width: 70, textAlign: 'right' },
+
+  prodEmpty: {
+    fontSize: 9,
+    color: C.soft,
+    fontStyle: 'italic',
+    textAlign: 'center',
+    paddingVertical: 14,
+    borderWidth: 0.5,
+    borderColor: C.line,
+    borderStyle: 'dashed',
+  },
+
+  // ── Total final (banda destacada)
+  granTotal: {
+    backgroundColor: C.ink,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  granTotalLbl: {
+    color: '#cbd5e1',
+    fontSize: 9,
+    textTransform: 'uppercase',
+    letterSpacing: 2,
+    fontFamily: 'Helvetica-Bold',
+  },
+  granTotalVal: {
+    color: '#ffffff',
+    fontSize: 22,
+    fontFamily: 'Helvetica-Bold',
+  },
+
   meta: {
     marginTop: 10,
     flexDirection: 'row',
     justifyContent: 'space-between',
-    fontSize: 8,
-    color: C.muted,
+    fontSize: 7.5,
+    color: C.soft,
   },
+
+  line: { backgroundColor: '#e5e7eb' },
 });
 
 // ────────────────────────────────────────────────────────────
 // Helpers
 // ────────────────────────────────────────────────────────────
 const money = (n: number) =>
-  n === 0 ? '' : n.toFixed(2);
+  `S/ ${n.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',')}`;
 
-const formatFechaCorta = (d: Date) => {
-  const dd = String(d.getDate()).padStart(2, '0');
-  const mm = String(d.getMonth() + 1).padStart(2, '0');
-  const yy = String(d.getFullYear()).slice(-2);
-  return `${dd}/${mm}/${yy}`;
-};
+const moneyPlain = (n: number) => n.toFixed(2);
+
+const formatFechaLarga = (d: Date) =>
+  d
+    .toLocaleDateString('es-PE', {
+      weekday: 'long',
+      day: '2-digit',
+      month: 'long',
+      year: 'numeric',
+    })
+    .replace(/^./, (c) => c.toUpperCase());
 
 const formatHora = (d: Date) =>
   d.toLocaleTimeString('es-PE', {
@@ -319,53 +425,43 @@ const formatHora = (d: Date) =>
     hour12: false,
   });
 
-const diaSemana = (d: Date) =>
-  d
-    .toLocaleDateString('es-PE', { weekday: 'long' })
-    .replace(/^./, (c) => c.toUpperCase());
-
-// Genera código corto de 3-4 letras (CN, IM, SM, KOLY…) a partir del nombre.
-function codigoProducto(nombre: string): string {
-  const clean = nombre
-    .normalize('NFD')
-    .replace(/[̀-ͯ]/g, '')
-    .toUpperCase()
-    .replace(/[^A-Z\s]/g, '')
-    .trim();
-  if (!clean) return '?';
-  const palabras = clean.split(/\s+/);
-  if (palabras.length === 1) return palabras[0].slice(0, 4);
-  // 2+ palabras: 2 letras de la primera + 2 de la segunda
-  return (palabras[0].slice(0, 2) + palabras[1].slice(0, 2)).slice(0, 4);
-}
-
 // ────────────────────────────────────────────────────────────
 // Componente
 // ────────────────────────────────────────────────────────────
 export function TurnoPDFDoc({
   reporte,
   empresa,
+  logoUrl,
 }: {
   reporte: TurnoReporte;
   empresa?: EmpresaConfig;
+  /** URL absoluta del logo (PNG/JPG). Si se omite no se muestra. */
+  logoUrl?: string;
 }) {
   const { turno, desglose, porMetodo, alquileres, ventasDirectas, productosVendidos } =
     reporte;
 
   const abierto = new Date(turno.abiertoEn);
   const cerrado = turno.cerradoEn ? new Date(turno.cerradoEn) : null;
-  const fechaCorta = formatFechaCorta(abierto);
+  const fechaLarga = formatFechaLarga(abierto);
   const horaInicio = formatHora(abierto);
-  const horaCierre = cerrado ? formatHora(cerrado) : '—';
-  const dia = diaSemana(abierto);
+  const horaCierre = cerrado ? formatHora(cerrado) : 'En curso';
 
-  // H / B / O / G
-  const H = desglose.H;
-  const B = desglose.B;
-  const O = desglose.O;
-  const G = desglose.G;
+  let duracion = '—';
+  if (cerrado) {
+    const ms = cerrado.getTime() - abierto.getTime();
+    const h = Math.floor(ms / 3600000);
+    const m = Math.floor((ms % 3600000) / 60000);
+    duracion = h > 0 ? `${h}h ${m}m` : `${m} min`;
+  }
 
-  // Visa/digital
+  // Desglose ingresos
+  const habitaciones = desglose.H;
+  const productosMonto = desglose.B;
+  const otros = desglose.O;
+  const total = desglose.G;
+
+  // Cobros
   const efectivo = porMetodo.EFECTIVO ?? 0;
   const visa = porMetodo.VISA ?? 0;
   const master = porMetodo.MASTERCARD ?? 0;
@@ -374,276 +470,296 @@ export function TurnoPDFDoc({
   const otro = porMetodo.OTRO ?? 0;
   const digitalTotal = visa + master + yape + plin + otro;
 
-  // Cantidad de cuartos (P1) y ventas directas (P2), total (Welcome), N° (id)
-  const P1 = alquileres?.cantidad ?? 0;
-  const P2 = ventasDirectas?.cantidad ?? 0;
-  const welcome = P1 + P2;
-  const turnoId = String(turno.id).padStart(3, '0');
+  // Conteos
+  const nCuartos = alquileres?.cantidad ?? 0;
+  const nVentas = ventasDirectas?.cantidad ?? 0;
+  const nTransacciones = nCuartos + nVentas;
 
-  // Es nocturno o diurno (mostramos NOCHE/DÍA en el chip)
+  const turnoId = String(turno.id).padStart(3, '0');
+  const cerradoBool = turno.estado === 'CERRADO';
+
+  // Turno noche/día
   const hora = abierto.getHours();
   const esNoche = hora >= 18 || hora < 6;
   const tipoTurno = esNoche ? 'NOCHE' : 'DÍA';
 
-  // ── Productos: SIEMPRE 14 filas, 2 columnas (estilo cuaderno).
+  // Métodos digitales con monto > 0 (sólo los que cobraron)
+  const digitales: Array<[string, number]> = [
+    ['Yape', yape],
+    ['Plin', plin],
+    ['Visa', visa],
+    ['Mastercard', master],
+    ['Otro', otro],
+  ].filter(([, v]) => (v as number) > 0) as Array<[string, number]>;
+
   const productos = productosVendidos || [];
-  const FILAS_POR_COL = 14;
-  const filasIzq: Array<{ nombre: string; cantidad: number; total: number } | null> = [];
-  const filasDer: Array<{ nombre: string; cantidad: number; total: number } | null> = [];
-  for (let i = 0; i < FILAS_POR_COL; i++) {
-    filasIzq.push(productos[i] ?? null);
-    filasDer.push(productos[FILAS_POR_COL + i] ?? null);
-  }
 
   return (
     <Document
-      title={`Turno ${turnoId} · ${fechaCorta}`}
+      title={`Turno ${turnoId} · ${fechaLarga}`}
       author={empresa?.empresaNombre || 'Sol Caribe Hotel'}
       subject="Reporte interno de turno"
     >
       <Page size="A4" style={styles.page}>
-        {/* Empresa arriba mini */}
-        <View style={{ marginBottom: 6 }}>
-          <Text
-            style={{
-              fontSize: 9,
-              fontFamily: 'Helvetica-Bold',
-              color: C.ink,
-              textAlign: 'center',
-              letterSpacing: 0.5,
-            }}
-          >
-            {(empresa?.empresaNombre || 'Sol Caribe Hotel').toUpperCase()}
-            {empresa?.empresaRuc ? `   ·   RUC ${empresa.empresaRuc}` : ''}
-            {turno.sede?.nombre ? `   ·   ${turno.sede.nombre}` : ''}
-          </Text>
+        {/* ═══ Header empresa con logo ═══ */}
+        <View style={styles.empresaRow}>
+          {logoUrl && <Image src={logoUrl} style={styles.logo} />}
+          <View style={styles.empresaTxt}>
+            <Text style={styles.empresaNombre}>
+              {(empresa?.empresaNombre || 'Sol Caribe Hotel').toUpperCase()}
+            </Text>
+            <Text style={styles.empresaSub}>
+              {empresa?.empresaRuc ? `RUC ${empresa.empresaRuc}` : ''}
+              {empresa?.empresaRuc && empresa?.empresaDireccion ? '  ·  ' : ''}
+              {empresa?.empresaDireccion || ''}
+            </Text>
+            <Text style={styles.empresaSub}>
+              {turno.sede?.nombre ? `Sede: ${turno.sede.nombre}` : ''}
+              {empresa?.empresaTelefono ? `   ·   Tel ${empresa.empresaTelefono}` : ''}
+            </Text>
+          </View>
+          <View style={styles.reportTag}>
+            <Text style={styles.reportTagLabel}>Reporte de turno</Text>
+            <Text style={styles.reportTagDate}>
+              Emitido {new Date().toLocaleString('es-PE')}
+            </Text>
+          </View>
         </View>
 
         {/* ═══ FICHA ═══ */}
         <View style={styles.ficha}>
-          {/* ─ Cabecera */}
-          <View style={styles.cabecera}>
-            <View style={styles.chip}>
-              <Text style={styles.chipText}>{tipoTurno}</Text>
-            </View>
-
-            {/* DÍA */}
-            <View style={[styles.cabCell, { flex: 1.5, paddingLeft: 60 }]}>
-              <Text style={styles.cabLabel}>SOL</Text>
-              <Text style={styles.cabValue}>{dia}</Text>
-            </View>
-
-            {/* FECHA */}
-            <View style={[styles.cabCell, { flex: 1.4 }]}>
-              <Text style={styles.cabLabel}>FECHA</Text>
-              <Text style={styles.cabValue}>{fechaCorta}</Text>
-            </View>
-
-            {/* USUARIO */}
-            <View
-              style={[
-                styles.cabCell,
-                { flex: 1.3, borderRightWidth: 0 },
-              ]}
-            >
-              <Text style={styles.cabValue}>
-                {turno.usuario?.nombre || '—'}
+          {/* Banda: TURNO N° XXX · ESTADO · Fecha */}
+          <View style={styles.banda}>
+            <View style={styles.bandaLeft}>
+              <Text style={styles.bandaLabel}>Turno N°</Text>
+              <Text style={styles.bandaNum}>{turnoId}</Text>
+              <Text
+                style={[
+                  styles.bandaChip,
+                  esNoche
+                    ? { backgroundColor: C.chipNight }
+                    : { backgroundColor: C.chipDay, color: C.ink },
+                ]}
+              >
+                {tipoTurno}
               </Text>
+              <Text
+                style={[
+                  styles.bandaChip,
+                  cerradoBool
+                    ? { backgroundColor: '#475569' }
+                    : { backgroundColor: '#10b981' },
+                ]}
+              >
+                {turno.estado}
+              </Text>
+            </View>
+            <Text style={styles.bandaRight}>{fechaLarga}</Text>
+          </View>
+
+          {/* Cabecera: usuario / apertura / cierre / duración */}
+          <View style={styles.cabeceraRow}>
+            <View style={styles.cabCell}>
+              <Text style={styles.cabK}>Usuario de caja</Text>
+              <Text style={styles.cabV}>{turno.usuario?.nombre || '—'}</Text>
+            </View>
+            <View style={styles.cabCell}>
+              <Text style={styles.cabK}>Apertura</Text>
+              <Text style={styles.cabV}>{horaInicio}</Text>
+            </View>
+            <View style={styles.cabCell}>
+              <Text style={styles.cabK}>Cierre</Text>
+              <Text style={styles.cabV}>{horaCierre}</Text>
+            </View>
+            <View style={[styles.cabCell, styles.cabCellLast]}>
+              <Text style={styles.cabK}>Duración</Text>
+              <Text style={styles.cabV}>{duracion}</Text>
             </View>
           </View>
 
-          {/* ─ Bloque superior: H/B/O/G + digitales */}
+          {/* Bloque principal: ingresos | cobros */}
           <View style={styles.superRow}>
-            <View style={styles.superLeft}>
-              <View style={styles.hboRow}>
-                <Text style={styles.hboLabel}>H</Text>
-                <Text style={styles.hboValue}>{H.toFixed(2)}</Text>
+            {/* IZQ — Ingresos */}
+            <View style={styles.superColLeft}>
+              <Text style={styles.blockTitle}>Ingresos del turno</Text>
+
+              <View style={styles.lineRow}>
+                <Text style={styles.lineK}>Habitaciones</Text>
+                <Text style={styles.lineV}>{moneyPlain(habitaciones)}</Text>
               </View>
-              <View style={styles.hboRow}>
-                <Text style={styles.hboLabel}>B</Text>
-                <Text style={styles.hboValue}>{B.toFixed(2)}</Text>
+              <View style={styles.lineRow}>
+                <Text style={styles.lineK}>Productos / consumos</Text>
+                <Text style={styles.lineV}>{moneyPlain(productosMonto)}</Text>
               </View>
-              <View style={styles.hboRow}>
-                <Text style={styles.hboLabel}>O</Text>
-                <Text style={styles.hboValue}>{O.toFixed(2)}</Text>
+              <View style={styles.lineRow}>
+                <Text style={styles.lineK}>Otros (ajustes)</Text>
+                <Text style={styles.lineV}>{moneyPlain(otros)}</Text>
               </View>
-              <View style={styles.hboLine} />
-              <View style={styles.hboRow}>
-                <Text style={styles.hboLabel}>G</Text>
-                <Text style={styles.hboValue}>{G.toFixed(2)}</Text>
+
+              <View style={styles.lineDivider} />
+
+              <View style={styles.lineRow}>
+                <Text style={[styles.lineK, { fontSize: 11 }]}>TOTAL</Text>
+                <Text style={[styles.lineV, { fontSize: 13 }]}>
+                  {moneyPlain(total)}
+                </Text>
               </View>
+
               {digitalTotal > 0 && (
                 <>
-                  <Text
-                    style={{
-                      marginLeft: 18,
-                      fontSize: 13,
-                      fontFamily: 'Helvetica-Bold',
-                      color: C.pen,
-                    }}
-                  >
-                    − {digitalTotal.toFixed(2)}
-                  </Text>
-                  <View style={styles.hboLine} />
-                  <Text
-                    style={{
-                      marginLeft: 18,
-                      fontSize: 15,
-                      fontFamily: 'Helvetica-Bold',
-                      color: C.ink,
-                    }}
-                  >
-                    {efectivo.toFixed(2)}
-                  </Text>
+                  <View style={styles.lineRow}>
+                    <Text style={styles.lineKSoft}>(− pagos digitales)</Text>
+                    <Text style={[styles.lineV, { color: C.muted }]}>
+                      {moneyPlain(digitalTotal)}
+                    </Text>
+                  </View>
+                  <View style={styles.lineDividerDouble} />
                 </>
               )}
+
+              <View style={styles.totalEfectivoBox}>
+                <Text style={styles.totalEfectivoLbl}>
+                  Efectivo físico en caja
+                </Text>
+                <Text style={styles.totalEfectivoVal}>{money(efectivo)}</Text>
+              </View>
             </View>
 
-            <View style={styles.superRight}>
-              {/* Métodos digitales con flecha estilo cuaderno */}
-              {visa > 0 && (
-                <View style={styles.digitalRow}>
-                  <Text style={styles.digitalLabel}>Visa</Text>
-                  <Text style={styles.digitalArrow}>{'→'}</Text>
-                  <Text style={styles.digitalValue}>{visa.toFixed(2)}</Text>
-                </View>
-              )}
-              {master > 0 && (
-                <View style={styles.digitalRow}>
-                  <Text style={styles.digitalLabel}>Mastercard</Text>
-                  <Text style={styles.digitalArrow}>{'→'}</Text>
-                  <Text style={styles.digitalValue}>{master.toFixed(2)}</Text>
-                </View>
-              )}
-              {yape > 0 && (
-                <View style={styles.digitalRow}>
-                  <Text style={styles.digitalLabel}>Yape</Text>
-                  <Text style={styles.digitalArrow}>{'→'}</Text>
-                  <Text style={styles.digitalValue}>{yape.toFixed(2)}</Text>
-                </View>
-              )}
-              {plin > 0 && (
-                <View style={styles.digitalRow}>
-                  <Text style={styles.digitalLabel}>Plin</Text>
-                  <Text style={styles.digitalArrow}>{'→'}</Text>
-                  <Text style={styles.digitalValue}>{plin.toFixed(2)}</Text>
-                </View>
-              )}
-              {otro > 0 && (
-                <View style={styles.digitalRow}>
-                  <Text style={styles.digitalLabel}>Otro</Text>
-                  <Text style={styles.digitalArrow}>{'→'}</Text>
-                  <Text style={styles.digitalValue}>{otro.toFixed(2)}</Text>
-                </View>
-              )}
-              {digitalTotal === 0 && (
+            {/* DER — Cobros digitales */}
+            <View style={styles.superColRight}>
+              <Text style={styles.blockTitle}>Pagos digitales recibidos</Text>
+
+              {digitales.length === 0 ? (
                 <Text
                   style={{
-                    fontSize: 11,
+                    fontSize: 10,
                     color: C.muted,
                     fontStyle: 'italic',
                     textAlign: 'center',
-                    marginTop: 30,
+                    marginTop: 16,
                   }}
                 >
-                  Sin pagos digitales
+                  Sin pagos digitales en este turno.
                 </Text>
+              ) : (
+                <>
+                  {digitales.map(([nombre, v], i) => (
+                    <View
+                      key={nombre}
+                      style={[
+                        styles.metodoLine,
+                        i === digitales.length - 1 ? styles.metodoLineLast : {},
+                      ]}
+                    >
+                      <Text style={styles.lineK}>{nombre}</Text>
+                      <Text style={styles.lineV}>{moneyPlain(v)}</Text>
+                    </View>
+                  ))}
+                  <View style={styles.totalDigitalBox}>
+                    <Text style={styles.totalDigitalLbl}>
+                      Total digital
+                    </Text>
+                    <Text style={styles.totalDigitalVal}>
+                      {money(digitalTotal)}
+                    </Text>
+                  </View>
+                </>
               )}
             </View>
           </View>
 
-          {/* ─ Fila de estadísticas */}
-          <View style={styles.statsRow}>
-            <View style={[styles.statCell, { flex: 1 }]}>
-              <Text style={styles.statLabel}>P1</Text>
-              <Text style={styles.statValue}>{P1}</Text>
-            </View>
-            <View style={[styles.statCell, { flex: 1 }]}>
-              <Text style={styles.statLabel}>P2</Text>
-              <Text style={styles.statValue}>{P2}</Text>
-            </View>
-            <View style={[styles.statCell, { flex: 0.7 }]}>
-              <Text style={styles.statValue}>{welcome}</Text>
-            </View>
-            <View style={[styles.statCell, { flex: 1.3 }]}>
-              <Text style={[styles.cabLabel, { fontSize: 9 }]}>HORARIO</Text>
-              <Text style={[styles.statValue, { fontSize: 10 }]}>
-                {horaInicio}–{horaCierre}
+          {/* Conteo de operaciones */}
+          <View style={styles.conteoRow}>
+            <View style={styles.conteoCell}>
+              <Text style={styles.conteoLabel}>Cuartos cobrados</Text>
+              <Text style={styles.conteoValue}>{nCuartos}</Text>
+              <Text style={styles.conteoSub}>
+                {nCuartos === 1 ? 'alquiler' : 'alquileres'}
               </Text>
             </View>
-            <View
-              style={[
-                styles.statCell,
-                { flex: 1, borderRightWidth: 0 },
-              ]}
-            >
-              <Text style={styles.statLabel}>N°</Text>
-              <Text style={styles.statValue}>{turnoId}</Text>
+            <View style={styles.conteoCell}>
+              <Text style={styles.conteoLabel}>Ventas directas</Text>
+              <Text style={styles.conteoValue}>{nVentas}</Text>
+              <Text style={styles.conteoSub}>
+                {nVentas === 1 ? 'venta' : 'ventas'}
+              </Text>
+            </View>
+            <View style={[styles.conteoCell, styles.conteoLast]}>
+              <Text style={styles.conteoLabel}>Total operaciones</Text>
+              <Text style={styles.conteoValue}>{nTransacciones}</Text>
+              <Text style={styles.conteoSub}>cobros realizados</Text>
             </View>
           </View>
 
-          {/* ─ Bloque productos en 2 columnas tipo cuaderno */}
-          <View style={styles.prodRow}>
-            <View style={styles.prodColLeft}>
-              {filasIzq.map((p, i) => (
-                <ProductoLinea key={i} p={p} />
-              ))}
-            </View>
-            <View style={styles.prodColRight}>
-              {filasDer.map((p, i) => (
-                <ProductoLinea key={i} p={p} />
-              ))}
-            </View>
+          {/* Productos vendidos */}
+          <View style={styles.prodSection}>
+            <Text style={styles.prodSectionTitle}>
+              Productos vendidos
+              {productos.length > 0 && `  (${productos.length})`}
+            </Text>
+
+            {productos.length === 0 ? (
+              <Text style={styles.prodEmpty}>
+                No se vendió ningún producto en este turno.
+              </Text>
+            ) : (
+              <View>
+                <View style={styles.prodHead}>
+                  <Text style={[styles.prodTh, styles.pColIdx]}>#</Text>
+                  <Text style={[styles.prodTh, styles.pColName]}>
+                    Producto
+                  </Text>
+                  <Text style={[styles.prodTh, styles.pColQty]}>Cantidad</Text>
+                  <Text style={[styles.prodTh, styles.pColUnit]}>
+                    P. unitario
+                  </Text>
+                  <Text style={[styles.prodTh, styles.pColTotal]}>Total</Text>
+                </View>
+                {productos.map((p, i) => {
+                  const unit =
+                    p.cantidad > 0 ? Number(p.total) / p.cantidad : 0;
+                  return (
+                    <View key={i} style={styles.prodRowItem}>
+                      <Text style={[styles.prodTd, styles.pColIdx]}>
+                        {i + 1}
+                      </Text>
+                      <Text style={[styles.prodTd, styles.pColName]}>
+                        {p.nombre}
+                      </Text>
+                      <Text style={[styles.prodTd, styles.pColQty]}>
+                        ×{p.cantidad}
+                      </Text>
+                      <Text style={[styles.prodTd, styles.pColUnit]}>
+                        {moneyPlain(unit)}
+                      </Text>
+                      <Text style={[styles.prodTdBold, styles.pColTotal]}>
+                        {moneyPlain(Number(p.total))}
+                      </Text>
+                    </View>
+                  );
+                })}
+              </View>
+            )}
+          </View>
+
+          {/* Total recaudado */}
+          <View style={styles.granTotal}>
+            <Text style={styles.granTotalLbl}>Total recaudado del turno</Text>
+            <Text style={styles.granTotalVal}>{money(total)}</Text>
           </View>
         </View>
 
-        {/* ── Metadata abajo, fuera de la ficha */}
+        {/* Footer fuera de la ficha */}
         <View style={styles.meta}>
           <Text>
-            Turno #{turnoId} · {dia} {fechaCorta} · {horaInicio}–{horaCierre}
+            Turno #{turnoId} · {horaInicio} – {horaCierre}
           </Text>
-          <Text>Emitido {new Date().toLocaleString('es-PE')}</Text>
+          <Text>
+            {empresa?.empresaNombre || 'Sol Caribe Hotel'} · sistema.caribeperu.com
+          </Text>
         </View>
       </Page>
     </Document>
-  );
-}
-
-// ────────────────────────────────────────────────────────────
-// Una línea de producto (cuaderno: CODIGO ___ ___)
-// ────────────────────────────────────────────────────────────
-function ProductoLinea({
-  p,
-}: {
-  p: { nombre: string; cantidad: number; total: number } | null;
-}) {
-  if (!p) {
-    // Línea en blanco — sólo dos rayitas como en el cuaderno
-    return (
-      <View style={styles.prodLine}>
-        <Text style={styles.prodCode}>{''}</Text>
-        <View style={styles.prodQtyBox}>
-          <Text style={styles.prodQty}>{''}</Text>
-        </View>
-        <View style={styles.prodGap} />
-        <View style={styles.prodAmountBox}>
-          <Text style={styles.prodAmount}>{''}</Text>
-        </View>
-      </View>
-    );
-  }
-  const codigo = codigoProducto(p.nombre);
-  return (
-    <View style={styles.prodLine}>
-      <Text style={styles.prodCode}>{codigo}</Text>
-      <View style={styles.prodQtyBox}>
-        <Text style={styles.prodQty}>{p.cantidad}</Text>
-      </View>
-      <View style={styles.prodGap} />
-      <View style={styles.prodAmountBox}>
-        <Text style={styles.prodAmount}>{money(Number(p.total))}</Text>
-      </View>
-    </View>
   );
 }
 

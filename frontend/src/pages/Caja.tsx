@@ -10,6 +10,7 @@ import {
   X,
   Printer,
   Download,
+  Eye,
   BedDouble,
   ShoppingCart,
   CreditCard,
@@ -17,7 +18,7 @@ import {
   Package,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { PDFDownloadLink } from '@react-pdf/renderer';
+import { PDFDownloadLink, PDFViewer } from '@react-pdf/renderer';
 import { api } from '@/lib/api';
 import { useAuthStore } from '@/store/auth';
 import { useDialog } from '@/components/ConfirmProvider';
@@ -361,6 +362,7 @@ function ModalDetalle({
     pagos,
   } = reporte;
   const [tab, setTab] = useState<'resumen' | 'habitaciones' | 'productos' | 'pagos'>('resumen');
+  const [previewPdf, setPreviewPdf] = useState(false);
 
   const fecha = new Date(turno.abiertoEn);
 
@@ -369,6 +371,20 @@ function ModalDetalle({
     queryKey: ['config'],
     queryFn: async () => (await api.get('/settings')).data,
   });
+
+  // URL absoluta del logo (necesaria para @react-pdf/renderer)
+  const logoUrl =
+    typeof window !== 'undefined'
+      ? `${window.location.origin}/logo.png`
+      : undefined;
+
+  const pdfDoc = (
+    <TurnoPDFDoc
+      reporte={reporte as TurnoReporte}
+      empresa={empresa}
+      logoUrl={logoUrl}
+    />
+  );
 
   return (
     <div className="fixed inset-0 bg-black/50 dark:bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 z-50 no-print animate-fade-in">
@@ -391,20 +407,22 @@ function ModalDetalle({
             </div>
           </div>
           <div className="flex items-center gap-2">
+            <button
+              onClick={() => setPreviewPdf(true)}
+              className="inline-flex items-center gap-1.5 bg-white/20 hover:bg-white/30 backdrop-blur text-white px-3 py-2 rounded-lg text-sm btn-press"
+              title="Ver PDF antes de descargar"
+            >
+              <Eye size={14} /> Previsualizar
+            </button>
             <PDFDownloadLink
-              document={
-                <TurnoPDFDoc
-                  reporte={reporte as TurnoReporte}
-                  empresa={empresa}
-                />
-              }
+              document={pdfDoc}
               fileName={turnoPdfFileName(reporte as TurnoReporte)}
               className="inline-flex items-center gap-1.5 bg-emerald-500/90 hover:bg-emerald-500 text-white px-3 py-2 rounded-lg text-sm btn-press no-underline"
             >
               {({ loading }) => (
                 <>
                   <Download size={14} />
-                  {loading ? 'Generando…' : 'Exportar PDF'}
+                  {loading ? 'Generando…' : 'Descargar PDF'}
                 </>
               )}
             </PDFDownloadLink>
@@ -490,6 +508,56 @@ function ModalDetalle({
           )}
         </div>
       </div>
+
+      {/* Sub-modal: Previsualizar PDF antes de descargar */}
+      {previewPdf && (
+        <div
+          className="fixed inset-0 z-[60] bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-3 sm:p-6 animate-fade-in"
+          onClick={() => setPreviewPdf(false)}
+        >
+          <div
+            className="bg-white dark:bg-slate-900 rounded-2xl w-full max-w-5xl h-[92vh] overflow-hidden shadow-2xl flex flex-col animate-scale-in"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="px-4 py-3 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between bg-slate-50 dark:bg-slate-800/60">
+              <div className="flex items-center gap-2">
+                <Eye size={16} className="text-slate-500" />
+                <span className="text-sm font-semibold text-slate-700 dark:text-slate-200">
+                  Vista previa · Turno #{String(turno.id).padStart(3, '0')}
+                </span>
+              </div>
+              <div className="flex items-center gap-2">
+                <PDFDownloadLink
+                  document={pdfDoc}
+                  fileName={turnoPdfFileName(reporte as TurnoReporte)}
+                  className="inline-flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 rounded-lg text-xs btn-press no-underline"
+                >
+                  {({ loading }) => (
+                    <>
+                      <Download size={12} />
+                      {loading ? 'Generando…' : 'Descargar PDF'}
+                    </>
+                  )}
+                </PDFDownloadLink>
+                <button
+                  onClick={() => setPreviewPdf(false)}
+                  className="w-8 h-8 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-700 flex items-center justify-center"
+                >
+                  <X size={16} className="text-slate-500" />
+                </button>
+              </div>
+            </div>
+            <div className="flex-1 bg-slate-200 dark:bg-slate-950">
+              <PDFViewer
+                style={{ width: '100%', height: '100%', border: 'none' }}
+                showToolbar={false}
+              >
+                {pdfDoc}
+              </PDFViewer>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

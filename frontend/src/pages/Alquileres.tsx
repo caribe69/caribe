@@ -1128,6 +1128,26 @@ function NuevoAlquilerModal({
     (p: any) => p.esCortesia && p.stock > 0,
   );
 
+  // Pre-cargar cortesías con la cantidad sugerida configurada en cada
+  // producto (clampeada al stock disponible). Sólo se ejecuta una vez al
+  // montar el form, para no pisar lo que el usuario ya editó.
+  useEffect(() => {
+    if (productosCortesia.length === 0) return;
+    setCortesias((prev) => {
+      if (prev.length > 0) return prev;
+      return productosCortesia
+        .map((p: any) => {
+          const sugerida = Math.max(1, p.cortesiaCantidad ?? 1);
+          const cantidad = Math.min(sugerida, p.stock);
+          return cantidad > 0
+            ? { productoId: p.id, cantidad }
+            : null;
+        })
+        .filter((x: any): x is { productoId: number; cantidad: number } => !!x);
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [productosQ.data]);
+
   const implementosQ = useQuery({
     queryKey: ['implementos'],
     queryFn: async () => (await api.get<any[]>('/implementos')).data,

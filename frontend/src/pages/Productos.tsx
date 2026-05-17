@@ -28,6 +28,7 @@ interface Producto {
   stock: number;
   stockMinimo: number;
   esCortesia?: boolean;
+  cortesiaCantidad?: number;
 }
 
 export default function Productos() {
@@ -461,21 +462,24 @@ function ProductoModal({
     stock: producto?.stock != null ? String(producto.stock) : '0',
     stockMinimo: producto?.stockMinimo != null ? String(producto.stockMinimo) : '5',
     esCortesia: producto?.esCortesia ?? false,
+    cortesiaCantidad: String((producto as any)?.cortesiaCantidad ?? 1),
   });
   const [error, setError] = useState<string | null>(null);
 
   const guardar = useMutation({
     mutationFn: async () => {
+      const cortesiaCantidad = form.esCortesia
+        ? Math.max(1, Number(form.cortesiaCantidad) || 1)
+        : 1;
       if (esEdicion) {
-        // Actualiza datos básicos
         await api.patch(`/productos/${producto!.id}`, {
           nombre: form.nombre,
           descripcion: form.descripcion || undefined,
           precio: Number(form.precio),
           stockMinimo: Number(form.stockMinimo),
           esCortesia: form.esCortesia,
+          cortesiaCantidad,
         });
-        // Si el stock cambió, registrar ajuste (para mantener historial)
         const nuevoStock = Number(form.stock);
         if (!isNaN(nuevoStock) && nuevoStock !== producto!.stock) {
           await api.post(`/productos/${producto!.id}/ajuste-stock`, {
@@ -491,6 +495,7 @@ function ProductoModal({
           stock: Number(form.stock),
           stockMinimo: Number(form.stockMinimo),
           esCortesia: form.esCortesia,
+          cortesiaCantidad,
         });
       }
     },
@@ -577,26 +582,79 @@ function ProductoModal({
             />
           </Field>
 
-          <label className="flex items-start gap-2.5 mt-2 cursor-pointer select-none bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800/50 rounded-xl p-3">
-            <input
-              type="checkbox"
-              checked={form.esCortesia}
-              onChange={(e) =>
-                setForm({ ...form, esCortesia: e.target.checked })
-              }
-              className="mt-0.5 w-4 h-4 accent-amber-600"
-            />
-            <div className="flex-1">
-              <div className="text-sm font-semibold text-amber-900 dark:text-amber-100">
-                Es producto de cortesía
+          <div className="mt-2 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800/50 rounded-xl p-3">
+            <label className="flex items-start gap-2.5 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={form.esCortesia}
+                onChange={(e) =>
+                  setForm({ ...form, esCortesia: e.target.checked })
+                }
+                className="mt-0.5 w-4 h-4 accent-amber-600"
+              />
+              <div className="flex-1">
+                <div className="text-sm font-semibold text-amber-900 dark:text-amber-100">
+                  Es producto de cortesía
+                </div>
+                <div className="text-[11px] text-amber-700 dark:text-amber-300 mt-0.5 leading-snug">
+                  Si está marcado, aparecerá como "pack de cortesía" al crear
+                  un alquiler. Se descuenta del stock pero{' '}
+                  <b>no se cobra al cliente</b>.
+                </div>
               </div>
-              <div className="text-[11px] text-amber-700 dark:text-amber-300 mt-0.5 leading-snug">
-                Si está marcado, aparecerá como "pack de cortesía" al crear un
-                alquiler. Se descuenta del stock pero{' '}
-                <b>no se cobra al cliente</b>.
+            </label>
+
+            {form.esCortesia && (
+              <div className="mt-3 pt-3 border-t border-amber-200 dark:border-amber-800/50">
+                <div className="text-[11px] uppercase tracking-widest font-bold text-amber-800 dark:text-amber-200 mb-1.5">
+                  Cantidad por defecto al entregar
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setForm({
+                        ...form,
+                        cortesiaCantidad: String(
+                          Math.max(1, (Number(form.cortesiaCantidad) || 1) - 1),
+                        ),
+                      })
+                    }
+                    className="w-8 h-8 rounded-lg bg-white dark:bg-slate-800 border border-amber-300 dark:border-amber-700 text-amber-700 dark:text-amber-300 font-bold hover:bg-amber-100 dark:hover:bg-amber-900/30"
+                  >
+                    −
+                  </button>
+                  <input
+                    type="number"
+                    min={1}
+                    className="w-20 text-center font-bold text-lg bg-white dark:bg-slate-800 border border-amber-300 dark:border-amber-700 rounded-lg py-1.5 text-amber-900 dark:text-amber-100"
+                    value={form.cortesiaCantidad}
+                    onChange={(e) =>
+                      setForm({ ...form, cortesiaCantidad: e.target.value })
+                    }
+                  />
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setForm({
+                        ...form,
+                        cortesiaCantidad: String(
+                          (Number(form.cortesiaCantidad) || 1) + 1,
+                        ),
+                      })
+                    }
+                    className="w-8 h-8 rounded-lg bg-white dark:bg-slate-800 border border-amber-300 dark:border-amber-700 text-amber-700 dark:text-amber-300 font-bold hover:bg-amber-100 dark:hover:bg-amber-900/30"
+                  >
+                    +
+                  </button>
+                  <span className="text-[11px] text-amber-700 dark:text-amber-300 leading-snug">
+                    Aparecerá ya cargado con esta cantidad en cada nuevo
+                    alquiler (el usuario igual puede subirla o bajarla).
+                  </span>
+                </div>
               </div>
-            </div>
-          </label>
+            )}
+          </div>
 
           {error && (
             <div className="text-sm text-rose-700 dark:text-rose-300 bg-rose-50 dark:bg-rose-900/30 border border-rose-200 dark:border-rose-800 rounded-lg p-2.5">

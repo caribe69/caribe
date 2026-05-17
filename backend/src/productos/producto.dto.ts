@@ -15,6 +15,7 @@ export class CreateProductoDto {
   @IsOptional() @IsInt() stock?: number;
   @IsOptional() @IsInt() stockMinimo?: number;
   @IsOptional() @IsBoolean() esCortesia?: boolean;
+  @IsOptional() @Type(() => Number) @IsInt() cortesiaCantidad?: number;
 }
 
 export class UpdateProductoDto {
@@ -23,6 +24,7 @@ export class UpdateProductoDto {
   @IsOptional() @Type(() => Number) @IsNumber() precio?: number;
   @IsOptional() @IsInt() stockMinimo?: number;
   @IsOptional() @IsBoolean() esCortesia?: boolean;
+  @IsOptional() @Type(() => Number) @IsInt() cortesiaCantidad?: number;
 }
 
 export class AjusteStockDto {

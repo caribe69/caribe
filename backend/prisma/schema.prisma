@@ -197,6 +197,9 @@ model Producto {
   /// Si está marcado, este producto puede darse como cortesía
   /// (descuenta stock pero no se cobra al alquiler).
   esCortesia  Boolean  @default(false)
+  /// Cantidad sugerida cuando se entrega como cortesía. El form de alquiler
+  /// la pre-carga; el usuario igual puede subir/bajar manualmente.
+  cortesiaCantidad Int  @default(1)
   creadoEn    DateTime @default(now())
 
   consumos    ConsumoProducto[]

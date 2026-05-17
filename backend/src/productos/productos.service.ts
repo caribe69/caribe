@@ -39,13 +39,18 @@ export class ProductosService {
         stock: dto.stock ?? 0,
         stockMinimo: dto.stockMinimo ?? 0,
         esCortesia: dto.esCortesia ?? false,
+        cortesiaCantidad: Math.max(1, dto.cortesiaCantidad ?? 1),
       },
     });
   }
 
   async update(id: number, dto: UpdateProductoDto, user: JwtPayload) {
     const p = await this.findOne(id, user);
-    return this.prisma.producto.update({ where: { id: p.id }, data: dto });
+    const data: any = { ...dto };
+    if (typeof dto.cortesiaCantidad === 'number') {
+      data.cortesiaCantidad = Math.max(1, dto.cortesiaCantidad);
+    }
+    return this.prisma.producto.update({ where: { id: p.id }, data });
   }
 
   async ajusteStock(id: number, dto: AjusteStockDto, user: JwtPayload) {

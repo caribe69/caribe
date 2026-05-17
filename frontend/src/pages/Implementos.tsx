@@ -28,7 +28,8 @@ type Estado =
   | 'EN_TRANSITO'
   | 'EN_LAVANDERIA'
   | 'LAVADO'
-  | 'PERDIDO';
+  | 'PERDIDO'
+  | 'DANADO';
 
 interface TipoImplemento {
   id: number;
@@ -69,6 +70,7 @@ const ESTADO_LABEL: Record<Estado, string> = {
   EN_LAVANDERIA: 'Sucio en lavandería',
   LAVADO: 'Lavado (a entregar)',
   PERDIDO: 'Perdido',
+  DANADO: 'Dañado',
 };
 
 const ESTADO_COLOR: Record<Estado, string> = {
@@ -78,6 +80,7 @@ const ESTADO_COLOR: Record<Estado, string> = {
   EN_LAVANDERIA: 'bg-blue-500',
   LAVADO: 'bg-cyan-500',
   PERDIDO: 'bg-rose-500',
+  DANADO: 'bg-orange-700',
 };
 
 const ESTADO_EMOJI: Record<Estado, string> = {
@@ -87,6 +90,7 @@ const ESTADO_EMOJI: Record<Estado, string> = {
   EN_LAVANDERIA: '🧼',
   LAVADO: '✨',
   PERDIDO: '❓',
+  DANADO: '💔',
 };
 
 export default function ImplementosPage() {
@@ -193,7 +197,7 @@ export default function ImplementosPage() {
 
       {/* Dashboard: control total con conteos por estado */}
       {resumenQ.data && (
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 gap-2">
           {(
             [
               ['SIN_ASIGNAR', 'slate'],
@@ -202,6 +206,7 @@ export default function ImplementosPage() {
               ['EN_LAVANDERIA', 'blue'],
               ['LAVADO', 'cyan'],
               ['PERDIDO', 'rose'],
+              ['DANADO', 'orange'],
             ] as Array<[Estado, string]>
           ).map(([estado, color]) => {
             const n = resumenQ.data!.porEstado[estado] || 0;

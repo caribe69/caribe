@@ -268,7 +268,17 @@ export class ImplementosController {
     @Body() dto: MarcarPerdidoDto,
     @CurrentUser() user: JwtPayload,
   ) {
-    return this.service.marcarPerdido(id, user, dto.notas);
+    return this.service.marcarFueraDeServicio(id, user, 'PERDIDO', dto.notas);
+  }
+
+  @Roles(Rol.SUPERADMIN, Rol.ADMIN_SEDE, Rol.HOTELERO, Rol.LIMPIEZA)
+  @Post(':id/danado')
+  marcarDanado(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: MarcarPerdidoDto,
+    @CurrentUser() user: JwtPayload,
+  ) {
+    return this.service.marcarFueraDeServicio(id, user, 'DANADO', dto.notas);
   }
 
   @Get(':id/historial')

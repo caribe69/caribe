@@ -803,6 +803,7 @@ const ESTADO_LABELS: Record<
   EN_TRANSITO: { label: 'En tránsito', color: 'amber', emoji: '🚚' },
   SIN_ASIGNAR: { label: 'Sin asignar', color: 'slate', emoji: '📦' },
   PERDIDO: { label: 'Perdido', color: 'rose', emoji: '❓' },
+  DANADO: { label: 'Dañado', color: 'orange', emoji: '💔' },
 };
 
 function DetalleImplementosModal({
@@ -812,10 +813,44 @@ function DetalleImplementosModal({
   habitacion: Habitacion;
   onClose: () => void;
 }) {
+  const qc = useQueryClient();
   const unidadesQ = useQuery<UnidadFull[]>({
     queryKey: ['implementos', 'unidades', 'hab', habitacion.id],
     queryFn: async () =>
       (await api.get(`/implementos?habitacionId=${habitacion.id}`)).data,
+  });
+
+  // Mutación genérica que después invalida todas las queries de implementos.
+  const accion = useMutation({
+    mutationFn: async (vars: {
+      unidadId: number;
+      tipo: 'almacen' | 'danado' | 'perdido';
+      notas?: string;
+    }) => {
+      if (vars.tipo === 'almacen') {
+        return (
+          await api.patch(`/implementos/${vars.unidadId}/asignar-habitacion`, {
+            habitacionId: null,
+          })
+        ).data;
+      }
+      if (vars.tipo === 'danado') {
+        return (
+          await api.post(`/implementos/${vars.unidadId}/danado`, {
+            notas: vars.notas || undefined,
+          })
+        ).data;
+      }
+      return (
+        await api.post(`/implementos/${vars.unidadId}/perdido`, {
+          notas: vars.notas || undefined,
+        })
+      ).data;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['implementos'] });
+      qc.invalidateQueries({ queryKey: ['habitaciones'] });
+    },
   });
 
   const porTipo = useMemo(() => {
@@ -933,6 +968,11 @@ function DetalleImplementosModal({
                   {grupo.unidades.map((u) => {
                     const s =
                       ESTADO_LABELS[u.estado] || ESTADO_LABELS.SIN_ASIGNAR;
+                    // Solo se pueden tomar acciones si la unidad está
+                    // EN_HABITACION (activa en la pieza). Cuando está
+                    // EN_LAVANDERIA/LAVADO/PERDIDO/DANADO el flujo es por
+                    // otro módulo.
+                    const accionable = u.estado === 'EN_HABITACION';
                     return (
                       <div
                         key={u.id}
@@ -951,12 +991,23 @@ function DetalleImplementosModal({
                             </span>
                           )}
                         </div>
-                        <span
-                          className={`shrink-0 inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded bg-${s.color}-100 text-${s.color}-700 dark:bg-${s.color}-900/40 dark:text-${s.color}-300`}
-                          title={s.label}
-                        >
-                          {s.emoji} {s.label}
-                        </span>
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          <span
+                            className={`inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded bg-${s.color}-100 text-${s.color}-700 dark:bg-${s.color}-900/40 dark:text-${s.color}-300`}
+                            title={s.label}
+                          >
+                            {s.emoji} {s.label}
+                          </span>
+                          {accionable && (
+                            <UnidadAccionesMenu
+                              codigo={u.codigo}
+                              onAccion={(tipo, notas) =>
+                                accion.mutate({ unidadId: u.id, tipo, notas })
+                              }
+                              loading={accion.isPending}
+                            />
+                          )}
+                        </div>
                       </div>
                     );
                   })}
@@ -966,6 +1017,87 @@ function DetalleImplementosModal({
           </div>
         </div>
       </div>
+    </div>
+  );
+}
+
+// ────────────────────────────────────────────────────────────
+// Menú de acciones por unidad de implemento
+// ────────────────────────────────────────────────────────────
+function UnidadAccionesMenu({
+  codigo,
+  onAccion,
+  loading,
+}: {
+  codigo: string;
+  onAccion: (tipo: 'almacen' | 'danado' | 'perdido', notas?: string) => void;
+  loading: boolean;
+}) {
+  const [open, setOpen] = useState(false);
+
+  const pedirYEjecutar = (tipo: 'almacen' | 'danado' | 'perdido') => {
+    setOpen(false);
+    const titulos = {
+      almacen: `¿Mover "${codigo}" al almacén?`,
+      danado: `¿Marcar "${codigo}" como dañado?`,
+      perdido: `¿Marcar "${codigo}" como perdido?`,
+    };
+    const descripciones = {
+      almacen:
+        'La unidad sale de esta habitación y queda en el almacén central, lista para reasignar.',
+      danado:
+        'La unidad queda fuera de uso (rota o irrecuperable). No vuelve al ciclo de lavandería.',
+      perdido:
+        'La unidad queda fuera de uso (no aparece). Se preserva en el historial.',
+    };
+    if (!confirm(`${titulos[tipo]}\n\n${descripciones[tipo]}`)) return;
+    // Para dañado/perdido pedimos nota opcional
+    let notas: string | undefined;
+    if (tipo !== 'almacen') {
+      const n = prompt('Nota opcional (motivo, dónde se rompió, etc.):');
+      notas = n?.trim() || undefined;
+    }
+    onAccion(tipo, notas);
+  };
+
+  return (
+    <div className="relative">
+      <button
+        onClick={() => setOpen((v) => !v)}
+        disabled={loading}
+        className="p-1 rounded hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-500 disabled:opacity-50"
+        title="Acciones"
+      >
+        <span className="text-base leading-none">⋯</span>
+      </button>
+      {open && (
+        <>
+          <div
+            className="fixed inset-0 z-10"
+            onClick={() => setOpen(false)}
+          />
+          <div className="absolute right-0 top-7 z-20 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg shadow-xl min-w-[200px] py-1 text-xs">
+            <button
+              onClick={() => pedirYEjecutar('almacen')}
+              className="w-full text-left px-3 py-2 hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center gap-2"
+            >
+              📦 Mover al almacén
+            </button>
+            <button
+              onClick={() => pedirYEjecutar('danado')}
+              className="w-full text-left px-3 py-2 hover:bg-orange-50 text-orange-700 flex items-center gap-2"
+            >
+              💔 Marcar como dañado
+            </button>
+            <button
+              onClick={() => pedirYEjecutar('perdido')}
+              className="w-full text-left px-3 py-2 hover:bg-rose-50 text-rose-700 flex items-center gap-2"
+            >
+              ❓ Marcar como perdido
+            </button>
+          </div>
+        </>
+      )}
     </div>
   );
 }

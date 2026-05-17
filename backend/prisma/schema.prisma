@@ -939,6 +939,8 @@ enum EstadoImplementoUnidad {
   /// Ya lavado por la lavandería, esperando entregarse a las habitaciones.
   LAVADO
   PERDIDO
+  /// Dañado, fuera de uso (roto, manchado irrecuperable). No vuelve al ciclo.
+  DANADO
 }
 
 /// Catálogo de tipos de implemento por sede (Toalla, Sábana, Control...)

@@ -294,6 +294,7 @@ export class ImplementosService {
       EN_LAVANDERIA: 0,
       LAVADO: 0,
       PERDIDO: 0,
+      DANADO: 0,
     };
     for (const g of grupos) {
       resumen[g.estado] = g._count._all;
@@ -641,30 +642,46 @@ export class ImplementosService {
     };
   }
 
-  /** Marca una unidad como PERDIDA (no aparece en su habitación ni en lavandería) */
-  async marcarPerdido(id: number, user: JwtPayload, notas?: string) {
+  /** Marca una unidad como PERDIDA o DAÑADA (fuera del ciclo activo) */
+  async marcarFueraDeServicio(
+    id: number,
+    user: JwtPayload,
+    motivo: 'PERDIDO' | 'DANADO',
+    notas?: string,
+  ) {
     const u = await this.prisma.implementoUnidad.findUnique({
       where: { id },
       include: { tipo: true },
     });
     if (!u) throw new NotFoundException('Unidad no encontrada');
     enforceSede(user, u.tipo.sedeId);
+    const nuevoEstado =
+      motivo === 'DANADO'
+        ? EstadoImplementoUnidad.DANADO
+        : EstadoImplementoUnidad.PERDIDO;
+    const defaultMsg =
+      motivo === 'DANADO' ? 'Marcado como dañado' : 'Marcado como perdido';
     return this.prisma.$transaction(async (tx) => {
       const updated = await tx.implementoUnidad.update({
         where: { id },
-        data: { estado: EstadoImplementoUnidad.PERDIDO },
+        data: { estado: nuevoEstado },
       });
       await tx.movimientoImplemento.create({
         data: {
           unidadId: id,
           estadoAnterior: u.estado,
-          estadoNuevo: EstadoImplementoUnidad.PERDIDO,
+          estadoNuevo: nuevoEstado,
           usuarioId: user.sub,
-          notas: notas?.trim() || 'Marcado como perdido',
+          notas: notas?.trim() || defaultMsg,
         },
       });
       return updated;
     });
+  }
+
+  /** Alias por compatibilidad con código existente. */
+  async marcarPerdido(id: number, user: JwtPayload, notas?: string) {
+    return this.marcarFueraDeServicio(id, user, 'PERDIDO', notas);
   }
 
   /** Historial de movimientos de una unidad específica */

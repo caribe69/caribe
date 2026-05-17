@@ -162,10 +162,11 @@ export function ReservaGrupalPDFDoc({
   const serie = reserva.sunatSerie || 'F001';
   const correlativo = String(reserva.sunatNumero || reserva.id).padStart(7, '0');
 
-  // Tamaño ticket térmico ≈ 80mm × dinámico (más alto que boleta porque hay
-  // N líneas de habitaciones).
-  const altoEstimado = 380 + reserva.alquileres.length * 28;
-  const pageSize: [number, number] = [227, Math.max(altoEstimado, 500)];
+  // Tamaño ticket térmico ≈ 80mm × dinámico. La altura crece con la
+  // cantidad de líneas porque la descripción puede wrappear en 2 líneas.
+  // Base 620pt (encabezado + datos + totales + footer) + 60pt por hab.
+  const altoEstimado = 620 + reserva.alquileres.length * 60;
+  const pageSize: [number, number] = [227, altoEstimado];
 
   return (
     <Document
@@ -260,7 +261,7 @@ export function ReservaGrupalPDFDoc({
               {a.habitacion.numero}
             </Text>
             <Text style={[styles.col_desc, { textTransform: 'uppercase' }]}>
-              {`ALOJAMIENTO ${(a.habitacion.descripcion || 'HABITACIÓN').toUpperCase()} x 1 DÍA`}
+              {`ALOJAMIENTO HAB ${a.habitacion.numero} x 1 DIA`}
             </Text>
             <Text style={styles.col_imp}>
               {Number(a.precioHabitacion).toFixed(2)}

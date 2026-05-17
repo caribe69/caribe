@@ -9,6 +9,8 @@ import {
   Loader2,
   X,
   ExternalLink,
+  Printer,
+  Download,
 } from 'lucide-react';
 import { api } from '@/lib/api';
 import { useToast } from '@/components/ToastProvider';
@@ -58,6 +60,8 @@ export default function ReservasGrupales() {
   const qc = useQueryClient();
   const { show: toast } = useToast();
   const [ver, setVer] = useState<ReservaGrupal | null>(null);
+  // Confirmación tipo "si acepto" antes de consumir un correlativo SUNAT
+  const [confirmEmit, setConfirmEmit] = useState<ReservaGrupal | null>(null);
 
   const { data, isLoading } = useQuery<ReservaGrupal[]>({
     queryKey: ['reservas-grupales'],
@@ -194,28 +198,28 @@ export default function ReservasGrupales() {
                     </td>
                     <td className="px-4 py-3 text-center">
                       {r.sunatEmitido ? (
-                        <a
-                          href={r.sunatEnlacePdf || r.sunatEnlace || '#'}
-                          target="_blank"
-                          rel="noopener"
-                          className="inline-flex items-center gap-1 text-[10px] font-bold bg-blue-100 hover:bg-blue-200 text-blue-700 px-2 py-0.5 rounded transition"
-                          title={`${r.sunatSerie}-${r.sunatNumero}`}
-                        >
-                          <FileText size={11} /> {r.sunatSerie}-
-                          {String(r.sunatNumero).padStart(7, '0').slice(-7)}
-                          <ExternalLink size={9} />
-                        </a>
+                        <div className="flex flex-col items-center gap-0.5">
+                          <span className="font-mono font-bold text-xs text-emerald-700">
+                            ✓ {r.sunatSerie}-
+                            {String(r.sunatNumero).padStart(7, '0').slice(-7)}
+                          </span>
+                          {r.sunatAceptada !== false && (
+                            <span className="text-[9px] text-emerald-600">
+                              {r.sunatAceptada
+                                ? 'Aceptada SUNAT'
+                                : 'Pendiente SUNAT'}
+                            </span>
+                          )}
+                        </div>
                       ) : (
                         <span className="text-[10px] text-slate-400">—</span>
                       )}
                     </td>
                     <td className="px-4 py-3 text-right">
-                      <div className="inline-flex gap-1.5">
+                      <div className="inline-flex gap-1.5 flex-wrap justify-end">
                         {!pagadoCompleto && (
                           <button
-                            onClick={() =>
-                              cobrar.mutate({ id: r.id })
-                            }
+                            onClick={() => cobrar.mutate({ id: r.id })}
                             disabled={cobrar.isPending}
                             className="inline-flex items-center gap-1 text-xs font-semibold bg-emerald-600 hover:bg-emerald-700 text-white px-2.5 py-1 rounded disabled:opacity-50"
                           >
@@ -227,19 +231,35 @@ export default function ReservasGrupales() {
                             Cobrar todo
                           </button>
                         )}
-                        {!r.sunatEmitido && (
+                        {!r.sunatEmitido ? (
                           <button
-                            onClick={() => emitir.mutate(r.id)}
-                            disabled={emitir.isPending}
-                            className="inline-flex items-center gap-1 text-xs font-semibold bg-violet-600 hover:bg-violet-700 text-white px-2.5 py-1 rounded disabled:opacity-50"
+                            onClick={() => setConfirmEmit(r)}
+                            className="inline-flex items-center gap-1 text-xs font-semibold bg-violet-600 hover:bg-violet-700 text-white px-2.5 py-1 rounded"
                           >
-                            {emitir.isPending ? (
-                              <Loader2 size={12} className="animate-spin" />
-                            ) : (
-                              <FileText size={12} />
-                            )}
-                            Emitir factura
+                            <FileText size={12} /> Emitir factura
                           </button>
+                        ) : (
+                          <>
+                            <a
+                              href={r.sunatEnlacePdf || r.sunatEnlace || '#'}
+                              target="_blank"
+                              rel="noopener"
+                              className="inline-flex items-center gap-1 text-xs font-semibold bg-blue-600 hover:bg-blue-700 text-white px-2.5 py-1 rounded transition"
+                              title="Abrir PDF en pestaña nueva"
+                            >
+                              <Printer size={12} /> Ver PDF
+                            </a>
+                            <a
+                              href={r.sunatEnlacePdf || r.sunatEnlace || '#'}
+                              target="_blank"
+                              rel="noopener"
+                              download
+                              className="inline-flex items-center gap-1 text-xs font-semibold bg-slate-100 hover:bg-slate-200 text-slate-700 px-2 py-1 rounded transition"
+                              title="Descargar PDF"
+                            >
+                              <Download size={12} />
+                            </a>
+                          </>
                         )}
                         <button
                           onClick={() => setVer(r)}
@@ -258,6 +278,148 @@ export default function ReservasGrupales() {
       )}
 
       {ver && <DetalleModal reserva={ver} onClose={() => setVer(null)} />}
+      {confirmEmit && (
+        <ConfirmEmitirModal
+          reserva={confirmEmit}
+          onClose={() => setConfirmEmit(null)}
+          onConfirmar={() => {
+            emitir.mutate(confirmEmit.id);
+            setConfirmEmit(null);
+          }}
+          loading={emitir.isPending}
+        />
+      )}
+    </div>
+  );
+}
+
+// ────────────────────────────────────────────────────────────
+// Modal de confirmación "si acepto" antes de emitir factura
+// ────────────────────────────────────────────────────────────
+function ConfirmEmitirModal({
+  reserva,
+  onClose,
+  onConfirmar,
+  loading,
+}: {
+  reserva: ReservaGrupal;
+  onClose: () => void;
+  onConfirmar: () => void;
+  loading: boolean;
+}) {
+  const FRASE = 'si acepto';
+  const [txt, setTxt] = useState('');
+  const normalizar = (s: string) =>
+    s
+      .normalize('NFD')
+      .replace(/[̀-ͯ]/g, '')
+      .trim()
+      .toLowerCase();
+  const ok = normalizar(txt) === normalizar(FRASE);
+
+  return (
+    <div
+      className="fixed inset-0 bg-slate-950/70 backdrop-blur-sm flex items-center justify-center p-4 z-[60] animate-fade-in"
+      onClick={onClose}
+    >
+      <div
+        className="bg-white dark:bg-slate-900 rounded-2xl w-full max-w-md shadow-2xl animate-scale-in"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="p-5 border-b border-slate-100 dark:border-slate-800">
+          <div className="flex items-center gap-2.5">
+            <div className="w-10 h-10 rounded-xl bg-violet-100 text-violet-700 flex items-center justify-center">
+              <FileText size={20} />
+            </div>
+            <div>
+              <h3 className="font-semibold text-slate-900 dark:text-slate-100">
+                Emitir factura consolidada
+              </h3>
+              <div className="text-xs text-slate-500">
+                {reserva.clienteRazonSocial}
+              </div>
+            </div>
+          </div>
+        </div>
+        <div className="p-5 space-y-3">
+          {/* Resumen */}
+          <div className="bg-slate-50 dark:bg-slate-800/40 rounded-xl p-3 space-y-1 text-sm">
+            <div className="flex justify-between">
+              <span className="text-slate-500">Empresa</span>
+              <span className="font-semibold text-right truncate ml-2">
+                {reserva.clienteRazonSocial}
+              </span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-slate-500">RUC</span>
+              <span className="font-mono">{reserva.clienteRuc}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-slate-500">Habitaciones</span>
+              <span className="font-bold">{reserva.alquileres.length}</span>
+            </div>
+            <div className="h-px bg-slate-200 my-1" />
+            <div className="flex justify-between items-baseline">
+              <span className="font-semibold text-slate-700">Total a facturar</span>
+              <span className="text-2xl font-hotel font-bold text-violet-700 tabular-nums">
+                S/ {Number(reserva.total).toFixed(2)}
+              </span>
+            </div>
+          </div>
+
+          {/* Aviso rojo */}
+          <div className="bg-rose-50 dark:bg-rose-900/30 border border-rose-200 dark:border-rose-800/50 rounded-lg p-3 text-xs text-rose-800 dark:text-rose-200 leading-snug">
+            ⚠ La emisión queda registrada en SUNAT y consume un correlativo
+            oficial. <b>No se puede deshacer.</b> Para confirmar escribí
+            textualmente la frase:
+            <div className="font-mono text-[13px] font-bold text-rose-900 dark:text-rose-100 mt-1.5 select-all">
+              {FRASE}
+            </div>
+          </div>
+
+          <input
+            autoFocus
+            autoComplete="off"
+            placeholder={`Escribe: ${FRASE}`}
+            value={txt}
+            onChange={(e) => setTxt(e.target.value)}
+            className={`w-full px-3 py-2.5 rounded-lg text-sm font-mono border-2 transition focus:outline-none ${
+              ok
+                ? 'border-emerald-400 bg-emerald-50 text-emerald-800'
+                : 'border-rose-300 bg-white text-slate-800'
+            }`}
+          />
+          {ok && (
+            <div className="text-xs text-emerald-700 font-semibold inline-flex items-center gap-1">
+              ✓ Confirmación recibida. Listo para emitir.
+            </div>
+          )}
+
+          <div className="flex gap-2 pt-2">
+            <button
+              onClick={onClose}
+              className="flex-1 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 py-2.5 rounded-lg font-medium text-slate-700 dark:text-slate-200 text-sm"
+            >
+              Cancelar
+            </button>
+            <button
+              onClick={onConfirmar}
+              disabled={loading || !ok}
+              className="flex-1 bg-violet-600 hover:bg-violet-700 text-white py-2.5 rounded-lg font-semibold disabled:opacity-50 text-sm inline-flex items-center justify-center gap-1.5"
+            >
+              {loading ? (
+                <>
+                  <Loader2 size={14} className="animate-spin" /> Emitiendo…
+                </>
+              ) : (
+                <>
+                  <FileText size={14} /> Emitir factura
+                </>
+              )}
+            </button>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

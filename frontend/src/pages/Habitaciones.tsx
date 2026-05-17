@@ -158,6 +158,54 @@ export default function Habitaciones() {
     queryFn: async () => (await api.get<Piso[]>('/pisos')).data,
   });
 
+  // Implementos por habitación: cada unidad tiene tipo + estado + habitacionId.
+  // Agrupamos para mostrar "actualmente acá" vs "lavando/lavados".
+  interface ImpUnidad {
+    id: number;
+    estado: string;
+    habitacionId: number | null;
+    tipo: { nombre: string; icono: string | null };
+  }
+  const { data: impUnidades } = useQuery<ImpUnidad[]>({
+    queryKey: ['implementos', 'unidades'],
+    queryFn: async () => (await api.get('/implementos')).data,
+  });
+
+  // Map: habitacionId → { aqui: number, lavanderia: number, lavado: number, tipos: [emoji + cant] }
+  const implPorHab = useMemo(() => {
+    const map = new Map<
+      number,
+      {
+        aqui: number;
+        lavanderia: number;
+        lavado: number;
+        porTipo: Map<string, { icono: string; aqui: number; fuera: number }>;
+      }
+    >();
+    for (const u of impUnidades || []) {
+      if (!u.habitacionId) continue;
+      const e =
+        map.get(u.habitacionId) ||
+        { aqui: 0, lavanderia: 0, lavado: 0, porTipo: new Map() };
+      if (u.estado === 'EN_HABITACION') e.aqui++;
+      else if (u.estado === 'EN_LAVANDERIA') e.lavanderia++;
+      else if (u.estado === 'LAVADO') e.lavado++;
+      const key = u.tipo.nombre;
+      const t =
+        e.porTipo.get(key) || { icono: u.tipo.icono || '📦', aqui: 0, fuera: 0 };
+      if (u.estado === 'EN_HABITACION') t.aqui++;
+      else if (
+        u.estado === 'EN_LAVANDERIA' ||
+        u.estado === 'LAVADO' ||
+        u.estado === 'EN_TRANSITO'
+      )
+        t.fuera++;
+      e.porTipo.set(key, t);
+      map.set(u.habitacionId, e);
+    }
+    return map;
+  }, [impUnidades]);
+
   const counts = useMemo(() => {
     const r: Record<string, number> = { TODAS: habs?.length || 0 };
     habs?.forEach((h) => (r[h.estado] = (r[h.estado] || 0) + 1));
@@ -322,6 +370,68 @@ export default function Habitaciones() {
                   {h.caracteristicas}
                 </div>
               )}
+
+              {/* Implementos de esta habitación */}
+              {(() => {
+                const impl = implPorHab.get(h.id);
+                if (!impl) return null;
+                const tipos = Array.from(impl.porTipo.entries());
+                return (
+                  <div className="mt-3 bg-white/60 dark:bg-slate-900/40 border border-white/80 dark:border-slate-700 rounded-xl px-3 py-2">
+                    <div className="flex items-center justify-between mb-1.5">
+                      <div className="text-[10px] uppercase tracking-widest font-bold text-slate-500">
+                        Implementos
+                      </div>
+                      {(impl.lavanderia > 0 || impl.lavado > 0) && (
+                        <div className="text-[10px] font-semibold text-blue-700 dark:text-blue-300">
+                          {impl.lavanderia > 0 && (
+                            <span title="Sucios en lavandería">
+                              🧼 {impl.lavanderia}
+                            </span>
+                          )}
+                          {impl.lavanderia > 0 && impl.lavado > 0 && (
+                            <span className="mx-1">·</span>
+                          )}
+                          {impl.lavado > 0 && (
+                            <span
+                              className="text-cyan-700 dark:text-cyan-300"
+                              title="Lavados, esperando volver"
+                            >
+                              ✨ {impl.lavado}
+                            </span>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                    <div className="flex flex-wrap gap-1.5">
+                      {tipos.map(([nombre, t]) => {
+                        const total = t.aqui + t.fuera;
+                        const completa = t.fuera === 0;
+                        return (
+                          <span
+                            key={nombre}
+                            title={
+                              completa
+                                ? `${t.aqui} ${nombre} aquí`
+                                : `${t.aqui} de ${total} ${nombre} aquí · ${t.fuera} fuera`
+                            }
+                            className={`inline-flex items-center gap-1 text-[10px] font-semibold px-1.5 py-0.5 rounded ${
+                              completa
+                                ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300'
+                                : 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300'
+                            }`}
+                          >
+                            <span>{t.icono}</span>
+                            <span className="tabular-nums">
+                              {t.aqui}/{total}
+                            </span>
+                          </span>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })()}
 
               {/* Precios */}
               <div className="mt-4 pt-4 border-t border-white/70 dark:border-slate-700 flex items-center justify-between">

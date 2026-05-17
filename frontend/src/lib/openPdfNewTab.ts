@@ -47,3 +47,26 @@ export async function openBoletaPdfNewTab(
   setTimeout(() => URL.revokeObjectURL(url), 60_000);
   return win;
 }
+
+/**
+ * Abre el ticket consolidado de una reserva grupal en una pestaña nueva.
+ * Formato A4 con N líneas (1 por habitación). Funciona antes o después
+ * de emitir SUNAT — si ya emitió muestra el correlativo real, si no
+ * muestra "PREVIEW".
+ */
+export async function openReservaGrupalPdfNewTab(
+  reserva: any,
+  empresa: any,
+): Promise<Window | null> {
+  const [{ pdf }, { ReservaGrupalPDFDoc }] = await Promise.all([
+    import('@react-pdf/renderer'),
+    import('@/components/ReservaGrupalPDF'),
+  ]);
+  const blob = await pdf(
+    createElement(ReservaGrupalPDFDoc, { reserva, empresa }) as any,
+  ).toBlob();
+  const url = URL.createObjectURL(blob);
+  const win = window.open(url, '_blank');
+  setTimeout(() => URL.revokeObjectURL(url), 60_000);
+  return win;
+}

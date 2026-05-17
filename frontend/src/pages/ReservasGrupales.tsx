@@ -16,6 +16,7 @@ import { api } from '@/lib/api';
 import { useToast } from '@/components/ToastProvider';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { EmptyState } from '@/components/ui/EmptyState';
+import { openReservaGrupalPdfNewTab } from '@/lib/openPdfNewTab';
 
 interface AlquilerHijo {
   id: number;
@@ -67,6 +68,22 @@ export default function ReservasGrupales() {
     queryKey: ['reservas-grupales'],
     queryFn: async () => (await api.get('/reservas-grupales')).data,
   });
+
+  const empresaQ = useQuery<any>({
+    queryKey: ['config'],
+    queryFn: async () => (await api.get('/settings')).data,
+    staleTime: 5 * 60_000,
+  });
+
+  const [imprimiendoId, setImprimiendoId] = useState<number | null>(null);
+  const verTicket = async (r: ReservaGrupal) => {
+    setImprimiendoId(r.id);
+    try {
+      await openReservaGrupalPdfNewTab(r, empresaQ.data);
+    } finally {
+      setImprimiendoId(null);
+    }
+  };
 
   const cobrar = useMutation({
     mutationFn: async (vars: { id: number; monto?: number }) =>
@@ -262,10 +279,23 @@ export default function ReservasGrupales() {
                           </>
                         )}
                         <button
+                          onClick={() => verTicket(r)}
+                          disabled={imprimiendoId === r.id}
+                          className="inline-flex items-center gap-1 text-xs font-semibold bg-amber-500 hover:bg-amber-600 text-white px-2.5 py-1 rounded disabled:opacity-50"
+                          title="Ver ticket en pestaña nueva (PDF)"
+                        >
+                          {imprimiendoId === r.id ? (
+                            <Loader2 size={12} className="animate-spin" />
+                          ) : (
+                            <Printer size={12} />
+                          )}
+                          Ver ticket
+                        </button>
+                        <button
                           onClick={() => setVer(r)}
                           className="inline-flex items-center gap-1 text-xs font-semibold bg-slate-100 hover:bg-slate-200 text-slate-700 px-2.5 py-1 rounded"
                         >
-                          Ver
+                          Detalle
                         </button>
                       </div>
                     </td>

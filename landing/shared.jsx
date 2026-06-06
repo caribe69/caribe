@@ -1,20 +1,24 @@
 // ─────────────────────────────────────────────────────────────
-// Hs Sol Caribe — componentes compartidos (estilo transaccional)
+// Hs Sol Caribe — componentes compartidos
+// Nav · Footer · WhatsAppFab (estilo Sol Caribe Premium)
 // ─────────────────────────────────────────────────────────────
 
-function Logo({ size = 40, showText = true, textColor, onClick, inverted = false }) {
-  const col = textColor || (inverted ? '#fff' : 'var(--ink)');
+function Logo({ size = 40, showText = true, textColor = '#ffffff' }) {
   return (
-    <div onClick={onClick} style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: onClick ? 'pointer' : 'default' }}>
-      <img src={HOTEL.logo} alt="Hs Sol Caribe"
-        style={{ width: size, height: size, objectFit: 'contain', borderRadius: '50%', background: '#0a0a0a' }}/>
+    <div className="flex items-center gap-3">
+      <img
+        src={HOTEL.logo}
+        alt="Hs Sol Caribe"
+        style={{ width: size, height: size }}
+        className="object-contain drop-shadow-[0_0_20px_rgba(255,255,255,0.2)]"
+      />
       {showText && (
-        <div style={{ lineHeight: 1 }}>
-          <div style={{ fontSize: 15, fontWeight: 700, color: col, letterSpacing: '0.01em', fontFamily: 'var(--f-sans)' }}>
+        <div style={{ color: textColor }} className="leading-tight">
+          <div className="font-bold text-base tracking-tight" style={{ fontFamily: 'Inter' }}>
             Hs Sol Caribe
           </div>
-          <div style={{ fontSize: 10, marginTop: 3, color: col, opacity: 0.65, fontFamily: 'var(--f-sans)', letterSpacing: '0.05em' }}>
-            HOTEL · 3★
+          <div className="text-[10px] mt-0.5 opacity-70 uppercase tracking-[0.15em]">
+            Hotel · 3★
           </div>
         </div>
       )}
@@ -22,168 +26,358 @@ function Logo({ size = 40, showText = true, textColor, onClick, inverted = false
   );
 }
 
-function Stars({ count = 5, color = 'var(--cta)', size = 12 }) {
+function Stars({ count = 5, size = 14, colorClass = 'text-[#d4af37]' }) {
   return (
-    <span style={{ display: 'inline-flex', gap: 2, color }}>
+    <div className="flex items-center gap-0.5">
       {Array.from({ length: count }).map((_, i) => (
-        <svg key={i} width={size} height={size} viewBox="0 0 12 12" fill="currentColor">
-          <path d="M6 0.5l1.545 3.637 3.955 0.287-3.015 2.58 0.935 3.846L6 8.8 2.58 10.85l0.935-3.846L0.5 4.424l3.955-0.287z"/>
+        <svg
+          key={i}
+          width={size}
+          height={size}
+          viewBox="0 0 20 20"
+          fill="currentColor"
+          className={colorClass}
+        >
+          <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
         </svg>
       ))}
-    </span>
-  );
-}
-
-// ─────────────────────────────────────────────────────────────
-// BookingSummaryBar — la barra oscura arriba con fechas/huéspedes
-// ─────────────────────────────────────────────────────────────
-function BookingSummaryBar({ onEdit }) {
-  return (
-    <div style={{
-      background: 'var(--navy)', color: '#fff',
-      padding: '14px 48px',
-      fontSize: 13,
-      borderBottom: '1px solid rgba(255,255,255,0.1)',
-    }}>
-      <div style={{ maxWidth: 1400, margin: '0 auto', display: 'grid', gridTemplateColumns: 'auto 1px 1fr 1fr 1.2fr 1fr', alignItems: 'center', gap: 24 }}>
-        <a onClick={onEdit} style={{ display: 'inline-flex', alignItems: 'center', gap: 8, color: '#fff', cursor: 'pointer', opacity: 0.9, fontWeight: 500, whiteSpace: 'nowrap' }}>
-          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M9 3l-4 4 4 4"/></svg>
-          Ver todos los hoteles en el área
-        </a>
-        <div style={{ height: 28, width: 1, background: 'rgba(255,255,255,0.2)' }}/>
-        <Field label="Entrada" value="vie, 24 abr"/>
-        <Field label="Salida" value="sáb, 25 abr"/>
-        <Field label="Habitaciones y huéspedes" value="1 hab, 1 huésped"/>
-        <Field label="Tarifa" value="Mejor disponible"/>
-      </div>
-    </div>
-  );
-}
-
-function Field({ label, value }) {
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-      <div style={{ fontSize: 10, opacity: 0.7, textTransform: 'uppercase', letterSpacing: '0.06em' }}>{label}</div>
-      <div style={{ fontSize: 13, fontWeight: 500 }}>{value}</div>
     </div>
   );
 }
 
 // ─────────────────────────────────────────────────────────────
-// Nav — header superior (dark) + barra de hotel individual
+// Nav — header transparente → opaco al scrollear, logo grande → chico
 // ─────────────────────────────────────────────────────────────
 function Nav({ current, onNavigate }) {
-  const tabs = [
-    { id: 'home', label: 'Inicio' },
-    { id: 'rooms', label: 'Habitaciones' },
-    { id: 'sedes', label: 'Sedes' },
-    { id: 'amenities', label: 'Servicios' },
-    { id: 'contact', label: 'Contacto' },
-  ];
-
   const [scrolled, setScrolled] = React.useState(false);
+  const [mobileOpen, setMobileOpen] = React.useState(false);
+
   React.useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 40);
+    const onScroll = () => setScrolled(window.pageYOffset > 50);
     onScroll();
     window.addEventListener('scroll', onScroll, { passive: true });
     return () => window.removeEventListener('scroll', onScroll);
   }, []);
 
+  React.useEffect(() => {
+    document.body.style.overflow = mobileOpen ? 'hidden' : '';
+    return () => { document.body.style.overflow = ''; };
+  }, [mobileOpen]);
+
+  const links = [
+    { id: 'home',      label: 'Inicio',       active: current === 'home' },
+    { id: 'rooms',     label: 'Habitaciones', active: current === 'rooms' || current === 'room' },
+    { id: 'sedes',     label: 'Sedes',        active: current === 'sedes' || current === 'sede' },
+    { id: 'amenities', label: 'Servicios',    active: current === 'amenities' },
+    { id: 'gallery',   label: 'Galería',      active: current === 'gallery' },
+    { id: 'contact',   label: 'Contacto',     active: current === 'contact' },
+  ];
+
+  const go = (id) => {
+    setMobileOpen(false);
+    onNavigate(id);
+  };
+
   return (
-    <header className={`ed-nav ${scrolled ? 'ed-nav-scrolled' : ''}`}>
-      <div className="ed-nav-row">
-        <a className="ed-nav-logo" onClick={() => onNavigate('home')} style={{ cursor: 'pointer' }}>
-          <img
-            src="assets/logo.png"
-            alt="Sol Caribe"
-            style={{ width: 42, height: 42, borderRadius: '50%', objectFit: 'cover', background: 'var(--ed-ink)' }}
-          />
-          <span>Sol <em style={{ color: 'var(--ed-gold)' }}>Caribe</em></span>
-        </a>
-        <nav className="ed-nav-tabs" aria-label="Main">
-          {tabs.map(t => (
-            <button
-              key={t.id}
-              className={`ed-nav-tab ${current === t.id ? 'active' : ''}`}
-              onClick={() => onNavigate(t.id)}
+    <>
+      <header
+        className={`z-[5000] fixed top-0 left-0 right-0 border-b transition-all duration-700 ease-in-out ${
+          scrolled
+            ? 'bg-black/60 backdrop-blur-2xl border-white/10 shadow-2xl py-2'
+            : 'bg-transparent border-white/0 py-4'
+        }`}
+      >
+        <div className="container mx-auto">
+          <div
+            className={`flex justify-between items-center transition-all duration-700 ${
+              scrolled ? 'h-16' : 'h-24 lg:h-28'
+            }`}
+          >
+            {/* Logo */}
+            <a
+              onClick={() => go('home')}
+              className="flex items-center cursor-pointer flex-shrink-0"
             >
-              {t.label}
-            </button>
-          ))}
-        </nav>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 20 }}>
-          <span className="ed-nav-lang">ES / EN</span>
-          <button className="ed-btn ed-btn-dark" style={{ padding: '12px 22px', fontSize: 11 }} onClick={() => onNavigate('rooms')}>
-            Reservar
-            <svg className="ed-btn-arrow" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M5 12h14M13 5l7 7-7 7"/></svg>
+              <img
+                src={HOTEL.logo}
+                alt="Hs Sol Caribe"
+                className={`object-contain drop-shadow-[0_0_20px_rgba(255,255,255,0.2)] transition-all duration-700 ${
+                  scrolled ? 'h-12 md:h-14' : 'h-16 md:h-20 lg:h-24'
+                }`}
+              />
+              <div className="ml-3 hidden sm:block leading-tight">
+                <div className="text-white font-bold text-base tracking-tight">
+                  Hs Sol Caribe
+                </div>
+                <div className="text-[9px] mt-0.5 text-white/70 uppercase tracking-[0.2em]">
+                  Hotel · 3★
+                </div>
+              </div>
+            </a>
+
+            {/* Desktop nav */}
+            <nav className="hidden lg:flex items-center space-x-6 xl:space-x-9 font-bold text-[10px] text-white uppercase tracking-[0.25em]">
+              {links.map((l) => (
+                <a
+                  key={l.id}
+                  onClick={() => go(l.id)}
+                  className={`group relative cursor-pointer transition-colors ${
+                    l.active ? 'text-[#d4af37]' : 'hover:text-[#d4af37]'
+                  }`}
+                >
+                  {l.label}
+                  <span
+                    className={`absolute -bottom-2.5 left-1/2 -translate-x-1/2 w-1 h-1 bg-[#d4af37] rounded-full transition-all duration-300 ${
+                      l.active ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
+                    }`}
+                  />
+                </a>
+              ))}
+            </nav>
+
+            {/* Desktop CTA */}
+            <div className="hidden lg:flex items-center gap-5">
+              <a
+                onClick={() => go('contact')}
+                className={`group flex items-center gap-3 backdrop-blur-md px-5 py-2.5 border rounded-full transition-all duration-500 cursor-pointer ${
+                  current === 'contact'
+                    ? 'border-[#d4af37] bg-[#d4af37]/20'
+                    : 'bg-white/5 hover:bg-[#d4af37] border-white/20 hover:border-[#d4af37]'
+                }`}
+              >
+                <span className="flex flex-shrink-0 justify-center items-center bg-[#d4af37] group-hover:bg-white shadow-sm rounded-full w-7 h-7 transition-colors duration-500">
+                  <svg className="w-3.5 h-3.5 text-white group-hover:text-[#d4af37]" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+                    <path fill="currentColor" d="M20 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2m0 2v.51l-8 6.22l-8-6.22V6zM4 18V9.04l7.39 5.74c.18.14.4.21.61.21s.43-.07.61-.21L20 9.03v8.96H4Z" />
+                  </svg>
+                </span>
+                <span className="font-bold text-[10px] text-white uppercase tracking-wider">
+                  Contáctanos
+                </span>
+              </a>
+            </div>
+
+            {/* Mobile menu button */}
+            <div className="lg:hidden">
+              <button
+                onClick={() => setMobileOpen((v) => !v)}
+                className="focus:outline-none text-white"
+                aria-label="Abrir menú"
+              >
+                <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16m-7 6h7" />
+                </svg>
+              </button>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      {/* Mobile backdrop */}
+      {mobileOpen && (
+        <div
+          className="lg:hidden z-[6000] fixed inset-0 bg-black/60 backdrop-blur-sm transition-opacity"
+          onClick={() => setMobileOpen(false)}
+        />
+      )}
+
+      {/* Mobile sidebar */}
+      <div
+        className={`lg:hidden left-0 z-[6001] fixed inset-y-0 bg-gradient-to-b from-[#0f0404] via-[#3b0909] to-[#3b0909] shadow-2xl w-3/4 max-w-sm overflow-y-auto transition-transform duration-300 ${
+          mobileOpen ? 'translate-x-0' : '-translate-x-full'
+        }`}
+      >
+        <div className="flex justify-between items-center p-6 border-white/5 border-b">
+          <img src={HOTEL.logo} alt={HOTEL.name} className="w-auto h-16 object-contain" />
+          <button
+            onClick={() => setMobileOpen(false)}
+            className="bg-white/5 p-2 rounded-full text-white/60 hover:text-white transition-colors"
+            aria-label="Cerrar menú"
+          >
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+            </svg>
           </button>
         </div>
+
+        <nav className="flex flex-col space-y-5 p-6">
+          {links.map((l) => (
+            <a
+              key={l.id}
+              onClick={() => go(l.id)}
+              className={`text-lg font-bold cursor-pointer transition-all ${
+                l.active ? 'text-[#d4af37]' : 'text-white/80 hover:text-white'
+              }`}
+            >
+              {l.label}
+            </a>
+          ))}
+          <hr className="border-white/10" />
+          <a
+            onClick={() => go('contact')}
+            className="flex items-center gap-3 font-bold text-[#d4af37] cursor-pointer"
+          >
+            <svg className="w-5 h-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+              <path fill="currentColor" d="M20 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2m0 2v.51l-8 6.22l-8-6.22V6zM4 18V9.04l7.39 5.74c.18.14.4.21.61.21s.43-.07.61-.21L20 9.03v8.96H4Z" />
+            </svg>
+            Contáctanos
+          </a>
+        </nav>
+
+        <div className="p-6 mt-4">
+          <a
+            onClick={() => go('rooms')}
+            className="btn btn-sun btn-pill py-3 w-full cursor-pointer text-center"
+          >
+            Reservar Ahora
+          </a>
+        </div>
       </div>
-    </header>
+    </>
   );
 }
 
+// ─────────────────────────────────────────────────────────────
+// Footer — gradient rojo oscuro con detalles dorados
+// ─────────────────────────────────────────────────────────────
 function Footer() {
+  const year = new Date().getFullYear();
+  const sedes = window.SEDES || [];
+  const principal = sedes.find((s) => s.is_principal) || sedes[0];
+  const direccion = principal?.address || principal?.direccion || 'Lima, Perú';
+  const telefono = principal?.phone || principal?.telefono || '';
+  const email = 'contacto@caribeperu.com';
+
+  const goTo = (sec) => {
+    try {
+      window.dispatchEvent(new CustomEvent('hsc:navigate', { detail: sec }));
+    } catch (e) {}
+  };
+
   return (
-    <footer className="ed-footer">
-      <div className="ed-footer-inner">
-        <div className="ed-footer-top">
-          <div className="ed-footer-brand">
-            <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 18 }}>
+    <footer className="relative bg-gradient-to-b from-[#0f0404] via-[#3b0909] to-[#3b0909] border-t border-[#5a0d0d] overflow-hidden">
+      {/* Blurs decorativos */}
+      <div className="top-0 right-0 absolute bg-white/[0.05] blur-[120px] rounded-full w-[500px] h-[500px] pointer-events-none" />
+      <div className="bottom-0 left-0 absolute bg-[#d4af37]/[0.08] blur-[100px] rounded-full w-[400px] h-[400px] pointer-events-none" />
+      <div className="bg-gradient-to-r from-transparent via-[#d4af37]/40 to-transparent w-full h-px" />
+
+      <div className="relative container mx-auto px-4 lg:px-8 pt-20 pb-16">
+        <div className="gap-10 lg:gap-16 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4">
+          {/* Brand */}
+          <div className="sm:col-span-2 md:col-span-1">
+            <div className="flex items-center mb-5">
               <img
-                src="assets/logo.png"
-                alt="Sol Caribe"
-                style={{ width: 52, height: 52, borderRadius: '50%', objectFit: 'cover', background: 'rgba(255,255,255,0.08)', padding: 4, border: '1px solid rgba(255,255,255,0.12)' }}
+                src={HOTEL.logo}
+                alt={HOTEL.name}
+                className="drop-shadow-[0_0_25px_rgba(255,255,255,0.2)] w-auto h-20 object-contain"
               />
-              <h3 style={{ margin: 0 }}>Sol <em style={{ fontStyle: 'italic', color: 'var(--ed-gold-soft)' }}>Caribe</em></h3>
             </div>
-            <p>
-              Tu hogar fuera de casa en el Caribe colombiano. Cuatro sedes
-              frente al mar, once habitaciones y 39 años ininterrumpidos
-              recibiendo a quienes buscan mar, sol y calma.
+            <p className="mb-8 text-white/70 leading-relaxed small">
+              Brindamos experiencias de hospedaje en Perú que combinan confort,
+              ubicación estratégica y un servicio de alta calidad.
             </p>
-            <div style={{ marginTop: 24, display: 'flex', alignItems: 'center', gap: 10 }}>
-              <Stars count={3} size={12} color="var(--ed-gold-soft)"/>
-              <div style={{ fontFamily: 'var(--ed-fs-mono)', fontSize: 10, letterSpacing: '0.14em', color: 'rgba(248,244,237,0.5)', textTransform: 'uppercase' }}>
-                Hotel tres estrellas · RNT 84719
+            <div className="flex flex-wrap items-center gap-2.5">
+              {[
+                { url: 'https://wa.me/51999999999', label: 'WhatsApp', path: 'M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347' },
+                { url: 'https://www.facebook.com', label: 'Facebook', path: 'M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z' },
+                { url: 'https://instagram.com', label: 'Instagram', path: 'M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z' },
+              ].map((s) => (
+                <a
+                  key={s.label}
+                  href={s.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  aria-label={s.label}
+                  className="flex justify-center items-center bg-white/5 hover:bg-[#d4af37]/10 border border-white/10 hover:border-[#d4af37] rounded-full w-10 h-10 text-white/60 hover:text-[#d4af37] transition-all duration-300"
+                >
+                  <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                    <path d={s.path} />
+                  </svg>
+                </a>
+              ))}
+            </div>
+          </div>
+
+          {/* Navegación */}
+          <div>
+            <h4 className="mb-6 pl-3 border-[#d4af37] border-l-2 font-bold text-white text-sm uppercase tracking-widest">
+              Navegación
+            </h4>
+            <ul className="space-y-3 small">
+              {[
+                { id: 'home', label: 'Inicio' },
+                { id: 'rooms', label: 'Habitaciones' },
+                { id: 'sedes', label: 'Sedes' },
+                { id: 'amenities', label: 'Servicios' },
+                { id: 'gallery', label: 'Galería' },
+              ].map((l) => (
+                <li key={l.id}>
+                  <a
+                    onClick={() => goTo(l.id)}
+                    className="group flex items-center gap-1.5 text-white/60 hover:text-[#d4af37] transition-colors duration-200 cursor-pointer"
+                  >
+                    <span className="bg-[#d4af37] opacity-0 group-hover:opacity-100 rounded-full w-1 h-1 transition-opacity duration-200" />
+                    {l.label}
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          {/* Información */}
+          <div>
+            <h4 className="mb-6 pl-3 border-[#d4af37] border-l-2 font-bold text-white text-sm uppercase tracking-widest">
+              Información
+            </h4>
+            <ul className="space-y-3 small">
+              <li><a onClick={() => goTo('contact')} className="group flex items-center gap-1.5 text-white/60 hover:text-[#d4af37] cursor-pointer transition-colors"><span className="bg-[#d4af37] opacity-0 group-hover:opacity-100 rounded-full w-1 h-1 transition-opacity" />Contáctanos</a></li>
+              <li><a href="#" className="group flex items-center gap-1.5 text-white/60 hover:text-[#d4af37] transition-colors"><span className="bg-[#d4af37] opacity-0 group-hover:opacity-100 rounded-full w-1 h-1 transition-opacity" />Políticas de privacidad</a></li>
+              <li><a href="#" className="group flex items-center gap-1.5 text-white/60 hover:text-[#d4af37] transition-colors"><span className="bg-[#d4af37] opacity-0 group-hover:opacity-100 rounded-full w-1 h-1 transition-opacity" />Términos y condiciones</a></li>
+            </ul>
+          </div>
+
+          {/* Contacto */}
+          <div>
+            <h4 className="mb-6 pl-3 border-[#d4af37] border-l-2 font-bold text-white text-sm uppercase tracking-widest">
+              Contacto
+            </h4>
+            <div className="space-y-4 text-white/60 small">
+              <div className="flex items-start gap-3">
+                <svg className="mt-0.5 w-4 h-4 text-[#d4af37] shrink-0" fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z" />
+                </svg>
+                <p className="leading-relaxed">{direccion}</p>
+              </div>
+              {telefono && (
+                <div className="flex items-center gap-3">
+                  <svg className="w-4 h-4 text-[#d4af37] shrink-0" fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 6.75c0 8.284 6.716 15 15 15h2.25a2.25 2.25 0 002.25-2.25v-1.372c0-.516-.351-.966-.852-1.091l-4.423-1.106c-.44-.11-.902.055-1.173.417l-.97 1.293c-.282.376-.769.542-1.21.38a12.035 12.035 0 01-7.143-7.143c-.162-.441.004-.928.38-1.21l1.293-.97c.363-.271.527-.734.417-1.173L6.963 3.102a1.125 1.125 0 00-1.091-.852H4.5A2.25 2.25 0 002.25 4.5v2.25z" />
+                  </svg>
+                  <span>{telefono}</span>
+                </div>
+              )}
+              <div className="flex items-center gap-3">
+                <svg className="w-4 h-4 text-[#d4af37] shrink-0" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+                  <path fill="currentColor" d="M20 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2m0 2v.51l-8 6.22l-8-6.22V6zM4 18V9.04l7.39 5.74c.18.14.4.21.61.21s.43-.07.61-.21L20 9.03v8.96H4Z" />
+                </svg>
+                <a href={`mailto:${email}`} className="text-white/60 hover:text-[#d4af37] transition-colors">
+                  {email}
+                </a>
               </div>
             </div>
           </div>
-
-          <div>
-            <h4>Sedes</h4>
-            <ul>
-              <li><a>Rodadero · Santa Marta</a></li>
-              <li><a>Cartagena de Indias</a></li>
-              <li><a>San Andrés Isla</a></li>
-              <li><a>Minca · Sierra Nevada</a></li>
-            </ul>
-          </div>
-
-          <div>
-            <h4>Reserva</h4>
-            <ul>
-              <li><a>Habitaciones</a></li>
-              <li><a>Ofertas y tarifas</a></li>
-              <li><a>Club de socios</a></li>
-              <li><a>Administrar reserva</a></li>
-            </ul>
-          </div>
-
-          <div>
-            <h4>Contacto</h4>
-            <ul>
-              <li><a>+57 305 · 284 · 9123</a></li>
-              <li><a>hola@solcaribe.co</a></li>
-              <li><a>Instagram</a></li>
-              <li><a>WhatsApp</a></li>
-            </ul>
-          </div>
         </div>
-        <div className="ed-footer-bottom">
-          <div>© 2026 Hs Sol Caribe · Todos los derechos reservados</div>
-          <div>Santa Marta · Cartagena · San Andrés · Minca</div>
-          <div>Diseñado con cariño en el Caribe ✦</div>
+      </div>
+
+      {/* Bottom bar */}
+      <div className="relative container mx-auto px-4 lg:px-8">
+        <div className="flex md:flex-row flex-col justify-between items-center gap-4 py-8 border-t border-white/10">
+          <p className="text-white/40 small">
+            © {year} Sol Caribe. Todos los derechos reservados.
+          </p>
+          <p className="text-white/50 small">
+            Desarrollado por <span className="font-bold text-[#d4af37] uppercase">Sol Caribe</span>
+          </p>
         </div>
       </div>
     </footer>
@@ -191,259 +385,35 @@ function Footer() {
 }
 
 // ─────────────────────────────────────────────────────────────
-// DateRangePicker
+// WhatsAppFab — botón flotante de WhatsApp
 // ─────────────────────────────────────────────────────────────
-function DatePicker({ startDate, endDate, onChange, onClose }) {
-  const [viewDate, setViewDate] = React.useState(new Date(2026, 5, 1));
-  const [selecting, setSelecting] = React.useState('start');
-  const [hoverDate, setHoverDate] = React.useState(null);
-
-  const monthName = (d) => d.toLocaleDateString('es', { month: 'long', year: 'numeric' });
-
-  const renderMonth = (date) => {
-    const year = date.getFullYear();
-    const month = date.getMonth();
-    const first = new Date(year, month, 1);
-    const daysInMonth = new Date(year, month + 1, 0).getDate();
-    const startDay = (first.getDay() + 6) % 7;
-    const days = [];
-    for (let i = 0; i < startDay; i++) days.push(null);
-    for (let d = 1; d <= daysInMonth; d++) days.push(new Date(year, month, d));
-    return { label: monthName(date), days };
-  };
-
-  const toTime = (d) => d ? new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime() : null;
-
-  const handleClick = (d) => {
-    if (!d) return;
-    if (selecting === 'start' || (startDate && d < startDate)) {
-      onChange({ start: d, end: null });
-      setSelecting('end');
-    } else {
-      if (d.getTime() === startDate.getTime()) return;
-      onChange({ start: startDate, end: d });
-      setSelecting('start');
-      onClose && setTimeout(onClose, 200);
-    }
-  };
-
-  const inRange = (d) => {
-    if (!d) return false;
-    const t = toTime(d);
-    const s = toTime(startDate);
-    const e = toTime(endDate || (selecting === 'end' ? hoverDate : null));
-    if (!s || !e) return false;
-    return t >= Math.min(s,e) && t <= Math.max(s,e);
-  };
-  const isEdge = (d) => {
-    if (!d) return false;
-    const t = toTime(d);
-    return t === toTime(startDate) || t === toTime(endDate);
-  };
-
-  const month1 = renderMonth(viewDate);
-  const nextMonth = new Date(viewDate.getFullYear(), viewDate.getMonth() + 1, 1);
-  const month2 = renderMonth(nextMonth);
-
+function WhatsAppFab() {
+  const phone = '51999999999';
+  const url = `https://wa.me/${phone}?text=${encodeURIComponent('Hola, quiero información sobre Hs Sol Caribe.')}`;
   return (
-    <div style={{
-      position: 'absolute', top: '100%', left: 0, right: 0, marginTop: 12,
-      background: '#fff', padding: 28, zIndex: 100,
-      boxShadow: '0 10px 40px rgba(0,0,0,0.18)',
-      border: '1px solid var(--line)', borderRadius: 6,
-    }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-        <button onClick={() => setViewDate(new Date(viewDate.getFullYear(), viewDate.getMonth() - 1, 1))}
-          style={{ background: 'var(--cream-2)', border: 'none', cursor: 'pointer', padding: 8, color: 'var(--ink)', borderRadius: 4 }}>
-          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M9 3l-4 4 4 4"/></svg>
-        </button>
-        <div style={{ fontSize: 12, fontWeight: 600 }}>Elige fechas</div>
-        <button onClick={() => setViewDate(new Date(viewDate.getFullYear(), viewDate.getMonth() + 1, 1))}
-          style={{ background: 'var(--cream-2)', border: 'none', cursor: 'pointer', padding: 8, color: 'var(--ink)', borderRadius: 4 }}>
-          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M5 3l4 4-4 4"/></svg>
-        </button>
-      </div>
-
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 40 }} onMouseLeave={() => setHoverDate(null)}>
-        {[month1, month2].map((m, mi) => (
-          <div key={mi}>
-            <div style={{ fontSize: 15, fontWeight: 600, marginBottom: 14, textAlign: 'center', textTransform: 'capitalize' }}>{m.label}</div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 2 }}>
-              {['L','M','X','J','V','S','D'].map(d => (
-                <div key={d} style={{ fontSize: 10, textAlign: 'center', padding: 6, color: 'var(--text-soft)', fontWeight: 600, textTransform: 'uppercase' }}>{d}</div>
-              ))}
-              {m.days.map((d, i) => {
-                const range = inRange(d);
-                const edge = isEdge(d);
-                const today = new Date(); today.setHours(0,0,0,0);
-                const past = d && d < today;
-                return (
-                  <button key={i} disabled={!d || past}
-                    onClick={() => handleClick(d)}
-                    onMouseEnter={() => d && setHoverDate(d)}
-                    style={{
-                      aspectRatio: '1', border: 'none',
-                      background: edge ? 'var(--navy)' : (range ? 'var(--cream-2)' : 'transparent'),
-                      color: edge ? '#fff' : (past ? 'rgba(30,20,16,0.2)' : 'var(--ink)'),
-                      cursor: (!d || past) ? 'default' : 'pointer',
-                      fontSize: 13, fontFamily: 'var(--f-sans)', fontWeight: edge ? 700 : 500,
-                      borderRadius: edge ? 4 : 0,
-                      transition: 'background 0.1s',
-                    }}>
-                    {d ? d.getDate() : ''}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
+    <a
+      href={url}
+      target="_blank"
+      rel="noopener noreferrer"
+      aria-label="Chatear por WhatsApp"
+      className="fixed bottom-6 right-6 z-[4000] flex items-center justify-center w-14 h-14 rounded-full bg-[#25D366] hover:bg-[#1ebe5b] text-white shadow-[0_8px_25px_rgba(37,211,102,0.45)] transition-transform hover:scale-110"
+    >
+      <span className="absolute inset-0 rounded-full bg-[#25D366] animate-ping opacity-30" />
+      <svg className="relative w-7 h-7" fill="currentColor" viewBox="0 0 24 24">
+        <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z" />
+      </svg>
+    </a>
   );
 }
 
-// ─────────────────────────────────────────────────────────────
-// SearchBar — caja inline tipo "Modify search" Choice style
-// ─────────────────────────────────────────────────────────────
-function SearchBar({ variant = 'floating', onSearch }) {
-  const [start, setStart] = React.useState(new Date(2026, 5, 12));
-  const [end, setEnd] = React.useState(new Date(2026, 5, 18));
-  const [guests, setGuests] = React.useState({ adults: 2, kids: 0, rooms: 1 });
-  const [pickerOpen, setPickerOpen] = React.useState(false);
-  const [guestsOpen, setGuestsOpen] = React.useState(false);
-
-  const fmt = (d) => d ? d.toLocaleDateString('es', { day: 'numeric', month: 'short', weekday: 'short' }) : '—';
-  const nights = start && end ? Math.round((end - start) / 86400000) : 0;
-
-  return (
-    <div style={{
-      background: '#fff',
-      padding: '14px 16px',
-      position: 'relative',
-      display: 'grid',
-      gridTemplateColumns: '1.2fr 1.2fr 1.2fr auto',
-      gap: 10,
-      alignItems: 'end',
-      border: '1px solid var(--line)',
-      borderRadius: 6,
-    }}>
-      <div style={{ padding: '8px 14px', borderRight: '1px solid var(--line)', cursor: 'pointer', position: 'relative' }}
-        onClick={() => { setPickerOpen(!pickerOpen); setGuestsOpen(false); }}>
-        <div className="ch-label">Check-in / Check-out</div>
-        <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--ink)', textTransform: 'capitalize' }}>
-          {fmt(start)} <span style={{ color: 'var(--text-soft)', margin: '0 6px' }}>→</span> {fmt(end)}
-        </div>
-      </div>
-
-      <div style={{ padding: '8px 14px', borderRight: '1px solid var(--line)' }}>
-        <div className="ch-label">Noches</div>
-        <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--ink)' }}>
-          {nights || 0} <span style={{ fontSize: 13, color: 'var(--text-soft)', fontWeight: 400 }}>{nights === 1 ? 'noche' : 'noches'}</span>
-        </div>
-      </div>
-
-      <div style={{ padding: '8px 14px', cursor: 'pointer', position: 'relative' }}
-        onClick={() => { setGuestsOpen(!guestsOpen); setPickerOpen(false); }}>
-        <div className="ch-label">Huéspedes</div>
-        <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--ink)' }}>
-          {guests.adults + guests.kids} <span style={{ fontSize: 13, color: 'var(--text-soft)', fontWeight: 400 }}>huéspedes · {guests.rooms} hab</span>
-        </div>
-        {guestsOpen && (
-          <div onClick={(e) => e.stopPropagation()}
-            style={{
-              position: 'absolute', top: '100%', left: 0, right: 0, marginTop: 12,
-              background: '#fff', padding: 20, border: '1px solid var(--line)',
-              boxShadow: '0 10px 40px rgba(0,0,0,0.15)', zIndex: 100, borderRadius: 6,
-            }}>
-            {[
-              { key: 'adults', label: 'Adultos', min: 1 },
-              { key: 'kids', label: 'Niños', min: 0 },
-              { key: 'rooms', label: 'Habitaciones', min: 1 },
-            ].map(({key, label, min}) => (
-              <div key={key} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 0', borderBottom: key !== 'rooms' ? '1px solid var(--line-soft)' : 'none' }}>
-                <div style={{ fontSize: 14, fontWeight: 500 }}>{label}</div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-                  <button onClick={() => setGuests({ ...guests, [key]: Math.max(min, guests[key] - 1) })}
-                    style={{ width: 30, height: 30, borderRadius: '50%', border: '1px solid var(--line)', background: '#fff', cursor: 'pointer', fontSize: 15 }}>−</button>
-                  <div style={{ fontSize: 14, fontWeight: 600, width: 18, textAlign: 'center' }}>{guests[key]}</div>
-                  <button onClick={() => setGuests({ ...guests, [key]: guests[key] + 1 })}
-                    style={{ width: 30, height: 30, borderRadius: '50%', border: '1px solid var(--line)', background: '#fff', cursor: 'pointer', fontSize: 15 }}>+</button>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-
-      <div>
-        <button className="ch-btn cta" style={{ padding: '14px 26px', fontSize: 14, height: '100%' }}
-          onClick={() => onSearch && onSearch({ start, end, guests })}>
-          Buscar
-        </button>
-      </div>
-
-      {pickerOpen && (
-        <div onClick={(e) => e.stopPropagation()} style={{ position: 'absolute', top: '100%', left: 0, right: 0 }}>
-          <DatePicker startDate={start} endDate={end}
-            onChange={({start, end}) => { setStart(start); if (end) setEnd(end); }}
-            onClose={() => setPickerOpen(false)} />
-        </div>
-      )}
-    </div>
-  );
+// Hook tweaks legacy (lo mantenemos vacío para no romper imports en index.html)
+function useTweaks(defaults) {
+  const [t] = React.useState(defaults || {});
+  return [t, () => {}];
 }
+function TweaksPanel() { return null; }
+function TweakSection() { return null; }
+function TweakSelect() { return null; }
+function TweakRadio() { return null; }
 
-function formatCOP(n) {
-  // Format as Peruvian Soles: S/ 165
-  return 'S/ ' + n.toLocaleString('es-PE');
-}
-
-// ─────────────────────────────────────────────────────────────
-// Icon — librería mínima estilo lucide inline (reemplaza emojis)
-// ─────────────────────────────────────────────────────────────
-const ICON_PATHS = {
-  bed: '<path d="M2 4v16M22 4v16M2 10h20M2 17h20M6 10V6a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v4"/>',
-  ruler: '<path d="M21 3L3 21M16 8l2 2M13 11l2 2M10 14l2 2M7 17l2 2"/>',
-  maximize: '<path d="M8 3H5a2 2 0 0 0-2 2v3M21 8V5a2 2 0 0 0-2-2h-3M3 16v3a2 2 0 0 0 2 2h3M16 21h3a2 2 0 0 0 2-2v-3"/>',
-  users: '<circle cx="9" cy="7" r="4"/><path d="M3 21v-2a4 4 0 0 1 4-4h4a4 4 0 0 1 4 4v2"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/><path d="M21 21v-2a4 4 0 0 0-3-3.87"/>',
-  mountain: '<path d="M8 3l4 8 5-5 5 15H2L8 3z"/>',
-  eye: '<path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>',
-  pin: '<path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/>',
-  star: '<path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01z"/>',
-  chat: '<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>',
-  whatsapp: '<path d="M17.6 14.2c-.3-.2-1.8-.9-2-1-.3-.1-.5-.1-.7.2-.2.3-.8 1-1 1.2-.2.2-.3.2-.6.1-.3-.1-1.3-.5-2.5-1.5-.9-.8-1.5-1.8-1.7-2.1-.2-.3 0-.5.1-.6l.5-.6c.1-.2.2-.3.3-.5 0-.2 0-.3 0-.5 0-.1-.6-1.5-.9-2-.2-.5-.5-.4-.6-.4-.2 0-.4 0-.6 0-.2 0-.5.1-.8.4-.3.3-1 1-1 2.5 0 1.4 1.1 2.8 1.2 3 .1.2 2 3.1 4.9 4.4 2.4 1 2.9.8 3.4.8.5 0 1.6-.7 1.9-1.3.2-.6.2-1.2.1-1.3-.1-.1-.3-.2-.5-.3z"/><path d="M12 2a10 10 0 0 0-8.5 15.3L2 22l4.8-1.5A10 10 0 1 0 12 2z" fill="none" stroke-linejoin="round"/>',
-  globe: '<circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15 15 0 0 1 0 20M12 2a15 15 0 0 0 0 20"/>',
-  arrowRight: '<path d="M5 12h14M13 5l7 7-7 7"/>',
-  calendar: '<rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/>',
-  check: '<path d="M20 6L9 17l-5-5"/>',
-  phone: '<path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/>',
-  mail: '<path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><path d="M22 6l-10 7L2 6"/>',
-  wifi: '<path d="M5 12.55a11 11 0 0 1 14.08 0"/><path d="M1.42 9a16 16 0 0 1 21.16 0"/><path d="M8.53 16.11a6 6 0 0 1 6.95 0"/><circle cx="12" cy="20" r="1" fill="currentColor"/>',
-  tv: '<rect x="2" y="5" width="20" height="13" rx="1.5"/><path d="M8 21h8"/>',
-  shower: '<path d="M4 4h4v4M8 4l12 12M16 20v-4M12 20v-2M20 20v-4"/>',
-  key: '<circle cx="7.5" cy="15.5" r="5.5"/><path d="M21 2l-9.6 9.6M15.5 7.5l3 3L22 7l-3-3"/>',
-};
-
-function Icon({ name, size = 16, color = 'currentColor', strokeWidth = 1.8, className = '', style = {} }) {
-  const path = ICON_PATHS[name];
-  if (!path) return null;
-  return (
-    <svg
-      width={size} height={size}
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke={color}
-      strokeWidth={strokeWidth}
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      className={className}
-      style={{ display: 'inline-block', verticalAlign: 'middle', flexShrink: 0, ...style }}
-      dangerouslySetInnerHTML={{ __html: path }}
-    />
-  );
-}
-
-Object.assign(window, {
-  Logo, Stars, Nav, Footer, DatePicker, SearchBar, BookingSummaryBar,
-  formatCOP, Icon, ICON_PATHS,
-});
+Object.assign(window, { Logo, Stars, Nav, Footer, WhatsAppFab, useTweaks, TweaksPanel, TweakSection, TweakSelect, TweakRadio });

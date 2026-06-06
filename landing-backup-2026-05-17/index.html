@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#14181F">
+  <meta name="color-scheme" content="light">
+
+  <!-- Primary SEO -->
+  <title>Hs Sol Caribe — Hotel · Tu hogar fuera de casa</title>
+  <meta name="description" content="Hs Sol Caribe: hospedaje cómodo con WiFi, TV, baño privado y atención 24/7. Habitaciones limpias y bien ubicadas al mejor precio.">
+  <meta name="keywords" content="hotel sol caribe, hospedaje peru, habitaciones hotel, hotel wifi, reservar habitacion">
+  <meta name="author" content="Hs Sol Caribe">
+  <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1">
+  <link rel="canonical" href="https://caribeperu.com/">
+
+  <!-- Open Graph -->
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Hs Sol Caribe">
+  <meta property="og:locale" content="es_PE">
+  <meta property="og:title" content="Hs Sol Caribe — Tu hogar fuera de casa">
+  <meta property="og:description" content="Hospedaje cómodo con WiFi, TV, baño privado y atención 24/7. Habitaciones limpias al mejor precio.">
+  <meta property="og:url" content="https://caribeperu.com/">
+  <meta property="og:image" content="https://caribeperu.com/assets/logo.png">
+  <meta property="og:image:alt" content="Logo Sol Caribe">
+  <meta property="og:image:width" content="800">
+  <meta property="og:image:height" content="800">
+
+  <!-- Twitter -->
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Hs Sol Caribe — Tu hogar fuera de casa">
+  <meta name="twitter:description" content="Hospedaje cómodo con WiFi, TV, baño privado y atención 24/7.">
+  <meta name="twitter:image" content="https://caribeperu.com/assets/logo.png">
+
+  <!-- Favicon -->
+  <link rel="icon" type="image/png" href="assets/logo.png">
+  <link rel="apple-touch-icon" href="assets/logo.png">
+
+  <!-- JSON-LD: Hotel -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "LodgingBusiness",
+    "name": "Hs Sol Caribe",
+    "image": "https://caribeperu.com/assets/logo.png",
+    "url": "https://caribeperu.com/",
+    "description": "Hotel Sol Caribe — hospedaje cómodo con WiFi, TV, baño privado y atención 24/7.",
+    "starRating": { "@type": "Rating", "ratingValue": "3" },
+    "amenityFeature": [
+      { "@type": "LocationFeatureSpecification", "name": "WiFi gratis", "value": true },
+      { "@type": "LocationFeatureSpecification", "name": "Agua caliente 24h", "value": true },
+      { "@type": "LocationFeatureSpecification", "name": "Recepción 24/7", "value": true },
+      { "@type": "LocationFeatureSpecification", "name": "Limpieza diaria", "value": true }
+    ],
+    "address": {
+      "@type": "PostalAddress",
+      "addressCountry": "PE"
+    }
+  }
+  </script>
+
+  <link rel="stylesheet" href="styles.css?v=15">
+  <style>
+    html, body { margin: 0; padding: 0; background: #F6EFE3; }
+    body { overflow-x: hidden; }
+    #root { min-height: 100vh; }
+  </style>
+
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script type="text/babel" src="data.jsx"></script>
+  <script type="text/babel" src="tweaks-panel.jsx"></script>
+  <script type="text/babel" src="shared.jsx"></script>
+  <script type="text/babel" src="carousel-wa.jsx"></script>
+  <script type="text/babel" src="home.jsx"></script>
+  <script type="text/babel" src="rooms.jsx"></script>
+  <script type="text/babel" src="pages.jsx"></script>
+  <script type="text/babel" src="app.jsx"></script>
+
+  <script type="text/babel">
+    const TWEAK_DEFAULTS = /*EDITMODE-BEGIN*/{
+      "fontDisplay": "Cormorant Garamond",
+      "fontSans": "Inter",
+      "accentHue": "terracotta"
+    }/*EDITMODE-END*/;
+
+    const FONT_DISPLAY_OPTIONS = [
+      { value: 'Cormorant Garamond', label: 'Cormorant' },
+      { value: 'Playfair Display', label: 'Playfair' },
+      { value: 'Fraunces', label: 'Fraunces' },
+    ];
+    const FONT_SANS_OPTIONS = [
+      { value: 'Inter', label: 'Inter' },
+      { value: 'DM Sans', label: 'DM Sans' },
+    ];
+    const ACCENT_OPTIONS = [
+      { value: 'terracotta', label: 'Terracota', color: '#C95A3D' },
+      { value: 'palma', label: 'Palma', color: '#5C8A3E' },
+      { value: 'mar', label: 'Mar', color: '#3E8FB8' },
+      { value: 'sol', label: 'Sol', color: '#F2B441' },
+    ];
+    const ACCENT_MAP = {
+      terracotta: '#C95A3D',
+      palma: '#5C8A3E',
+      mar: '#3E8FB8',
+      sol: '#E5A033',
+    };
+
+    function Root() {
+      const [t, setTweak] = useTweaks(TWEAK_DEFAULTS);
+
+      React.useEffect(() => {
+        const root = document.documentElement;
+        root.style.setProperty('--f-display', `'${t.fontDisplay}', serif`);
+        root.style.setProperty('--f-sans', `'${t.fontSans}', sans-serif`);
+        root.style.setProperty('--terracotta', ACCENT_MAP[t.accentHue] || '#C95A3D');
+      }, [t.fontDisplay, t.fontSans, t.accentHue]);
+
+      return (
+        <>
+          <VariationB />
+          <TweaksPanel title="Tweaks">
+            <TweakSection label="Tipografía" />
+            <TweakSelect label="Display" value={t.fontDisplay}
+              options={FONT_DISPLAY_OPTIONS.map(o => o.value)}
+              onChange={(v) => setTweak('fontDisplay', v)} />
+            <TweakSelect label="Sans" value={t.fontSans}
+              options={FONT_SANS_OPTIONS.map(o => o.value)}
+              onChange={(v) => setTweak('fontSans', v)} />
+            <TweakSection label="Acento" />
+            <TweakRadio label="Color de acento" value={t.accentHue}
+              options={ACCENT_OPTIONS.map(o => o.value)}
+              onChange={(v) => setTweak('accentHue', v)} />
+          </TweaksPanel>
+        </>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<Root />);
+  </script>
+</body>
+</html>

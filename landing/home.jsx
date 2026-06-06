@@ -8,25 +8,33 @@ function HotelHero({ onNavigate }) {
   const containerRef = React.useRef(null);
   const [activeSlide, setActiveSlide] = React.useState(0);
 
-  const slides = React.useMemo(() => {
-    const fotos = [];
-    if (Array.isArray(window.SEDES)) {
-      window.SEDES.forEach((s) => { if (s.cover) fotos.push(s.cover); });
-    }
-    if (Array.isArray(window.ROOMS)) {
-      window.ROOMS.forEach((r) => {
-        const f = Array.isArray(r.fotos) && r.fotos[0] ? r.fotos[0] : null;
-        if (f) fotos.push(typeof f === 'string' ? f : (f.url || ''));
-      });
-    }
-    const fallback = ['assets/hero-1.jpg', 'assets/hero-2.jpg', 'assets/hero-3.jpg'];
-    const imgs = fotos.filter(Boolean).length > 0 ? fotos.filter(Boolean).slice(0, 3) : fallback;
-    return [
-      { img: imgs[0] || fallback[0], subtitle: 'Bienvenidos a Hs Sol Caribe', title: 'Tu hogar fuera de casa', description: 'Habitaciones cómodas, WiFi rápido, agua caliente las 24 horas y un equipo que te recibe como en familia.', cta: 'Ver Habitaciones', go: 'rooms' },
-      { img: imgs[1] || imgs[0] || fallback[1], subtitle: 'Promo Sol', title: 'Hospédate con la mejor tarifa garantizada', description: 'Reserva directo y aprovecha descuentos exclusivos para huéspedes recurrentes.', cta: 'Reservar Ahora', go: 'rooms' },
-      { img: imgs[2] || imgs[0] || fallback[2], subtitle: 'Nuestras Sedes', title: 'Una sede para cada plan', description: 'Distintas ubicaciones, mismo estándar de calidad y servicio Sol Caribe.', cta: 'Conoce las Sedes', go: 'sedes' },
-    ];
-  }, []);
+  // 3 slides con video de fondo (los videos están en /landing/assets/)
+  const slides = React.useMemo(() => ([
+    {
+      video: 'assets/caribevideo.mp4',
+      subtitle: 'Bienvenidos a Hs Sol Caribe',
+      title: 'Tu hogar fuera de casa',
+      description: 'Habitaciones cómodas, WiFi rápido, agua caliente las 24 horas y un equipo que te recibe como en familia.',
+      cta: 'Ver Habitaciones',
+      go: 'rooms',
+    },
+    {
+      video: 'assets/presentacion2.mp4',
+      subtitle: 'Promo Sol',
+      title: 'Hospédate con la mejor tarifa garantizada',
+      description: 'Reserva directo y aprovecha descuentos exclusivos para huéspedes recurrentes.',
+      cta: 'Reservar Ahora',
+      go: 'rooms',
+    },
+    {
+      video: 'assets/decoracion.mp4',
+      subtitle: 'Nuestras Sedes',
+      title: 'Una sede para cada plan',
+      description: 'Distintas ubicaciones, mismo estándar de calidad y servicio Sol Caribe.',
+      cta: 'Conoce las Sedes',
+      go: 'sedes',
+    },
+  ]), []);
 
   React.useEffect(() => {
     if (!containerRef.current || typeof window.Swiper === 'undefined') return;
@@ -49,8 +57,17 @@ function HotelHero({ onNavigate }) {
           {slides.map((slide, index) => (
             <div key={index} className="relative swiper-slide">
               <div className="absolute inset-0 transition-transform duration-[8000ms] group-hover:scale-105">
-                <img src={slide.img} alt={slide.title} className="w-full h-full object-cover transition-opacity duration-1000" />
-                <div className="absolute inset-0 bg-gradient-to-b from-black/90 via-black/60 to-black/40" />
+                <video
+                  src={slide.video}
+                  autoPlay
+                  muted
+                  loop
+                  playsInline
+                  preload="auto"
+                  poster="assets/logo.png"
+                  className="w-full h-full object-cover transition-opacity duration-1000"
+                />
+                <div className="absolute inset-0 bg-gradient-to-b from-black/85 via-black/60 to-black/50" />
               </div>
 
               <div className="z-10 relative flex items-center mx-auto px-4 lg:px-8 h-full container">

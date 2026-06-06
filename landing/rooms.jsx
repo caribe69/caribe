@@ -8,13 +8,23 @@ function moneyPE(n) {
   return 'S/ ' + Number(n).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
 }
 
+// Fotos de respaldo (Sol Caribe) cuando un room del backend no tiene fotos
+const ROOM_FALLBACKS = [
+  'assets/sol/room-1.webp', 'assets/sol/room-2.webp', 'assets/sol/room-3.webp', 'assets/sol/room-4.webp',
+  'assets/sol/room-5.webp', 'assets/sol/room-6.webp', 'assets/sol/room-7.webp', 'assets/sol/room-8.webp',
+];
+
 function roomCover(room) {
-  if (!room) return null;
+  if (!room) return ROOM_FALLBACKS[0];
   if (Array.isArray(room.fotos) && room.fotos.length > 0) {
     const f = room.fotos[0];
-    return typeof f === 'string' ? f : (f.url || f.src || null);
+    const url = typeof f === 'string' ? f : (f.url || f.src || null);
+    if (url) return url;
   }
-  return room.cover || room.image || null;
+  if (room.cover || room.image) return room.cover || room.image;
+  // Sin foto: usa una de las imágenes de respaldo según el id (estable, no random)
+  const idx = Math.abs(Number(room.id) || 0) % ROOM_FALLBACKS.length;
+  return ROOM_FALLBACKS[idx];
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -152,7 +162,7 @@ function RoomCard({ room, index, onClick }) {
 // Hero pequeño para páginas internas
 // ─────────────────────────────────────────────────────────────
 function InternalHero({ title, subtitle, image }) {
-  const bg = image || 'assets/hero-1.jpg';
+  const bg = image || 'assets/sol/hero-1.webp';
   return (
     <section className="relative bg-slate-950 !py-0 h-[55vh] min-h-[420px] overflow-hidden">
       <div className="absolute inset-0">

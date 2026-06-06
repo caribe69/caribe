@@ -8,10 +8,10 @@ function HotelHero({ onNavigate }) {
   const containerRef = React.useRef(null);
   const [activeSlide, setActiveSlide] = React.useState(0);
 
-  // 3 slides con video de fondo (los videos están en /landing/assets/)
+  // 3 slides: 2 con imagen de fondo (estilo Sol Caribe pintoresco) y 1 con video
   const slides = React.useMemo(() => ([
     {
-      video: 'assets/caribevideo.mp4',
+      image: 'assets/sol/hero-1.webp',
       subtitle: 'Bienvenidos a Hs Sol Caribe',
       title: 'Tu hogar fuera de casa',
       description: 'Habitaciones cómodas, WiFi rápido, agua caliente las 24 horas y un equipo que te recibe como en familia.',
@@ -19,7 +19,8 @@ function HotelHero({ onNavigate }) {
       go: 'rooms',
     },
     {
-      video: 'assets/presentacion2.mp4',
+      video: 'assets/sol/hero-video.mp4',
+      poster: 'assets/sol/hero-1.webp',
       subtitle: 'Promo Sol',
       title: 'Hospédate con la mejor tarifa garantizada',
       description: 'Reserva directo y aprovecha descuentos exclusivos para huéspedes recurrentes.',
@@ -27,7 +28,7 @@ function HotelHero({ onNavigate }) {
       go: 'rooms',
     },
     {
-      video: 'assets/decoracion.mp4',
+      image: 'assets/sol/hero-2.webp',
       subtitle: 'Nuestras Sedes',
       title: 'Una sede para cada plan',
       description: 'Distintas ubicaciones, mismo estándar de calidad y servicio Sol Caribe.',
@@ -57,16 +58,24 @@ function HotelHero({ onNavigate }) {
           {slides.map((slide, index) => (
             <div key={index} className="relative swiper-slide">
               <div className="absolute inset-0 transition-transform duration-[8000ms] group-hover:scale-105">
-                <video
-                  src={slide.video}
-                  autoPlay
-                  muted
-                  loop
-                  playsInline
-                  preload="auto"
-                  poster="assets/logo.png"
-                  className="w-full h-full object-cover transition-opacity duration-1000"
-                />
+                {slide.video ? (
+                  <video
+                    src={slide.video}
+                    autoPlay
+                    muted
+                    loop
+                    playsInline
+                    preload="auto"
+                    poster={slide.poster || 'assets/sol/hero-1.webp'}
+                    className="w-full h-full object-cover transition-opacity duration-1000"
+                  />
+                ) : (
+                  <img
+                    src={slide.image}
+                    alt={slide.title}
+                    className="w-full h-full object-cover transition-opacity duration-1000"
+                  />
+                )}
                 <div className="absolute inset-0 bg-gradient-to-b from-black/85 via-black/60 to-black/50" />
               </div>
 

@@ -15,7 +15,7 @@ function SedesPage({ onSedeClick }) {
       <InternalHero
         title="Nuestras Sedes"
         subtitle="Un mismo estándar, distintos lugares"
-        image={(sedes[0] && (sedes[0].cover || sedes[0].image)) || 'assets/hero-1.jpg'}
+        image={(sedes[0] && (sedes[0].cover || sedes[0].image)) || 'assets/sol/hero-1.webp'}
       />
 
       <section className="bg-white">
@@ -208,7 +208,7 @@ function AmenitiesPage({ onNavigate }) {
       <InternalHero
         title="Nuestros Servicios"
         subtitle="Comodidades pensadas para ti"
-        image="assets/hero-1.jpg"
+        image="assets/sol/hero-1.webp"
       />
 
       <section className="bg-white">
@@ -282,7 +282,7 @@ function GalleryPage() {
       <InternalHero
         title="Galería"
         subtitle="Fotos del hotel"
-        image={(fotos[0] && fotos[0].url) || 'assets/hero-1.jpg'}
+        image={(fotos[0] && fotos[0].url) || 'assets/sol/hero-1.webp'}
       />
 
       <section className="bg-white">
@@ -368,7 +368,7 @@ function ContactPage() {
       <InternalHero
         title="Contáctanos"
         subtitle="Estamos aquí para ayudarte"
-        image="assets/hero-1.jpg"
+        image="assets/sol/hero-1.webp"
       />
 
       <section className="bg-white">
@@ -556,7 +556,7 @@ function BookingFlow({ preselectedRoom, onDone }) {
 
   return (
     <>
-      <InternalHero title="Reserva tu estadía" subtitle="3 pasos rápidos" image={roomCover(room) || 'assets/hero-1.jpg'} />
+      <InternalHero title="Reserva tu estadía" subtitle="3 pasos rápidos" image={roomCover(room) || 'assets/sol/hero-1.webp'} />
 
       <section className="bg-white">
         <div className="container mx-auto px-4 lg:px-8">

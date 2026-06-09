@@ -74,43 +74,21 @@ else
 fi
 
 # Bloques comunes
-SNIPPET_LANDING_BODY='    root /var/www/landing;
-    index index.html;
-    client_max_body_size 5M;
+# caribeperu.com: hace proxy al contenedor Docker del proyecto Laravel del otro
+# programador (escucha en 127.0.0.1:8081). Cualquier cambio que mantenga este
+# proxy → asegura que el sitio Docker siga sirviéndose tal cual.
+SNIPPET_LANDING_BODY='    client_max_body_size 25M;
 
-    # Redirige www → dominio raíz
-    if ($host = www.caribeperu.com) {
-        return 301 $scheme://caribeperu.com$request_uri;
-    }
-
-    # API pública: la landing consume /api/public/* para sedes y habitaciones
-    location /api/ {
-        proxy_pass http://127.0.0.1:3001/api/;
+    location / {
+        proxy_pass http://127.0.0.1:8081;
         proxy_http_version 1.1;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
-        proxy_read_timeout 60s;
-    }
-
-    # Uploads (fotos de habitaciones) servidos desde el backend
-    location ^~ /uploads/ {
-        proxy_pass http://127.0.0.1:3001/uploads/;
-        proxy_http_version 1.1;
-        proxy_set_header Host $host;
-        proxy_read_timeout 60s;
-        expires 7d;
-        add_header Cache-Control "public";
-    }
-
-    location / {
-        try_files $uri $uri/ /index.html;
-    }
-
-    location ~* \.(js|css|png|jpg|jpeg|gif|ico|svg|webp|woff2?|mp4|webm|ogg)$ {
-        expires 30d;
-        add_header Cache-Control "public, immutable";
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_read_timeout 300s;
     }'
 
 SNIPPET_SISTEMA_BODY='    root /var/www/hotel;

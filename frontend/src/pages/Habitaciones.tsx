@@ -12,10 +12,14 @@ import {
   CheckCircle2,
   Settings2,
   Camera,
+  Pencil,
+  Trash2,
 } from 'lucide-react';
 import { api } from '@/lib/api';
 import { ThumbImg } from '@/lib/imageUrl';
 import FotosHabitacionModal from '@/components/FotosHabitacionModal';
+import { useDialog } from '@/components/ConfirmProvider';
+import { useToast } from '@/components/ToastProvider';
 
 interface Habitacion {
   id: number;
@@ -142,11 +146,42 @@ const ESTADO_CARD: Record<
 
 export default function Habitaciones() {
   const qc = useQueryClient();
+  const dialog = useDialog();
+  const { show: toast } = useToast();
   const [filtro, setFiltro] = useState<EstadoKey>('TODAS');
   const [showHabModal, setShowHabModal] = useState(false);
   const [showPisoModal, setShowPisoModal] = useState(false);
   const [cambiandoEstado, setCambiandoEstado] = useState<Habitacion | null>(null);
   const [fotosHab, setFotosHab] = useState<Habitacion | null>(null);
+  const [editandoHab, setEditandoHab] = useState<Habitacion | null>(null);
+
+  const eliminarHab = useMutation({
+    mutationFn: async (id: number) =>
+      (await api.delete(`/habitaciones/${id}`)).data,
+    onSuccess: () => {
+      toast({ type: 'success', title: 'Habitación eliminada' });
+      qc.invalidateQueries({ queryKey: ['habitaciones'] });
+    },
+    onError: (err: any) =>
+      toast({
+        type: 'error',
+        title: 'No se pudo eliminar',
+        description:
+          err.response?.data?.message ||
+          'La habitación puede tener alquileres asociados.',
+      }),
+  });
+
+  const confirmarEliminar = async (h: Habitacion) => {
+    const ok = await dialog.confirm({
+      title: `¿Eliminar habitación ${h.numero}?`,
+      message:
+        'Esta acción no se puede deshacer. Si la habitación tiene alquileres registrados, no podrá eliminarse.',
+      confirmText: 'Eliminar',
+      variant: 'danger',
+    });
+    if (ok) eliminarHab.mutate(h.id);
+  };
   const [verImplementos, setVerImplementos] = useState<Habitacion | null>(null);
 
   const { data: habs, isLoading } = useQuery({
@@ -444,6 +479,19 @@ export default function Habitaciones() {
                 >
                   <Camera size={12} /> Fotos
                 </button>
+                <button
+                  onClick={() => setEditandoHab(h)}
+                  className="flex items-center justify-center gap-1.5 bg-violet-50 dark:bg-violet-900/30 hover:bg-violet-100 dark:hover:bg-violet-900/50 text-violet-700 dark:text-violet-200 py-2 rounded-lg text-xs font-medium border border-violet-200 dark:border-violet-800 shadow-sm transition"
+                >
+                  <Pencil size={12} /> Editar
+                </button>
+                <button
+                  onClick={() => confirmarEliminar(h)}
+                  disabled={eliminarHab.isPending}
+                  className="flex items-center justify-center gap-1.5 bg-rose-50 dark:bg-rose-900/30 hover:bg-rose-100 dark:hover:bg-rose-900/50 text-rose-700 dark:text-rose-200 py-2 rounded-lg text-xs font-medium border border-rose-200 dark:border-rose-800 shadow-sm transition disabled:opacity-50"
+                >
+                  <Trash2 size={12} /> Eliminar
+                </button>
               </div>
               </div>
             </div>
@@ -468,6 +516,13 @@ export default function Habitaciones() {
         <HabitacionModal
           pisos={pisos || []}
           onClose={() => setShowHabModal(false)}
+        />
+      )}
+      {editandoHab && (
+        <HabitacionModal
+          pisos={pisos || []}
+          editar={editandoHab}
+          onClose={() => setEditandoHab(null)}
         />
       )}
       {cambiandoEstado && (
@@ -610,34 +665,40 @@ function PisoModal({ onClose }: { onClose: () => void }) {
 
 function HabitacionModal({
   pisos,
+  editar,
   onClose,
 }: {
   pisos: Piso[];
+  editar?: Habitacion;
   onClose: () => void;
 }) {
   const qc = useQueryClient();
+  const esEdicion = !!editar;
   const [form, setForm] = useState({
-    pisoId: '',
-    numero: '',
-    descripcion: '',
-    caracteristicas: '',
-    precioHora: '',
-    precioNoche: '',
+    pisoId: editar ? String(editar.piso.id) : '',
+    numero: editar?.numero || '',
+    descripcion: editar?.descripcion || '',
+    caracteristicas: editar?.caracteristicas || '',
+    precioHora: editar ? String(editar.precioHora) : '',
+    precioNoche: editar ? String(editar.precioNoche) : '',
   });
   const [error, setError] = useState<string | null>(null);
 
   const crear = useMutation({
-    mutationFn: async () =>
-      (
-        await api.post('/habitaciones', {
-          pisoId: Number(form.pisoId),
-          numero: form.numero,
-          descripcion: form.descripcion || undefined,
-          caracteristicas: form.caracteristicas || undefined,
-          precioHora: Number(form.precioHora),
-          precioNoche: Number(form.precioNoche),
-        })
-      ).data,
+    mutationFn: async () => {
+      const payload = {
+        pisoId: Number(form.pisoId),
+        numero: form.numero,
+        descripcion: form.descripcion || undefined,
+        caracteristicas: form.caracteristicas || undefined,
+        precioHora: Number(form.precioHora),
+        precioNoche: Number(form.precioNoche),
+      };
+      if (esEdicion) {
+        return (await api.patch(`/habitaciones/${editar!.id}`, payload)).data;
+      }
+      return (await api.post('/habitaciones', payload)).data;
+    },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['habitaciones'] });
       onClose();
@@ -649,7 +710,7 @@ function HabitacionModal({
     'w-full border border-slate-200 rounded-lg px-3 py-2.5 focus:ring-2 focus:ring-violet-500 focus:border-violet-500 outline-none';
 
   return (
-    <Modal title="Nueva habitación" onClose={onClose}>
+    <Modal title={esEdicion ? `Editar habitación ${editar!.numero}` : 'Nueva habitación'} onClose={onClose}>
       <Field label="Piso">
         <select
           className={inputCls}
@@ -720,7 +781,13 @@ function HabitacionModal({
           disabled={crear.isPending || !form.pisoId || !form.numero}
           className="flex-1 bg-gradient-to-r from-violet-700 to-violet-600 text-white py-2.5 rounded-lg disabled:opacity-50"
         >
-          {crear.isPending ? 'Creando...' : 'Crear habitación'}
+          {crear.isPending
+            ? esEdicion
+              ? 'Guardando...'
+              : 'Creando...'
+            : esEdicion
+              ? 'Guardar cambios'
+              : 'Crear habitación'}
         </button>
       </div>
     </Modal>

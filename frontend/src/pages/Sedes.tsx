@@ -8,8 +8,11 @@ import {
   AlertCircle,
   Pencil,
   Power,
+  MapPin,
+  Navigation,
+  Camera,
 } from 'lucide-react';
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { api } from '@/lib/api';
 import { useAuthStore } from '@/store/auth';
 import { useToast } from '@/components/ToastProvider';
@@ -80,6 +83,8 @@ export default function Sedes() {
       nombre: string;
       direccion: string;
       telefono: string;
+      latitud?: number | null;
+      longitud?: number | null;
     }) => {
       const { id, ...data } = payload;
       return (await api.patch(`/sedes/${id}`, data)).data;
@@ -262,6 +267,21 @@ export default function Sedes() {
                       >
                         <Pencil size={12} /> Editar
                       </button>
+                      {s.latitud != null && s.longitud != null && (
+                        <button
+                          onClick={() =>
+                            window.open(
+                              `https://www.google.com/maps/search/?api=1&query=${s.latitud},${s.longitud}`,
+                              '_blank',
+                              'noopener',
+                            )
+                          }
+                          className="inline-flex items-center gap-1 text-xs bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 px-2.5 py-1.5 rounded-lg transition btn-press"
+                          title="Abrir en Google Maps"
+                        >
+                          <Navigation size={12} /> Cómo llegar
+                        </button>
+                      )}
                       <button
                         onClick={() => {
                           if (
@@ -505,25 +525,142 @@ export default function Sedes() {
 // ────────────────────────────────────────────────────────────
 // Modal editar sede
 // ────────────────────────────────────────────────────────────
+interface SedeFotoMini {
+  id: number;
+  path: string;
+  orden: number;
+}
+
+interface SedeEditable {
+  id: number;
+  nombre: string;
+  direccion?: string | null;
+  telefono?: string | null;
+  latitud?: string | number | null;
+  longitud?: string | number | null;
+  fotos?: SedeFotoMini[];
+}
+
 function EditarSedeModal({
   sede,
   onClose,
   onGuardar,
   guardando,
 }: {
-  sede: { id: number; nombre: string; direccion?: string | null; telefono?: string | null };
+  sede: SedeEditable;
   onClose: () => void;
-  onGuardar: (data: { nombre: string; direccion: string; telefono: string }) => void;
+  onGuardar: (data: {
+    nombre: string;
+    direccion: string;
+    telefono: string;
+    latitud?: number | null;
+    longitud?: number | null;
+  }) => void;
   guardando: boolean;
 }) {
+  const qc = useQueryClient();
+  const { show: toast } = useToast();
   const [nombre, setNombre] = useState(sede.nombre);
   const [direccion, setDireccion] = useState(sede.direccion ?? '');
   const [telefono, setTelefono] = useState(sede.telefono ?? '');
+  const [latitud, setLatitud] = useState<string>(
+    sede.latitud != null ? String(sede.latitud) : '',
+  );
+  const [longitud, setLongitud] = useState<string>(
+    sede.longitud != null ? String(sede.longitud) : '',
+  );
+  const [obteniendoGps, setObteniendoGps] = useState(false);
+  const [subiendo, setSubiendo] = useState(false);
+  const fileInput = React.useRef<HTMLInputElement>(null);
 
+  const fotosQ = useQuery<SedeFotoMini[]>({
+    queryKey: ['sedes', 'fotos', sede.id],
+    queryFn: async () => (await api.get(`/sedes/${sede.id}/fotos`)).data,
+    initialData: sede.fotos || [],
+  });
+
+  const eliminarFoto = useMutation({
+    mutationFn: async (fotoId: number) =>
+      (await api.delete(`/sedes/${sede.id}/fotos/${fotoId}`)).data,
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['sedes', 'fotos', sede.id] });
+      qc.invalidateQueries({ queryKey: ['sedes'] });
+    },
+  });
+
+  const subirFotos = async (files: FileList | null) => {
+    if (!files || files.length === 0) return;
+    setSubiendo(true);
+    try {
+      const fd = new FormData();
+      Array.from(files).forEach((f) => fd.append('fotos', f));
+      await api.post(`/sedes/${sede.id}/fotos`, fd, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      qc.invalidateQueries({ queryKey: ['sedes', 'fotos', sede.id] });
+      qc.invalidateQueries({ queryKey: ['sedes'] });
+      toast({ type: 'success', title: 'Fotos subidas' });
+    } catch (err: any) {
+      toast({
+        type: 'error',
+        title: 'Error subiendo fotos',
+        description: err.response?.data?.message || err.message,
+      });
+    } finally {
+      setSubiendo(false);
+      if (fileInput.current) fileInput.current.value = '';
+    }
+  };
+
+  const obtenerGps = () => {
+    if (!navigator.geolocation) {
+      toast({
+        type: 'error',
+        title: 'GPS no disponible',
+        description: 'Tu navegador no soporta geolocalización',
+      });
+      return;
+    }
+    setObteniendoGps(true);
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        setLatitud(pos.coords.latitude.toFixed(7));
+        setLongitud(pos.coords.longitude.toFixed(7));
+        setObteniendoGps(false);
+        toast({
+          type: 'success',
+          title: 'Ubicación obtenida',
+          description: `Precisión: ±${Math.round(pos.coords.accuracy)} m`,
+        });
+      },
+      (err) => {
+        setObteniendoGps(false);
+        toast({
+          type: 'error',
+          title: 'No se pudo obtener ubicación',
+          description: err.message,
+        });
+      },
+      { enableHighAccuracy: true, timeout: 15000 },
+    );
+  };
+
+  const abrirEnMaps = () => {
+    if (!latitud || !longitud) return;
+    window.open(
+      `https://www.google.com/maps/search/?api=1&query=${latitud},${longitud}`,
+      '_blank',
+      'noopener',
+    );
+  };
+
+  const fotos = fotosQ.data || [];
   const cambios =
     nombre !== sede.nombre ||
     direccion !== (sede.direccion ?? '') ||
-    telefono !== (sede.telefono ?? '');
+    telefono !== (sede.telefono ?? '') ||
+    latitud !== (sede.latitud != null ? String(sede.latitud) : '') ||
+    longitud !== (sede.longitud != null ? String(sede.longitud) : '');
 
   return (
     <div
@@ -531,16 +668,16 @@ function EditarSedeModal({
       onClick={onClose}
     >
       <div
-        className="bg-white dark:bg-slate-900 rounded-2xl w-full max-w-md shadow-2xl animate-scale-in"
+        className="bg-white dark:bg-slate-900 rounded-2xl w-full max-w-lg shadow-2xl animate-scale-in max-h-[92vh] overflow-y-auto"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex justify-between items-center p-5 border-b border-slate-100 dark:border-slate-800">
+        <div className="flex justify-between items-center p-5 border-b border-slate-100 dark:border-slate-800 sticky top-0 bg-white dark:bg-slate-900 z-10">
           <div>
             <h3 className="font-hotel text-lg font-bold text-slate-900 dark:text-slate-100">
               Editar sede
             </h3>
             <div className="text-xs text-slate-500">
-              Cambia el nombre, dirección o teléfono
+              Datos, ubicación y fotos
             </div>
           </div>
           <button
@@ -550,7 +687,9 @@ function EditarSedeModal({
             <X size={18} />
           </button>
         </div>
-        <div className="p-5 space-y-3">
+
+        <div className="p-5 space-y-4">
+          {/* Datos básicos */}
           <div>
             <label className="text-[10px] font-semibold uppercase tracking-widest text-slate-500">
               Nombre
@@ -583,6 +722,106 @@ function EditarSedeModal({
               className="w-full mt-1 font-mono border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm bg-white dark:bg-slate-800"
             />
           </div>
+
+          {/* Geolocalización */}
+          <div className="bg-violet-50/60 dark:bg-violet-900/20 border border-violet-100 dark:border-violet-800/40 rounded-xl p-3 space-y-3">
+            <div className="flex items-center justify-between">
+              <label className="text-[10px] font-semibold uppercase tracking-widest text-violet-700 dark:text-violet-300">
+                Ubicación GPS
+              </label>
+              <button
+                type="button"
+                onClick={obtenerGps}
+                disabled={obteniendoGps}
+                className="text-xs bg-violet-600 hover:bg-violet-700 text-white px-3 py-1.5 rounded-lg font-semibold disabled:opacity-50 inline-flex items-center gap-1.5"
+              >
+                <MapPin size={12} />
+                {obteniendoGps ? 'Obteniendo…' : 'Usar mi ubicación'}
+              </button>
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <input
+                value={latitud}
+                onChange={(e) => setLatitud(e.target.value)}
+                placeholder="Latitud"
+                inputMode="decimal"
+                className="border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-1.5 text-xs font-mono bg-white dark:bg-slate-800"
+              />
+              <input
+                value={longitud}
+                onChange={(e) => setLongitud(e.target.value)}
+                placeholder="Longitud"
+                inputMode="decimal"
+                className="border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-1.5 text-xs font-mono bg-white dark:bg-slate-800"
+              />
+            </div>
+            {latitud && longitud && (
+              <button
+                type="button"
+                onClick={abrirEnMaps}
+                className="w-full text-xs bg-white hover:bg-slate-50 dark:bg-slate-800 dark:hover:bg-slate-700 border border-violet-200 dark:border-violet-800/50 text-violet-700 dark:text-violet-300 py-1.5 rounded-lg font-semibold inline-flex items-center justify-center gap-1.5"
+              >
+                <Navigation size={12} /> Ver en Google Maps
+              </button>
+            )}
+          </div>
+
+          {/* Fotos */}
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <label className="text-[10px] font-semibold uppercase tracking-widest text-slate-500">
+                Fotos ({fotos.length})
+              </label>
+              <button
+                type="button"
+                onClick={() => fileInput.current?.click()}
+                disabled={subiendo}
+                className="text-xs bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 rounded-lg font-semibold disabled:opacity-50 inline-flex items-center gap-1.5"
+              >
+                <Camera size={12} />
+                {subiendo ? 'Subiendo…' : 'Subir fotos'}
+              </button>
+              <input
+                ref={fileInput}
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                multiple
+                onChange={(e) => subirFotos(e.target.files)}
+                className="hidden"
+              />
+            </div>
+
+            {fotos.length === 0 ? (
+              <div className="border-2 border-dashed border-slate-200 dark:border-slate-700 rounded-lg p-6 text-center">
+                <Camera size={28} className="mx-auto text-slate-300 mb-1" />
+                <div className="text-xs text-slate-500">
+                  Sin fotos. Subí al menos una para que aparezca en la landing
+                  pública.
+                </div>
+              </div>
+            ) : (
+              <div className="grid grid-cols-3 gap-2">
+                {fotos.map((f) => (
+                  <div key={f.id} className="relative group">
+                    <img
+                      src={f.path}
+                      alt={`Foto ${f.id}`}
+                      className="w-full h-20 object-cover rounded-lg border border-slate-200 dark:border-slate-700"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => eliminarFoto.mutate(f.id)}
+                      className="absolute top-1 right-1 w-6 h-6 rounded-full bg-rose-600/90 hover:bg-rose-700 text-white opacity-0 group-hover:opacity-100 transition flex items-center justify-center text-xs"
+                      title="Eliminar"
+                    >
+                      ×
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
           <div className="flex gap-2 pt-2">
             <button
               onClick={onClose}
@@ -591,7 +830,15 @@ function EditarSedeModal({
               Cancelar
             </button>
             <button
-              onClick={() => onGuardar({ nombre, direccion, telefono })}
+              onClick={() =>
+                onGuardar({
+                  nombre,
+                  direccion,
+                  telefono,
+                  latitud: latitud ? Number(latitud) : null,
+                  longitud: longitud ? Number(longitud) : null,
+                })
+              }
               disabled={guardando || !nombre.trim() || !cambios}
               className="flex-1 bg-violet-600 hover:bg-violet-700 text-white py-2 rounded-lg text-sm font-semibold disabled:opacity-50"
             >

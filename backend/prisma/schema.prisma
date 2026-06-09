@@ -24,9 +24,15 @@ model Sede {
   nombre      String
   direccion   String?
   telefono    String?
+  /// Geolocalización (formato decimal, ej: -12.0464, -77.0428).
+  /// El frontend la obtiene con navigator.geolocation y arma link a Maps.
+  latitud     Decimal? @db.Decimal(10, 7)
+  longitud   Decimal? @db.Decimal(10, 7)
   activa      Boolean  @default(true)
   esPrincipal Boolean  @default(false)
   creadaEn    DateTime @default(now())
+
+  fotos             FotoSede[]
 
   usuarios          Usuario[]
   pisos             Piso[]
@@ -179,6 +185,17 @@ model FotoHabitacion {
   creadoEn      DateTime   @default(now())
 
   @@index([habitacionId, orden])
+}
+
+model FotoSede {
+  id        Int      @id @default(autoincrement())
+  sedeId    Int
+  sede      Sede     @relation(fields: [sedeId], references: [id], onDelete: Cascade)
+  path      String
+  orden     Int      @default(99)
+  creadoEn  DateTime @default(now())
+
+  @@index([sedeId, orden])
 }
 
 // ============================================================

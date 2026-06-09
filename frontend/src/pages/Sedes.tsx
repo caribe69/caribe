@@ -20,6 +20,7 @@ import { useToast } from '@/components/ToastProvider';
 import { usePagination } from '@/hooks/usePagination';
 import Pagination from '@/components/Pagination';
 import SunatSeriesSection from '@/components/SunatSeriesSection';
+import SedeMapPicker from '@/components/SedeMapPicker';
 
 export default function Sedes() {
   const qc = useQueryClient();
@@ -690,11 +691,11 @@ function EditarSedeModal({
 
   return (
     <div
-      className="fixed inset-0 bg-slate-950/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-fade-in"
+      className="fixed inset-0 bg-slate-950/70 flex items-center justify-center p-4 z-50 animate-fade-in"
       onClick={onClose}
     >
       <div
-        className="bg-white dark:bg-slate-900 rounded-2xl w-full max-w-lg shadow-2xl animate-scale-in max-h-[92vh] overflow-y-auto"
+        className="bg-white dark:bg-slate-900 rounded-2xl w-full max-w-lg shadow-xl max-h-[92vh] overflow-y-auto"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex justify-between items-center p-5 border-b border-slate-100 dark:border-slate-800 sticky top-0 bg-white dark:bg-slate-900 z-10">
@@ -832,9 +833,19 @@ function EditarSedeModal({
                 onClick={abrirEnMaps}
                 className="w-full text-xs bg-white hover:bg-slate-50 dark:bg-slate-800 dark:hover:bg-slate-700 border border-violet-200 dark:border-violet-800/50 text-violet-700 dark:text-violet-300 py-1.5 rounded-lg font-semibold inline-flex items-center justify-center gap-1.5"
               >
-                <Navigation size={12} /> Ver en Google Maps
+                <Navigation size={12} /> Abrir en Google Maps
               </button>
             )}
+
+            {/* Mapa interactivo (Google Maps) — drag/click para fijar coords */}
+            <SedeMapPicker
+              lat={latitud ? Number(latitud) : null}
+              lng={longitud ? Number(longitud) : null}
+              onChange={(la, lo) => {
+                setLatitud(la.toFixed(7));
+                setLongitud(lo.toFixed(7));
+              }}
+            />
           </div>
 
           {/* Fotos */}

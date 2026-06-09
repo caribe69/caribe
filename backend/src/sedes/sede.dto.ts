@@ -1,6 +1,7 @@
 import { Type } from 'class-transformer';
 import {
   IsBoolean,
+  IsInt,
   IsNumber,
   IsOptional,
   IsString,
@@ -19,6 +20,8 @@ export class CreateSedeDto {
 
   @IsOptional() @Type(() => Number) @IsNumber() @Min(-90)  @Max(90)  latitud?: number;
   @IsOptional() @Type(() => Number) @IsNumber() @Min(-180) @Max(180) longitud?: number;
+
+  @IsOptional() @Type(() => Number) @IsInt() @Min(1) @Max(5) estrellas?: number;
 }
 
 export class UpdateSedeDto {
@@ -29,4 +32,6 @@ export class UpdateSedeDto {
 
   @IsOptional() @Type(() => Number) @IsNumber() @Min(-90)  @Max(90)  latitud?: number;
   @IsOptional() @Type(() => Number) @IsNumber() @Min(-180) @Max(180) longitud?: number;
+
+  @IsOptional() @Type(() => Number) @IsInt() @Min(1) @Max(5) estrellas?: number;
 }

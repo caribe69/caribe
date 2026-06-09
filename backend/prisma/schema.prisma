@@ -28,6 +28,9 @@ model Sede {
   /// El frontend la obtiene con navigator.geolocation y arma link a Maps.
   latitud     Decimal? @db.Decimal(10, 7)
   longitud   Decimal? @db.Decimal(10, 7)
+  /// Categoría del hotel en estrellas (1-5). Aparece en la landing pública
+  /// y en el listado de sedes del sistema. Null = sin categorizar.
+  estrellas   Int?
   activa      Boolean  @default(true)
   esPrincipal Boolean  @default(false)
   creadaEn    DateTime @default(now())

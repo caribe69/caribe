@@ -3,6 +3,7 @@ import {
   Building,
   Plus,
   Star,
+  StarOff,
   FileText,
   X,
   AlertCircle,
@@ -85,6 +86,7 @@ export default function Sedes() {
       telefono: string;
       latitud?: number | null;
       longitud?: number | null;
+      estrellas?: number | null;
     }) => {
       const { id, ...data } = payload;
       return (await api.patch(`/sedes/${id}`, data)).data;
@@ -195,8 +197,26 @@ export default function Sedes() {
                       )}
                     </div>
                     <div>
-                      <div className="font-semibold text-slate-800">
-                        {s.nombre}
+                      <div className="font-semibold text-slate-800 flex items-center gap-2 flex-wrap">
+                        <span>{s.nombre}</span>
+                        {s.estrellas != null && (
+                          <span className="inline-flex items-center gap-1 text-[11px] font-bold text-amber-600 dark:text-amber-300 bg-amber-50 dark:bg-amber-900/30 px-1.5 py-0.5 rounded-md">
+                            {s.estrellas}.0
+                            <span className="inline-flex">
+                              {[1, 2, 3, 4, 5].map((n) => (
+                                <Star
+                                  key={n}
+                                  size={10}
+                                  className={
+                                    n <= s.estrellas!
+                                      ? 'fill-amber-500 text-amber-500'
+                                      : 'text-amber-200'
+                                  }
+                                />
+                              ))}
+                            </span>
+                          </span>
+                        )}
                       </div>
                       {s.esPrincipal && (
                         <div className="text-[10px] uppercase tracking-widest text-amber-600 dark:text-amber-300 font-bold">
@@ -538,6 +558,7 @@ interface SedeEditable {
   telefono?: string | null;
   latitud?: string | number | null;
   longitud?: string | number | null;
+  estrellas?: number | null;
   fotos?: SedeFotoMini[];
 }
 
@@ -555,6 +576,7 @@ function EditarSedeModal({
     telefono: string;
     latitud?: number | null;
     longitud?: number | null;
+    estrellas?: number | null;
   }) => void;
   guardando: boolean;
 }) {
@@ -568,6 +590,9 @@ function EditarSedeModal({
   );
   const [longitud, setLongitud] = useState<string>(
     sede.longitud != null ? String(sede.longitud) : '',
+  );
+  const [estrellas, setEstrellas] = useState<number | null>(
+    sede.estrellas ?? null,
   );
   const [obteniendoGps, setObteniendoGps] = useState(false);
   const [subiendo, setSubiendo] = useState(false);
@@ -660,7 +685,8 @@ function EditarSedeModal({
     direccion !== (sede.direccion ?? '') ||
     telefono !== (sede.telefono ?? '') ||
     latitud !== (sede.latitud != null ? String(sede.latitud) : '') ||
-    longitud !== (sede.longitud != null ? String(sede.longitud) : '');
+    longitud !== (sede.longitud != null ? String(sede.longitud) : '') ||
+    estrellas !== (sede.estrellas ?? null);
 
   return (
     <div
@@ -721,6 +747,51 @@ function EditarSedeModal({
               placeholder="999-999-999"
               className="w-full mt-1 font-mono border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm bg-white dark:bg-slate-800"
             />
+          </div>
+
+          {/* Categoría (estrellas) */}
+          <div className="bg-amber-50/60 dark:bg-amber-900/20 border border-amber-100 dark:border-amber-800/40 rounded-xl p-3 space-y-2">
+            <label className="text-[10px] font-semibold uppercase tracking-widest text-amber-700 dark:text-amber-300">
+              Categoría · Estrellas
+            </label>
+            <div className="flex items-center gap-3">
+              <div className="flex items-center gap-1">
+                {[1, 2, 3, 4, 5].map((n) => {
+                  const lit = estrellas != null && n <= estrellas;
+                  return (
+                    <button
+                      key={n}
+                      type="button"
+                      onClick={() => setEstrellas(estrellas === n ? null : n)}
+                      className="hover:scale-110 transition-transform"
+                      title={`${n} estrella${n > 1 ? 's' : ''}`}
+                    >
+                      <Star
+                        size={24}
+                        className={
+                          lit
+                            ? 'fill-amber-500 text-amber-500 drop-shadow-sm'
+                            : 'text-amber-200 dark:text-amber-900/60'
+                        }
+                      />
+                    </button>
+                  );
+                })}
+              </div>
+              <div className="text-lg font-bold text-amber-700 dark:text-amber-300 tabular-nums">
+                {estrellas != null ? `${estrellas}.0` : '—'}
+              </div>
+              {estrellas != null && (
+                <button
+                  type="button"
+                  onClick={() => setEstrellas(null)}
+                  className="ml-auto text-[10px] text-amber-700 dark:text-amber-300 hover:underline inline-flex items-center gap-1"
+                  title="Quitar categoría"
+                >
+                  <StarOff size={11} /> Quitar
+                </button>
+              )}
+            </div>
           </div>
 
           {/* Geolocalización */}
@@ -837,6 +908,7 @@ function EditarSedeModal({
                   telefono,
                   latitud: latitud ? Number(latitud) : null,
                   longitud: longitud ? Number(longitud) : null,
+                  estrellas: estrellas,
                 })
               }
               disabled={guardando || !nombre.trim() || !cambios}

@@ -234,9 +234,29 @@ export class HabitacionesService {
 
   async remove(id: number, user: JwtPayload) {
     const h = await this.findOne(id, user);
+
+    // Si la habitación NO tiene alquileres ni tareas asociadas, la borramos
+    // físicamente — libera el constraint unique (sedeId, numero) sin dejar
+    // basura. Si tiene historial, hacemos soft-delete renombrando el numero
+    // con un sufijo único para que el número pueda reusarse en una nueva.
+    const tieneHistorial = await this.prisma.alquiler.count({
+      where: { habitacionId: h.id },
+    });
+
+    if (tieneHistorial === 0) {
+      // Limpiar fotos físicas y BD (cascade ya elimina FotoHabitacion en BD)
+      await this.prisma.habitacion.delete({ where: { id: h.id } });
+      return { id: h.id, removed: 'hard' };
+    }
+
+    // Soft delete + renombrar para liberar el número
+    const sufijo = `_DEL_${h.id}_${Date.now()}`;
     return this.prisma.habitacion.update({
       where: { id: h.id },
-      data: { activa: false },
+      data: {
+        activa: false,
+        numero: `${h.numero}${sufijo}`,
+      },
     });
   }
 

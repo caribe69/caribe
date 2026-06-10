@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ConflictException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -106,10 +107,58 @@ export class HabitacionesService {
 
   async update(id: number, dto: UpdateHabitacionDto, user: JwtPayload) {
     const h = await this.findOne(id, user);
-    return this.prisma.habitacion.update({
-      where: { id: h.id },
-      data: dto,
-    });
+
+    // Si cambian de piso, verificar que el piso nuevo sea de la misma sede.
+    if (dto.pisoId != null && dto.pisoId !== h.pisoId) {
+      const piso = await this.prisma.piso.findUnique({
+        where: { id: dto.pisoId },
+      });
+      if (!piso || piso.sedeId !== h.sedeId) {
+        throw new BadRequestException(
+          'El piso seleccionado no pertenece a esta sede',
+        );
+      }
+    }
+
+    // Si cambian de número, verificar que no exista otra habitación con ese
+    // número en la misma sede (la BD lo enforcea con @@unique pero queremos
+    // devolver 409 con mensaje claro, no un 500 genérico).
+    if (dto.numero != null && dto.numero !== h.numero) {
+      const dup = await this.prisma.habitacion.findFirst({
+        where: { sedeId: h.sedeId, numero: dto.numero, NOT: { id: h.id } },
+        select: { id: true, numero: true, piso: { select: { numero: true } } },
+      });
+      if (dup) {
+        throw new ConflictException(
+          `Ya existe la habitación N° ${dup.numero} en esta sede (Piso ${dup.piso.numero}).`,
+        );
+      }
+    }
+
+    // Construimos data limpio: ignoramos cualquier campo que no pertenezca
+    // al modelo (ej. sedeId que mande el frontend por error).
+    const data: any = {};
+    if (dto.pisoId != null) data.pisoId = dto.pisoId;
+    if (dto.numero != null) data.numero = dto.numero;
+    if (dto.descripcion !== undefined) data.descripcion = dto.descripcion;
+    if (dto.caracteristicas !== undefined) data.caracteristicas = dto.caracteristicas;
+    if (dto.precioHora != null) data.precioHora = dto.precioHora;
+    if (dto.precioNoche != null) data.precioNoche = dto.precioNoche;
+
+    try {
+      return await this.prisma.habitacion.update({
+        where: { id: h.id },
+        data,
+      });
+    } catch (err: any) {
+      // Por si la condición de carrera deja pasar un duplicado al schema
+      if (err?.code === 'P2002') {
+        throw new ConflictException(
+          'Ya existe una habitación con ese número en la sede.',
+        );
+      }
+      throw err;
+    }
   }
 
   async cambiarEstado(id: number, dto: CambiarEstadoDto, user: JwtPayload) {

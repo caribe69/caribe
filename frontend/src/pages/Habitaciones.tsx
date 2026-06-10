@@ -14,6 +14,8 @@ import {
   Camera,
   Pencil,
   Trash2,
+  Search,
+  ArrowUpDown,
 } from 'lucide-react';
 import { api } from '@/lib/api';
 import { ThumbImg } from '@/lib/imageUrl';
@@ -156,6 +158,10 @@ export default function Habitaciones() {
   const dialog = useDialog();
   const { show: toast } = useToast();
   const [filtro, setFiltro] = useState<EstadoKey>('TODAS');
+  const [busqueda, setBusqueda] = useState('');
+  const [orden, setOrden] = useState<
+    'numero-asc' | 'numero-desc' | 'piso-numero' | 'precio-asc' | 'precio-desc'
+  >('piso-numero');
   const [showHabModal, setShowHabModal] = useState(false);
   const [showPisoModal, setShowPisoModal] = useState(false);
   const [cambiandoEstado, setCambiandoEstado] = useState<Habitacion | null>(null);
@@ -299,11 +305,56 @@ export default function Habitaciones() {
 
   const filtradas = useMemo(() => {
     if (!habs) return [];
-    // Cuando verInactivas, el backend ya devuelve solo inactivas — no filtramos
-    // por "estado". El chip INACTIVAS es independiente del enum EstadoHabitacion.
-    if (filtro === 'INACTIVAS' || filtro === 'TODAS') return habs;
-    return habs.filter((h) => h.estado === filtro);
-  }, [habs, filtro]);
+    // 1. Filtro por estado (excepto TODAS/INACTIVAS que muestran todo del set actual)
+    let lista =
+      filtro === 'INACTIVAS' || filtro === 'TODAS'
+        ? habs
+        : habs.filter((h) => h.estado === filtro);
+
+    // 2. Búsqueda (por número limpio, descripción o características)
+    const q = busqueda.trim().toLowerCase();
+    if (q) {
+      lista = lista.filter((h) => {
+        const numLimpio = h.numero.replace(/_DEL_\d+_\d+$/, '').toLowerCase();
+        return (
+          numLimpio.includes(q) ||
+          (h.descripcion || '').toLowerCase().includes(q) ||
+          (h.caracteristicas || '').toLowerCase().includes(q)
+        );
+      });
+    }
+
+    // 3. Ordenamiento (numérico para que 101, 102, ..., 999 funcione bien)
+    const numOf = (h: Habitacion) => {
+      const limpio = h.numero.replace(/_DEL_\d+_\d+$/, '');
+      const m = limpio.match(/\d+/);
+      return m ? parseInt(m[0], 10) : 999999;
+    };
+    const sorted = [...lista];
+    switch (orden) {
+      case 'numero-asc':
+        sorted.sort((a, b) => numOf(a) - numOf(b));
+        break;
+      case 'numero-desc':
+        sorted.sort((a, b) => numOf(b) - numOf(a));
+        break;
+      case 'precio-asc':
+        sorted.sort((a, b) => Number(a.precioNoche) - Number(b.precioNoche));
+        break;
+      case 'precio-desc':
+        sorted.sort((a, b) => Number(b.precioNoche) - Number(a.precioNoche));
+        break;
+      case 'piso-numero':
+      default:
+        sorted.sort((a, b) => {
+          if (a.piso.numero !== b.piso.numero)
+            return a.piso.numero - b.piso.numero;
+          return numOf(a) - numOf(b);
+        });
+        break;
+    }
+    return sorted;
+  }, [habs, filtro, busqueda, orden]);
 
   return (
     <div>
@@ -330,6 +381,53 @@ export default function Habitaciones() {
           >
             <Plus size={16} /> Nueva habitación
           </button>
+        </div>
+      </div>
+
+      {/* Buscador + orden */}
+      <div className="flex flex-wrap items-center gap-2 mb-4">
+        <div className="relative flex-1 min-w-[220px]">
+          <Search
+            size={14}
+            className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
+          />
+          <input
+            type="text"
+            value={busqueda}
+            onChange={(e) => setBusqueda(e.target.value)}
+            placeholder="Buscar por número, descripción o características…"
+            className="w-full pl-9 pr-9 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-violet-500/40 focus:border-violet-500"
+          />
+          {busqueda && (
+            <button
+              onClick={() => setBusqueda('')}
+              className="absolute right-2.5 top-1/2 -translate-y-1/2 w-5 h-5 rounded-full bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-600 dark:text-slate-300 flex items-center justify-center"
+              title="Limpiar"
+            >
+              <X size={11} />
+            </button>
+          )}
+        </div>
+
+        <div className="relative inline-flex items-center bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl">
+          <ArrowUpDown
+            size={14}
+            className="ml-3 text-slate-400 pointer-events-none"
+          />
+          <select
+            value={orden}
+            onChange={(e) => setOrden(e.target.value as any)}
+            className="appearance-none bg-transparent pl-2 pr-8 py-2.5 text-sm text-slate-700 dark:text-slate-200 focus:outline-none cursor-pointer"
+          >
+            <option value="piso-numero">Piso → Número</option>
+            <option value="numero-asc">N° ascendente</option>
+            <option value="numero-desc">N° descendente</option>
+            <option value="precio-asc">Precio menor → mayor</option>
+            <option value="precio-desc">Precio mayor → menor</option>
+          </select>
+          <span className="absolute right-3 text-slate-400 pointer-events-none">
+            ▾
+          </span>
         </div>
       </div>
 

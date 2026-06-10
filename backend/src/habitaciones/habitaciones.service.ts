@@ -27,13 +27,17 @@ export class HabitacionesService {
     user: JwtPayload,
     sedeIdQuery?: number,
     estado?: EstadoHabitacion,
+    options?: { onlyInactive?: boolean },
   ) {
     const sedeId = resolveSedeId(user, sedeIdQuery);
+    const filtroActiva = options?.onlyInactive
+      ? { activa: false }
+      : { activa: true };
     const habitaciones = await this.prisma.habitacion.findMany({
       where: {
         sedeId,
         ...(estado ? { estado } : {}),
-        activa: true,
+        ...filtroActiva,
       },
       include: {
         piso: true,
@@ -232,30 +236,63 @@ export class HabitacionesService {
     });
   }
 
+  /**
+   * Nunca borra físicamente. Marca la habitación como inactiva y le agrega
+   * sufijo único al número para liberar el constraint @@unique([sedeId, numero])
+   * y poder reusarlo en una nueva habitación. El número original queda visible
+   * antes del sufijo "_DEL_" — útil para reactivar después.
+   */
   async remove(id: number, user: JwtPayload) {
     const h = await this.findOne(id, user);
-
-    // Si la habitación NO tiene alquileres ni tareas asociadas, la borramos
-    // físicamente — libera el constraint unique (sedeId, numero) sin dejar
-    // basura. Si tiene historial, hacemos soft-delete renombrando el numero
-    // con un sufijo único para que el número pueda reusarse en una nueva.
-    const tieneHistorial = await this.prisma.alquiler.count({
-      where: { habitacionId: h.id },
-    });
-
-    if (tieneHistorial === 0) {
-      // Limpiar fotos físicas y BD (cascade ya elimina FotoHabitacion en BD)
-      await this.prisma.habitacion.delete({ where: { id: h.id } });
-      return { id: h.id, removed: 'hard' };
+    if (!h.activa) {
+      throw new BadRequestException('La habitación ya está inactiva.');
     }
-
-    // Soft delete + renombrar para liberar el número
     const sufijo = `_DEL_${h.id}_${Date.now()}`;
     return this.prisma.habitacion.update({
       where: { id: h.id },
       data: {
         activa: false,
         numero: `${h.numero}${sufijo}`,
+      },
+    });
+  }
+
+  /**
+   * Reactiva una habitación inactiva. Si el número original ya está ocupado
+   * por otra activa, exige que el usuario mande un número alternativo.
+   */
+  async reactivar(id: number, dto: { numero?: string }, user: JwtPayload) {
+    const h = await this.findOne(id, user);
+    if (h.activa) {
+      throw new BadRequestException('La habitación ya está activa.');
+    }
+    // Restaurar el número original quitando el sufijo _DEL_*
+    const original = h.numero.replace(/_DEL_\d+_\d+$/, '');
+    const numeroFinal = (dto.numero || original || '').trim();
+    if (!numeroFinal) {
+      throw new BadRequestException(
+        'Indicá un número de habitación para reactivar.',
+      );
+    }
+    const dup = await this.prisma.habitacion.findFirst({
+      where: {
+        sedeId: h.sedeId,
+        numero: numeroFinal,
+        activa: true,
+        NOT: { id: h.id },
+      },
+    });
+    if (dup) {
+      throw new ConflictException(
+        `El N° ${numeroFinal} ya está siendo usado por otra habitación activa. Elegí otro número o renombrá esa primero.`,
+      );
+    }
+    return this.prisma.habitacion.update({
+      where: { id: h.id },
+      data: {
+        activa: true,
+        numero: numeroFinal,
+        estado: 'DISPONIBLE',
       },
     });
   }

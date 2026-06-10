@@ -41,11 +41,13 @@ export class HabitacionesController {
     @CurrentUser() user: JwtPayload,
     @Query('sedeId') sedeId?: string,
     @Query('estado') estado?: EstadoHabitacion,
+    @Query('inactivas') inactivas?: string,
   ) {
     return this.service.findAll(
       user,
       sedeId ? Number(sedeId) : undefined,
       estado,
+      { onlyInactive: inactivas === 'true' || inactivas === '1' },
     );
   }
 
@@ -90,6 +92,18 @@ export class HabitacionesController {
     @CurrentUser() user: JwtPayload,
   ) {
     return this.service.remove(id, user);
+  }
+
+  /** Reactiva una habitación inactiva. Body opcional con un nuevo número
+   *  si el original ya está ocupado. */
+  @Roles(Rol.SUPERADMIN, Rol.ADMIN_SEDE)
+  @Post(':id/reactivar')
+  reactivar(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: { numero?: string },
+    @CurrentUser() user: JwtPayload,
+  ) {
+    return this.service.reactivar(id, dto || {}, user);
   }
 
   // ────────── FOTOS ──────────

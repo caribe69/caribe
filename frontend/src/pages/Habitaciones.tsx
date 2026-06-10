@@ -46,7 +46,8 @@ type EstadoKey =
   | 'OCUPADA'
   | 'ALISTANDO'
   | 'MANTENIMIENTO'
-  | 'FUERA_SERVICIO';
+  | 'FUERA_SERVICIO'
+  | 'INACTIVAS';
 
 const ESTADOS: Array<{
   key: EstadoKey;
@@ -84,6 +85,12 @@ const ESTADOS: Array<{
     label: 'Fuera servicio',
     Icon: Ban,
     dotClass: 'bg-slate-500',
+  },
+  {
+    key: 'INACTIVAS',
+    label: 'Inactivas',
+    Icon: Trash2,
+    dotClass: 'bg-rose-500',
   },
 ];
 
@@ -159,35 +166,77 @@ export default function Habitaciones() {
     mutationFn: async (id: number) =>
       (await api.delete(`/habitaciones/${id}`)).data,
     onSuccess: () => {
-      toast({ type: 'success', title: 'Habitación eliminada' });
+      toast({
+        type: 'success',
+        title: 'Habitación archivada',
+        description: 'La encontrás en la pestaña "Inactivas".',
+      });
       qc.invalidateQueries({ queryKey: ['habitaciones'] });
     },
     onError: (err: any) =>
       toast({
         type: 'error',
-        title: 'No se pudo eliminar',
-        description:
-          err.response?.data?.message ||
-          'La habitación puede tener alquileres asociados.',
+        title: 'No se pudo archivar',
+        description: err.response?.data?.message || 'Error',
       }),
   });
 
   const confirmarEliminar = async (h: Habitacion) => {
     const ok = await dialog.confirm({
-      title: `¿Eliminar habitación ${h.numero}?`,
+      title: `¿Archivar habitación ${h.numero}?`,
       message:
-        'Esta acción no se puede deshacer. Si la habitación tiene alquileres registrados, no podrá eliminarse.',
-      confirmText: 'Eliminar',
-      variant: 'danger',
+        'La habitación pasa a "Inactivas" y deja de operar. Mantiene el historial. Podés reactivarla cuando quieras desde la pestaña "Inactivas".',
+      confirmText: 'Archivar',
+      variant: 'warning',
     });
     if (ok) eliminarHab.mutate(h.id);
   };
   const [verImplementos, setVerImplementos] = useState<Habitacion | null>(null);
 
+  const verInactivas = filtro === 'INACTIVAS';
+
   const { data: habs, isLoading } = useQuery({
-    queryKey: ['habitaciones'],
-    queryFn: async () => (await api.get<Habitacion[]>('/habitaciones')).data,
+    queryKey: ['habitaciones', verInactivas ? 'inactivas' : 'activas'],
+    queryFn: async () =>
+      (
+        await api.get<Habitacion[]>(
+          verInactivas ? '/habitaciones?inactivas=true' : '/habitaciones',
+        )
+      ).data,
   });
+
+  const reactivar = useMutation({
+    mutationFn: async (vars: { id: number; numero?: string }) =>
+      (await api.post(`/habitaciones/${vars.id}/reactivar`, { numero: vars.numero }))
+        .data,
+    onSuccess: () => {
+      toast({ type: 'success', title: 'Habitación reactivada' });
+      qc.invalidateQueries({ queryKey: ['habitaciones'] });
+    },
+    onError: (err: any) =>
+      toast({
+        type: 'error',
+        title: 'No se pudo reactivar',
+        description: err.response?.data?.message || 'Error',
+      }),
+  });
+
+  const pedirReactivar = async (h: Habitacion) => {
+    // Quitar el sufijo _DEL_N_TIMESTAMP del número original
+    const original = h.numero.replace(/_DEL_\d+_\d+$/, '');
+    const numero = await dialog.prompt({
+      title: `Reactivar habitación`,
+      message: `Indicá el número final (sin sufijo) para reactivar. El original era "${original}".`,
+      defaultValue: original,
+      placeholder: 'Ej: 407',
+      minLength: 1,
+      confirmText: 'Reactivar',
+      variant: 'info',
+    });
+    if (numero && numero.trim()) {
+      reactivar.mutate({ id: h.id, numero: numero.trim() });
+    }
+  };
 
   const { data: pisos } = useQuery({
     queryKey: ['pisos'],
@@ -250,7 +299,9 @@ export default function Habitaciones() {
 
   const filtradas = useMemo(() => {
     if (!habs) return [];
-    if (filtro === 'TODAS') return habs;
+    // Cuando verInactivas, el backend ya devuelve solo inactivas — no filtramos
+    // por "estado". El chip INACTIVAS es independiente del enum EstadoHabitacion.
+    if (filtro === 'INACTIVAS' || filtro === 'TODAS') return habs;
     return habs.filter((h) => h.estado === filtro);
   }, [habs, filtro]);
 
@@ -386,9 +437,9 @@ export default function Habitaciones() {
               )}
               <div className="p-5">
 
-              {/* Número */}
+              {/* Número (en inactivas, mostrar el original limpio) */}
               <div className="font-hotel text-3xl font-bold text-slate-900 leading-none">
-                Nro. {h.numero}
+                Nro. {h.numero.replace(/_DEL_\d+_\d+$/, '')}
               </div>
               <div className="text-xs text-slate-500 mt-1">
                 Piso {h.piso.numero}
@@ -466,33 +517,48 @@ export default function Habitaciones() {
               </div>
 
               {/* Acciones */}
-              <div className="mt-4 grid grid-cols-2 gap-2">
-                <button
-                  onClick={() => setCambiandoEstado(h)}
-                  className="flex items-center justify-center gap-1.5 bg-white/80 dark:bg-slate-900/60 hover:bg-white dark:hover:bg-slate-900 text-slate-700 dark:text-slate-200 py-2 rounded-lg text-xs font-medium border border-white dark:border-slate-700 shadow-sm transition"
-                >
-                  <Settings2 size={12} /> Estado
-                </button>
-                <button
-                  onClick={() => setFotosHab(h)}
-                  className="flex items-center justify-center gap-1.5 bg-white/80 dark:bg-slate-900/60 hover:bg-white dark:hover:bg-slate-900 text-slate-700 dark:text-slate-200 py-2 rounded-lg text-xs font-medium border border-white dark:border-slate-700 shadow-sm transition"
-                >
-                  <Camera size={12} /> Fotos
-                </button>
-                <button
-                  onClick={() => setEditandoHab(h)}
-                  className="flex items-center justify-center gap-1.5 bg-violet-50 dark:bg-violet-900/30 hover:bg-violet-100 dark:hover:bg-violet-900/50 text-violet-700 dark:text-violet-200 py-2 rounded-lg text-xs font-medium border border-violet-200 dark:border-violet-800 shadow-sm transition"
-                >
-                  <Pencil size={12} /> Editar
-                </button>
-                <button
-                  onClick={() => confirmarEliminar(h)}
-                  disabled={eliminarHab.isPending}
-                  className="flex items-center justify-center gap-1.5 bg-rose-50 dark:bg-rose-900/30 hover:bg-rose-100 dark:hover:bg-rose-900/50 text-rose-700 dark:text-rose-200 py-2 rounded-lg text-xs font-medium border border-rose-200 dark:border-rose-800 shadow-sm transition disabled:opacity-50"
-                >
-                  <Trash2 size={12} /> Eliminar
-                </button>
-              </div>
+              {verInactivas ? (
+                <div className="mt-4">
+                  <div className="bg-rose-50 dark:bg-rose-900/30 border border-rose-200 dark:border-rose-800 rounded-lg px-3 py-2 mb-2 text-[11px] text-rose-700 dark:text-rose-300 font-semibold uppercase tracking-wider">
+                    💤 Habitación archivada
+                  </div>
+                  <button
+                    onClick={() => pedirReactivar(h)}
+                    disabled={reactivar.isPending}
+                    className="w-full flex items-center justify-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white py-2 rounded-lg text-xs font-semibold shadow-sm transition disabled:opacity-50"
+                  >
+                    <CheckCircle2 size={12} /> Reactivar
+                  </button>
+                </div>
+              ) : (
+                <div className="mt-4 grid grid-cols-2 gap-2">
+                  <button
+                    onClick={() => setCambiandoEstado(h)}
+                    className="flex items-center justify-center gap-1.5 bg-white/80 dark:bg-slate-900/60 hover:bg-white dark:hover:bg-slate-900 text-slate-700 dark:text-slate-200 py-2 rounded-lg text-xs font-medium border border-white dark:border-slate-700 shadow-sm transition"
+                  >
+                    <Settings2 size={12} /> Estado
+                  </button>
+                  <button
+                    onClick={() => setFotosHab(h)}
+                    className="flex items-center justify-center gap-1.5 bg-white/80 dark:bg-slate-900/60 hover:bg-white dark:hover:bg-slate-900 text-slate-700 dark:text-slate-200 py-2 rounded-lg text-xs font-medium border border-white dark:border-slate-700 shadow-sm transition"
+                  >
+                    <Camera size={12} /> Fotos
+                  </button>
+                  <button
+                    onClick={() => setEditandoHab(h)}
+                    className="flex items-center justify-center gap-1.5 bg-violet-50 dark:bg-violet-900/30 hover:bg-violet-100 dark:hover:bg-violet-900/50 text-violet-700 dark:text-violet-200 py-2 rounded-lg text-xs font-medium border border-violet-200 dark:border-violet-800 shadow-sm transition"
+                  >
+                    <Pencil size={12} /> Editar
+                  </button>
+                  <button
+                    onClick={() => confirmarEliminar(h)}
+                    disabled={eliminarHab.isPending}
+                    className="flex items-center justify-center gap-1.5 bg-rose-50 dark:bg-rose-900/30 hover:bg-rose-100 dark:hover:bg-rose-900/50 text-rose-700 dark:text-rose-200 py-2 rounded-lg text-xs font-medium border border-rose-200 dark:border-rose-800 shadow-sm transition disabled:opacity-50"
+                  >
+                    <Trash2 size={12} /> Archivar
+                  </button>
+                </div>
+              )}
               </div>
             </div>
           );

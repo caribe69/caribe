@@ -161,7 +161,7 @@ export default function Habitaciones() {
   const [busqueda, setBusqueda] = useState('');
   const [orden, setOrden] = useState<
     'numero-asc' | 'numero-desc' | 'piso-numero' | 'precio-asc' | 'precio-desc'
-  >('piso-numero');
+  >('numero-asc');
   const [showHabModal, setShowHabModal] = useState(false);
   const [showPisoModal, setShowPisoModal] = useState(false);
   const [cambiandoEstado, setCambiandoEstado] = useState<Habitacion | null>(null);
@@ -419,9 +419,9 @@ export default function Habitaciones() {
             onChange={(e) => setOrden(e.target.value as any)}
             className="appearance-none bg-transparent pl-2 pr-8 py-2.5 text-sm text-slate-700 dark:text-slate-200 focus:outline-none cursor-pointer"
           >
-            <option value="piso-numero">Piso → Número</option>
             <option value="numero-asc">N° ascendente</option>
             <option value="numero-desc">N° descendente</option>
+            <option value="piso-numero">Piso → Número</option>
             <option value="precio-asc">Precio menor → mayor</option>
             <option value="precio-desc">Precio mayor → menor</option>
           </select>

@@ -241,6 +241,9 @@ function MapaHabitaciones() {
 
   const [busqueda, setBusqueda] = useState('');
   const [filtroEstado, setFiltroEstado] = useState<string>('');
+  const [orden, setOrden] = useState<
+    'numero-asc' | 'numero-desc' | 'piso-numero' | 'precio-asc' | 'precio-desc'
+  >('numero-asc');
 
   const { data, isLoading } = useQuery({
     queryKey: ['habitaciones'],
@@ -254,11 +257,11 @@ function MapaHabitaciones() {
     return r;
   }, [data]);
 
-  // Filtrado por búsqueda + estado
+  // Filtrado por búsqueda + estado + ordenamiento
   const habitacionesFiltradas = useMemo(() => {
     if (!data) return [];
     const q = busqueda.trim().toLowerCase();
-    return data.filter((h) => {
+    const filtradas = data.filter((h) => {
       if (filtroEstado && h.estado !== filtroEstado) return false;
       if (!q) return true;
       const alq = h.alquileres?.[0];
@@ -270,7 +273,36 @@ function MapaHabitaciones() {
         (alq?.clienteDni || '').toLowerCase().includes(q)
       );
     });
-  }, [data, busqueda, filtroEstado]);
+
+    const numOf = (h: Habitacion) => {
+      const m = h.numero.replace(/_DEL_\d+_\d+$/, '').match(/\d+/);
+      return m ? parseInt(m[0], 10) : 999999;
+    };
+    const sorted = [...filtradas];
+    switch (orden) {
+      case 'numero-asc':
+        sorted.sort((a, b) => numOf(a) - numOf(b));
+        break;
+      case 'numero-desc':
+        sorted.sort((a, b) => numOf(b) - numOf(a));
+        break;
+      case 'precio-asc':
+        sorted.sort((a, b) => Number(a.precioNoche) - Number(b.precioNoche));
+        break;
+      case 'precio-desc':
+        sorted.sort((a, b) => Number(b.precioNoche) - Number(a.precioNoche));
+        break;
+      case 'piso-numero':
+      default:
+        sorted.sort((a, b) => {
+          if (a.piso.numero !== b.piso.numero)
+            return a.piso.numero - b.piso.numero;
+          return numOf(a) - numOf(b);
+        });
+        break;
+    }
+    return sorted;
+  }, [data, busqueda, filtroEstado, orden]);
 
   return (
     <div>
@@ -296,6 +328,28 @@ function MapaHabitaciones() {
             </button>
           )}
         </div>
+
+        {/* Selector de orden */}
+        <div className="relative inline-flex items-center bg-white border border-slate-200 rounded-xl">
+          <span className="ml-3 text-slate-400 text-xs uppercase font-semibold tracking-wider">
+            ↕
+          </span>
+          <select
+            value={orden}
+            onChange={(e) => setOrden(e.target.value as any)}
+            className="appearance-none bg-transparent pl-2 pr-7 py-2.5 text-sm text-slate-700 focus:outline-none cursor-pointer"
+          >
+            <option value="numero-asc">N° ascendente</option>
+            <option value="numero-desc">N° descendente</option>
+            <option value="piso-numero">Piso → Número</option>
+            <option value="precio-asc">Precio menor → mayor</option>
+            <option value="precio-desc">Precio mayor → menor</option>
+          </select>
+          <span className="absolute right-2 text-slate-400 pointer-events-none text-xs">
+            ▾
+          </span>
+        </div>
+
         <div className="flex flex-wrap gap-2">
           <button
             onClick={() => setFiltroEstado('')}

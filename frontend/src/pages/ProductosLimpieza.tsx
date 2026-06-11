@@ -1,9 +1,11 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Sparkles, Plus, X, PackagePlus } from 'lucide-react';
+import { Sparkles, Plus, X, PackagePlus, Pencil, Trash2 } from 'lucide-react';
 import { api } from '@/lib/api';
 import { usePagination } from '@/hooks/usePagination';
 import Pagination from '@/components/Pagination';
+import { useDialog } from '@/components/ConfirmProvider';
+import { useToast } from '@/components/ToastProvider';
 
 interface ProductoLimpieza {
   id: number;
@@ -15,8 +17,37 @@ interface ProductoLimpieza {
 
 export default function ProductosLimpieza() {
   const qc = useQueryClient();
+  const dialog = useDialog();
+  const { show: toast } = useToast();
   const [showModal, setShowModal] = useState(false);
   const [ajuste, setAjuste] = useState<ProductoLimpieza | null>(null);
+  const [editar, setEditar] = useState<ProductoLimpieza | null>(null);
+
+  const eliminar = useMutation({
+    mutationFn: async (id: number) =>
+      (await api.delete(`/productos-limpieza/${id}`)).data,
+    onSuccess: () => {
+      toast({ type: 'success', title: 'Producto eliminado' });
+      qc.invalidateQueries({ queryKey: ['productos-limpieza'] });
+    },
+    onError: (err: any) =>
+      toast({
+        type: 'error',
+        title: 'No se pudo eliminar',
+        description: err.response?.data?.message || 'Error',
+      }),
+  });
+
+  const confirmarEliminar = async (p: ProductoLimpieza) => {
+    const ok = await dialog.confirm({
+      title: `¿Eliminar "${p.nombre}"?`,
+      message:
+        'El producto pasa a inactivo. Mantiene el historial de usos en limpieza.',
+      confirmText: 'Eliminar',
+      variant: 'warning',
+    });
+    if (ok) eliminar.mutate(p.id);
+  };
 
   const { data, isLoading } = useQuery({
     queryKey: ['productos-limpieza'],
@@ -60,7 +91,7 @@ export default function ProductosLimpieza() {
               <th className="text-left px-6 py-4 text-[11px] font-semibold text-slate-400 uppercase tracking-widest">
                 Mínimo
               </th>
-              <th className="text-right px-6 py-4 text-[11px] font-semibold text-slate-400 uppercase tracking-widest w-32">
+              <th className="text-right px-6 py-4 text-[11px] font-semibold text-slate-400 uppercase tracking-widest w-64">
                 Acciones
               </th>
             </tr>
@@ -103,12 +134,30 @@ export default function ProductosLimpieza() {
                   </td>
                   <td className="px-6 py-4 text-slate-500">{p.stockMinimo}</td>
                   <td className="px-6 py-4 text-right">
-                    <button
-                      onClick={() => setAjuste(p)}
-                      className="inline-flex items-center gap-1.5 text-xs bg-slate-100 hover:bg-violet-100 hover:text-violet-700 dark:hover:text-violet-200 text-slate-700 px-3 py-1.5 rounded-lg transition"
-                    >
-                      <PackagePlus size={13} /> Stock
-                    </button>
+                    <div className="inline-flex items-center gap-1.5 justify-end flex-wrap">
+                      <button
+                        onClick={() => setAjuste(p)}
+                        className="inline-flex items-center gap-1 text-xs bg-slate-100 hover:bg-violet-100 hover:text-violet-700 text-slate-700 px-2.5 py-1.5 rounded-lg transition"
+                        title="Ajustar stock"
+                      >
+                        <PackagePlus size={12} /> Stock
+                      </button>
+                      <button
+                        onClick={() => setEditar(p)}
+                        className="inline-flex items-center gap-1 text-xs bg-violet-50 hover:bg-violet-100 text-violet-700 border border-violet-200 px-2.5 py-1.5 rounded-lg transition"
+                        title="Editar nombre, unidad o stock mínimo"
+                      >
+                        <Pencil size={12} /> Editar
+                      </button>
+                      <button
+                        onClick={() => confirmarEliminar(p)}
+                        disabled={eliminar.isPending}
+                        className="inline-flex items-center gap-1 text-xs bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 px-2.5 py-1.5 rounded-lg transition disabled:opacity-50"
+                        title="Eliminar producto"
+                      >
+                        <Trash2 size={12} /> Eliminar
+                      </button>
+                    </div>
                   </td>
                 </tr>
               );
@@ -143,6 +192,12 @@ export default function ProductosLimpieza() {
       </div>
 
       {showModal && <Form onClose={() => setShowModal(false)} />}
+      {editar && (
+        <Form
+          editar={editar}
+          onClose={() => setEditar(null)}
+        />
+      )}
       {ajuste && (
         <AjusteModal
           producto={ajuste}
@@ -156,20 +211,38 @@ export default function ProductosLimpieza() {
   );
 }
 
-function Form({ onClose }: { onClose: () => void }) {
+function Form({
+  onClose,
+  editar,
+}: {
+  onClose: () => void;
+  editar?: ProductoLimpieza;
+}) {
   const qc = useQueryClient();
+  const esEdicion = !!editar;
   const [form, setForm] = useState({
-    nombre: '',
+    nombre: editar?.nombre || '',
     descripcion: '',
-    unidad: 'unidad',
-    stock: '0',
-    stockMinimo: '5',
+    unidad: editar?.unidad || 'unidad',
+    stock: editar ? String(editar.stock) : '0',
+    stockMinimo: editar ? String(editar.stockMinimo) : '5',
   });
   const [error, setError] = useState<string | null>(null);
 
-  const crear = useMutation({
-    mutationFn: async () =>
-      (
+  const guardar = useMutation({
+    mutationFn: async () => {
+      if (esEdicion) {
+        // PATCH solo manda los campos editables (sin tocar stock — para eso
+        // existe el modal de "Ajustar stock").
+        return (
+          await api.patch(`/productos-limpieza/${editar!.id}`, {
+            nombre: form.nombre,
+            unidad: form.unidad,
+            stockMinimo: Number(form.stockMinimo),
+          })
+        ).data;
+      }
+      return (
         await api.post('/productos-limpieza', {
           nombre: form.nombre,
           descripcion: form.descripcion || undefined,
@@ -177,7 +250,8 @@ function Form({ onClose }: { onClose: () => void }) {
           stock: Number(form.stock),
           stockMinimo: Number(form.stockMinimo),
         })
-      ).data,
+      ).data;
+    },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['productos-limpieza'] });
       onClose();
@@ -186,19 +260,24 @@ function Form({ onClose }: { onClose: () => void }) {
   });
 
   return (
-    <Modal title="Nuevo producto de limpieza" onClose={onClose}>
+    <Modal
+      title={esEdicion ? `Editar "${editar!.nombre}"` : 'Nuevo producto de limpieza'}
+      onClose={onClose}
+    >
       <input
         placeholder="Nombre"
         className="w-full border rounded-lg px-3 py-2"
         value={form.nombre}
         onChange={(e) => setForm({ ...form, nombre: e.target.value })}
       />
-      <input
-        placeholder="Descripción (opcional)"
-        className="w-full border rounded-lg px-3 py-2"
-        value={form.descripcion}
-        onChange={(e) => setForm({ ...form, descripcion: e.target.value })}
-      />
+      {!esEdicion && (
+        <input
+          placeholder="Descripción (opcional)"
+          className="w-full border rounded-lg px-3 py-2"
+          value={form.descripcion}
+          onChange={(e) => setForm({ ...form, descripcion: e.target.value })}
+        />
+      )}
       <input
         placeholder="Unidad (ej. litro, rollo, unidad)"
         className="w-full border rounded-lg px-3 py-2"
@@ -206,21 +285,29 @@ function Form({ onClose }: { onClose: () => void }) {
         onChange={(e) => setForm({ ...form, unidad: e.target.value })}
       />
       <div className="grid grid-cols-2 gap-2">
-        <input
-          type="number"
-          placeholder="Stock inicial"
-          className="w-full border rounded-lg px-3 py-2"
-          value={form.stock}
-          onChange={(e) => setForm({ ...form, stock: e.target.value })}
-        />
+        {!esEdicion && (
+          <input
+            type="number"
+            placeholder="Stock inicial"
+            className="w-full border rounded-lg px-3 py-2"
+            value={form.stock}
+            onChange={(e) => setForm({ ...form, stock: e.target.value })}
+          />
+        )}
         <input
           type="number"
           placeholder="Stock mínimo"
-          className="w-full border rounded-lg px-3 py-2"
+          className={`w-full border rounded-lg px-3 py-2 ${esEdicion ? 'col-span-2' : ''}`}
           value={form.stockMinimo}
           onChange={(e) => setForm({ ...form, stockMinimo: e.target.value })}
         />
       </div>
+      {esEdicion && (
+        <div className="text-xs text-slate-500 bg-slate-50 border border-slate-200 rounded p-2">
+          ℹ El stock actual ({editar!.stock}) se ajusta desde el botón "Stock"
+          (suma/resta con motivo).
+        </div>
+      )}
       {error && (
         <div className="text-sm text-red-600 dark:text-red-300 bg-red-50 dark:bg-red-900/30 p-2 rounded">
           {error}
@@ -234,11 +321,17 @@ function Form({ onClose }: { onClose: () => void }) {
           Cancelar
         </button>
         <button
-          onClick={() => crear.mutate()}
-          disabled={crear.isPending || !form.nombre}
-          className="flex-1 bg-brand-500 hover:bg-brand-600 text-white py-2 rounded-lg disabled:opacity-50"
+          onClick={() => guardar.mutate()}
+          disabled={guardar.isPending || !form.nombre}
+          className="flex-1 bg-violet-600 hover:bg-violet-700 text-white py-2 rounded-lg disabled:opacity-50"
         >
-          {crear.isPending ? 'Creando...' : 'Crear'}
+          {guardar.isPending
+            ? esEdicion
+              ? 'Guardando…'
+              : 'Creando…'
+            : esEdicion
+              ? 'Guardar cambios'
+              : 'Crear'}
         </button>
       </div>
     </Modal>

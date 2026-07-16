@@ -160,9 +160,13 @@ export class PersonalController {
   ) {
     return this.service.actualizar(id, {
       ...dto,
-      fechaNacimiento: dto.fechaNacimiento
-        ? new Date(dto.fechaNacimiento)
-        : undefined,
+      // null explícito = limpiar; undefined = no tocar
+      fechaNacimiento:
+        dto.fechaNacimiento === null
+          ? null
+          : dto.fechaNacimiento
+            ? new Date(dto.fechaNacimiento)
+            : undefined,
       fechaIngreso: dto.fechaIngreso ? new Date(dto.fechaIngreso) : undefined,
     } as any);
   }

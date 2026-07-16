@@ -450,17 +450,19 @@ function PersonalModal({
     try {
       let id = personal?.id;
       if (esEdicion) {
+        // Al editar, los opcionales vacíos van como null para poder LIMPIARLOS
+        // (undefined = "no cambiar" dejaba el valor viejo).
         await api.patch(`/personal/${id}`, {
           nombre: form.nombre,
           apellidoPaterno: form.apellidoPaterno,
-          apellidoMaterno: form.apellidoMaterno || undefined,
-          fechaNacimiento: form.fechaNacimiento || undefined,
+          apellidoMaterno: form.apellidoMaterno.trim() || null,
+          fechaNacimiento: form.fechaNacimiento || null,
           fechaIngreso: form.fechaIngreso || undefined,
-          correo: form.correo || undefined,
-          telefono: form.telefono || undefined,
-          cargo: form.cargo || undefined,
-          direccion: form.direccion || undefined,
-          notas: form.notas || undefined,
+          correo: form.correo.trim() || null,
+          telefono: form.telefono.trim(),
+          cargo: form.cargo.trim() || null,
+          direccion: form.direccion.trim() || null,
+          notas: form.notas.trim() || null,
         });
       } else {
         const { data } = await api.post('/personal', {

@@ -12,6 +12,7 @@ interface Categoria {
   id: number;
   nombre: string;
   orden: number;
+  _count?: { productos: number };
 }
 
 export default function Categorias() {
@@ -97,11 +98,15 @@ export default function Categorias() {
                   size={15}
                   className="text-slate-300 dark:text-slate-600 shrink-0"
                 />
-                <span className="inline-flex items-center justify-center text-[10px] font-bold tabular-nums w-6 h-6 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 shrink-0">
-                  {c.orden}
-                </span>
                 <span className="font-semibold text-slate-800 dark:text-slate-200 flex-1">
                   {c.nombre}
+                </span>
+                <span className="inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-medium bg-violet-100 text-violet-700 dark:bg-violet-900/40 dark:text-violet-300 shrink-0">
+                  {c._count?.productos ?? 0}{' '}
+                  {(c._count?.productos ?? 0) === 1 ? 'producto' : 'productos'}
+                </span>
+                <span className="hidden sm:inline text-[10px] text-slate-400 dark:text-slate-500 tabular-nums shrink-0">
+                  orden {c.orden}
                 </span>
                 {puedeEditar && (
                   <div className="inline-flex items-center gap-1">

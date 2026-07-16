@@ -20,6 +20,9 @@ export class CategoriasProductosService {
     return this.prisma.categoriaProducto.findMany({
       where: { sedeId, activo: true },
       orderBy: [{ orden: 'asc' }, { nombre: 'asc' }],
+      include: {
+        _count: { select: { productos: { where: { activo: true } } } },
+      },
     });
   }
 

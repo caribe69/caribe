@@ -640,10 +640,11 @@ function PersonalModal({
             </div>
           </div>
 
-          {/* Acceso multisede — solo al editar, si tiene usuario y soy SUPERADMIN */}
+          {/* Acceso multisede — al editar, si tiene usuario y soy admin/superadmin */}
           {esEdicion &&
             personal?.usuario &&
-            usuarioActual?.rol === 'SUPERADMIN' && (
+            (usuarioActual?.rol === 'SUPERADMIN' ||
+              usuarioActual?.rol === 'ADMIN_SEDE') && (
               <MultisedeSection personal={personal} />
             )}
 

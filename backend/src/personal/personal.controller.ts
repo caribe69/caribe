@@ -282,8 +282,8 @@ export class PersonalController {
     return this.service.getSedesAcceso(id);
   }
 
-  /** Define las sedes de acceso multisede (solo SUPERADMIN). */
-  @Roles(Rol.SUPERADMIN)
+  /** Define las sedes de acceso multisede (SUPERADMIN o ADMIN_SEDE). */
+  @Roles(Rol.SUPERADMIN, Rol.ADMIN_SEDE)
   @Post(':id/sedes-acceso')
   setSedesAcceso(
     @Param('id', ParseIntPipe) id: number,

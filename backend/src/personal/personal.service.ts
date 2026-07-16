@@ -113,9 +113,9 @@ export class PersonalService {
    * - sedeIds con <2 → desactiva multisede (borra las filas).
    */
   async setSedesAcceso(id: number, sedeIds: number[], user: JwtPayload) {
-    if (user.rol !== 'SUPERADMIN')
+    if (user.rol !== 'SUPERADMIN' && user.rol !== 'ADMIN_SEDE')
       throw new ForbiddenException(
-        'Solo SUPERADMIN puede gestionar el acceso multisede',
+        'No autorizado para gestionar el acceso multisede',
       );
     const personal = await this.findOne(id);
     if (!personal.usuarioId)

@@ -221,6 +221,22 @@ export class TransferenciasService {
       );
 
     return this.prisma.$transaction(async (tx) => {
+      // La categoría es obligatoria: los productos creados automáticamente en
+      // la sede destino se asignan a "General" (se crea si aún no existe).
+      let catDestino: { id: number } | null = null;
+      const ensureCatDestino = async () => {
+        if (catDestino) return catDestino;
+        catDestino = await tx.categoriaProducto.findFirst({
+          where: { sedeId: t.sedeDestinoId, nombre: 'General', activo: true },
+        });
+        if (!catDestino) {
+          catDestino = await tx.categoriaProducto.create({
+            data: { sedeId: t.sedeDestinoId, nombre: 'General', orden: 99 },
+          });
+        }
+        return catDestino;
+      };
+
       for (const item of t.items) {
         let productoDestino = await tx.producto.findFirst({
           where: {
@@ -230,9 +246,11 @@ export class TransferenciasService {
           },
         });
         if (!productoDestino) {
+          const cat = await ensureCatDestino();
           productoDestino = await tx.producto.create({
             data: {
               sedeId: t.sedeDestinoId,
+              categoriaId: cat.id,
               nombre: item.nombreProducto,
               precio: item.precio,
               stock: item.cantidad,

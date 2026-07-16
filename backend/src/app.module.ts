@@ -9,6 +9,7 @@ import { UsuariosModule } from './usuarios/usuarios.module';
 import { PisosModule } from './pisos/pisos.module';
 import { HabitacionesModule } from './habitaciones/habitaciones.module';
 import { ProductosModule } from './productos/productos.module';
+import { CategoriasProductosModule } from './categorias-productos/categorias-productos.module';
 import { ProductosLimpiezaModule } from './productos-limpieza/productos-limpieza.module';
 import { AlquileresModule } from './alquileres/alquileres.module';
 import { LimpiezaModule } from './limpieza/limpieza.module';
@@ -49,6 +50,7 @@ import { CommonModule } from './common/common.module';
     PisosModule,
     HabitacionesModule,
     ProductosModule,
+    CategoriasProductosModule,
     ProductosLimpiezaModule,
     AlquileresModule,
     LimpiezaModule,

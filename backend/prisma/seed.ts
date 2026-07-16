@@ -114,18 +114,41 @@ async function crearSede(s: SedeData, passwordHash: string) {
   }
   console.log(`  ✔ ${habitaciones.length} habitaciones`);
 
+  // --- Categorías de productos (por sede) ---
+  const categoriasSeed = [
+    { nombre: 'Bebidas', orden: 1 },
+    { nombre: 'Cervezas', orden: 2 },
+    { nombre: 'Snacks', orden: 3 },
+    { nombre: 'General', orden: 99 },
+  ];
+  const categoriaPorNombre: Record<string, number> = {};
+  for (const c of categoriasSeed) {
+    let cat = await prisma.categoriaProducto.findFirst({
+      where: { sedeId: sede.id, nombre: c.nombre },
+    });
+    if (!cat) {
+      cat = await prisma.categoriaProducto.create({
+        data: { sedeId: sede.id, nombre: c.nombre, orden: c.orden },
+      });
+    }
+    categoriaPorNombre[c.nombre] = cat.id;
+  }
+  const catGeneral = categoriaPorNombre['General'];
+  console.log(`  ✔ ${categoriasSeed.length} categorías de productos`);
+
   // --- Productos consumibles (almacén por sede) ---
   const productos = [
-    { nombre: 'Coca Cola 500ml', precio: 5, stock: 50 },
-    { nombre: 'Inca Kola 500ml', precio: 5, stock: 50 },
-    { nombre: 'Agua Mineral 500ml', precio: 3, stock: 80 },
-    { nombre: 'Cerveza Pilsen', precio: 8, stock: 40 },
-    { nombre: 'Cerveza Cristal', precio: 8, stock: 40 },
-    { nombre: 'Snack Papas Lays', precio: 4, stock: 60 },
-    { nombre: 'Chocolate Sublime', precio: 3, stock: 70 },
-    { nombre: 'Condones (paquete)', precio: 10, stock: 30 },
+    { nombre: 'Coca Cola 500ml', precio: 5, stock: 50, categoria: 'Bebidas' },
+    { nombre: 'Inca Kola 500ml', precio: 5, stock: 50, categoria: 'Bebidas' },
+    { nombre: 'Agua Mineral 500ml', precio: 3, stock: 80, categoria: 'Bebidas' },
+    { nombre: 'Cerveza Pilsen', precio: 8, stock: 40, categoria: 'Cervezas' },
+    { nombre: 'Cerveza Cristal', precio: 8, stock: 40, categoria: 'Cervezas' },
+    { nombre: 'Snack Papas Lays', precio: 4, stock: 60, categoria: 'Snacks' },
+    { nombre: 'Chocolate Sublime', precio: 3, stock: 70, categoria: 'Snacks' },
+    { nombre: 'Condones (paquete)', precio: 10, stock: 30, categoria: 'General' },
   ];
   for (const p of productos) {
+    const categoriaId = categoriaPorNombre[p.categoria] ?? catGeneral;
     const exists = await prisma.producto.findFirst({
       where: { sedeId: sede.id, nombre: p.nombre },
     });
@@ -133,11 +156,18 @@ async function crearSede(s: SedeData, passwordHash: string) {
       await prisma.producto.create({
         data: {
           sedeId: sede.id,
+          categoriaId,
           nombre: p.nombre,
           precio: p.precio,
           stock: p.stock,
           stockMinimo: 10,
         },
+      });
+    } else if (exists.categoriaId == null) {
+      // Backfill: productos sembrados antes de existir categorías.
+      await prisma.producto.update({
+        where: { id: exists.id },
+        data: { categoriaId },
       });
     }
   }

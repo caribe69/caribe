@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { TipoMovimiento } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { JwtPayload } from '../auth/auth.service';
@@ -18,7 +22,18 @@ export class ProductosService {
     return this.prisma.producto.findMany({
       where: { sedeId, activo: true },
       orderBy: { nombre: 'asc' },
+      include: { categoria: true },
     });
+  }
+
+  /** Valida que la categoría exista y pertenezca a la sede indicada. */
+  private async assertCategoria(categoriaId: number, sedeId: number) {
+    const cat = await this.prisma.categoriaProducto.findUnique({
+      where: { id: categoriaId },
+    });
+    if (!cat || !cat.activo || cat.sedeId !== sedeId) {
+      throw new BadRequestException('Categoría inválida para esta sede');
+    }
   }
 
   async findOne(id: number, user: JwtPayload) {
@@ -28,11 +43,13 @@ export class ProductosService {
     return p;
   }
 
-  create(dto: CreateProductoDto, user: JwtPayload) {
+  async create(dto: CreateProductoDto, user: JwtPayload) {
     const sedeId = resolveSedeId(user, dto.sedeId);
+    await this.assertCategoria(dto.categoriaId, sedeId);
     return this.prisma.producto.create({
       data: {
         sedeId,
+        categoriaId: dto.categoriaId,
         nombre: dto.nombre,
         descripcion: dto.descripcion,
         precio: dto.precio,
@@ -46,6 +63,9 @@ export class ProductosService {
 
   async update(id: number, dto: UpdateProductoDto, user: JwtPayload) {
     const p = await this.findOne(id, user);
+    if (typeof dto.categoriaId === 'number') {
+      await this.assertCategoria(dto.categoriaId, p.sedeId);
+    }
     const data: any = { ...dto };
     if (typeof dto.cortesiaCantidad === 'number') {
       data.cortesiaCantidad = Math.max(1, dto.cortesiaCantidad);

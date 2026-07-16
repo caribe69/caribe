@@ -20,6 +20,12 @@ import { EmptyState } from '@/components/ui/EmptyState';
 import { useToast } from '@/components/ToastProvider';
 import { useDialog } from '@/components/ConfirmProvider';
 
+interface Categoria {
+  id: number;
+  nombre: string;
+  orden: number;
+}
+
 interface Producto {
   id: number;
   nombre: string;
@@ -29,6 +35,8 @@ interface Producto {
   stockMinimo: number;
   esCortesia?: boolean;
   cortesiaCantidad?: number;
+  categoriaId?: number | null;
+  categoria?: { id: number; nombre: string } | null;
 }
 
 export default function Productos() {
@@ -42,21 +50,32 @@ export default function Productos() {
   const [filtroStock, setFiltroStock] = useState<'todos' | 'bajo' | 'agotado'>(
     'todos',
   );
+  const [filtroCategoria, setFiltroCategoria] = useState<number | 'todas'>(
+    'todas',
+  );
 
   const { data, isLoading } = useQuery({
     queryKey: ['productos'],
     queryFn: async () => (await api.get<Producto[]>('/productos')).data,
   });
 
+  const { data: categorias } = useQuery({
+    queryKey: ['categorias-productos'],
+    queryFn: async () =>
+      (await api.get<Categoria[]>('/categorias-productos')).data,
+  });
+
   const filtrados = useMemo(() => {
     const q = busqueda.trim().toLowerCase();
     let arr = data || [];
     if (q) arr = arr.filter((p) => p.nombre.toLowerCase().includes(q));
+    if (filtroCategoria !== 'todas')
+      arr = arr.filter((p) => p.categoriaId === filtroCategoria);
     if (filtroStock === 'bajo')
       arr = arr.filter((p) => p.stock > 0 && p.stock <= p.stockMinimo);
     if (filtroStock === 'agotado') arr = arr.filter((p) => p.stock === 0);
     return arr;
-  }, [data, busqueda, filtroStock]);
+  }, [data, busqueda, filtroStock, filtroCategoria]);
 
   const pag = usePagination(filtrados, 15);
 
@@ -76,6 +95,21 @@ export default function Productos() {
             className="w-full bg-slate-50 dark:bg-slate-800 dark:text-slate-100 border border-slate-200 dark:border-slate-700 rounded-xl pl-9 pr-3 py-2 text-sm focus:outline-none focus:border-violet-400 focus:ring-2 focus:ring-violet-100 dark:focus:ring-violet-900/30"
           />
         </div>
+
+        <select
+          value={filtroCategoria === 'todas' ? '' : String(filtroCategoria)}
+          onChange={(e) =>
+            setFiltroCategoria(e.target.value ? Number(e.target.value) : 'todas')
+          }
+          className="bg-slate-50 dark:bg-slate-800 dark:text-slate-100 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-violet-400 focus:ring-2 focus:ring-violet-100 dark:focus:ring-violet-900/30"
+        >
+          <option value="">Todas las categorías</option>
+          {(categorias || []).map((c) => (
+            <option key={c.id} value={c.id}>
+              {c.nombre}
+            </option>
+          ))}
+        </select>
 
         <div className="flex gap-1.5">
           <FiltroChip
@@ -207,6 +241,7 @@ export default function Productos() {
 
       {showNuevo && (
         <ProductoModal
+          categorias={categorias || []}
           onClose={() => setShowNuevo(false)}
           onSaved={() => {
             setShowNuevo(false);
@@ -217,6 +252,7 @@ export default function Productos() {
       {editar && (
         <ProductoModal
           producto={editar}
+          categorias={categorias || []}
           onClose={() => setEditar(null)}
           onSaved={() => {
             setEditar(null);
@@ -332,8 +368,15 @@ function Fila({
   return (
     <tr className="border-b border-slate-50 dark:border-slate-800/60 last:border-0 hover:bg-violet-50/30 dark:hover:bg-violet-900/20 transition">
       <td className="px-5 py-3">
-        <div className="font-semibold text-slate-800 dark:text-slate-200">
-          {p.nombre}
+        <div className="flex items-center gap-2">
+          <span className="font-semibold text-slate-800 dark:text-slate-200">
+            {p.nombre}
+          </span>
+          {p.categoria && (
+            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium bg-violet-100 text-violet-700 dark:bg-violet-900/40 dark:text-violet-300">
+              {p.categoria.nombre}
+            </span>
+          )}
         </div>
         {p.descripcion && (
           <div className="text-[11px] text-slate-400 dark:text-slate-500 mt-0.5">
@@ -446,10 +489,12 @@ function useMemoSync<T>(value: T, set: (v: T) => void) {
 // ───────────────────────────────────────────────────────────
 function ProductoModal({
   producto,
+  categorias,
   onClose,
   onSaved,
 }: {
   producto?: Producto;
+  categorias: Categoria[];
   onClose: () => void;
   onSaved: () => void;
 }) {
@@ -463,6 +508,8 @@ function ProductoModal({
     stockMinimo: producto?.stockMinimo != null ? String(producto.stockMinimo) : '5',
     esCortesia: producto?.esCortesia ?? false,
     cortesiaCantidad: String((producto as any)?.cortesiaCantidad ?? 1),
+    categoriaId:
+      producto?.categoriaId != null ? String(producto.categoriaId) : '',
   });
   const [error, setError] = useState<string | null>(null);
 
@@ -471,8 +518,10 @@ function ProductoModal({
       const cortesiaCantidad = form.esCortesia
         ? Math.max(1, Number(form.cortesiaCantidad) || 1)
         : 1;
+      const categoriaId = Number(form.categoriaId);
       if (esEdicion) {
         await api.patch(`/productos/${producto!.id}`, {
+          categoriaId,
           nombre: form.nombre,
           descripcion: form.descripcion || undefined,
           precio: Number(form.precio),
@@ -489,6 +538,7 @@ function ProductoModal({
         }
       } else {
         await api.post('/productos', {
+          categoriaId,
           nombre: form.nombre,
           descripcion: form.descripcion || undefined,
           precio: Number(form.precio),
@@ -511,7 +561,10 @@ function ProductoModal({
   });
 
   const valido =
-    form.nombre.trim() !== '' && form.precio !== '' && !isNaN(Number(form.precio));
+    form.nombre.trim() !== '' &&
+    form.precio !== '' &&
+    !isNaN(Number(form.precio)) &&
+    form.categoriaId !== '';
 
   return (
     <div className="fixed inset-0 bg-black/40 dark:bg-black/70 flex items-center justify-center p-4 z-50">
@@ -537,6 +590,29 @@ function ProductoModal({
               value={form.nombre}
               onChange={(e) => setForm({ ...form, nombre: e.target.value })}
             />
+          </Field>
+          <Field label="Categoría">
+            {categorias.length === 0 ? (
+              <div className="text-[11px] text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800/50 rounded-xl p-2.5">
+                No hay categorías creadas. Crea una en{' '}
+                <b>Almacén → Categorías</b> antes de registrar productos.
+              </div>
+            ) : (
+              <select
+                className={inputCls}
+                value={form.categoriaId}
+                onChange={(e) =>
+                  setForm({ ...form, categoriaId: e.target.value })
+                }
+              >
+                <option value="">Selecciona una categoría…</option>
+                {categorias.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.nombre}
+                  </option>
+                ))}
+              </select>
+            )}
           </Field>
           <Field label="Descripción (opcional)">
             <input

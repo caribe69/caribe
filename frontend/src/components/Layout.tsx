@@ -28,6 +28,7 @@ import {
   UserCog,
   Shield,
   IdCard,
+  Tags,
 } from 'lucide-react';
 import { useAuthStore, Rol } from '@/store/auth';
 import TopBar from './TopBar';
@@ -130,6 +131,12 @@ const groups: Group[] = [
         label: 'Productos',
         icon: Package,
         roles: ['SUPERADMIN', 'ADMIN_SEDE', 'HOTELERO', 'CAJERO'],
+      },
+      {
+        to: '/categorias-productos',
+        label: 'Categorías',
+        icon: Tags,
+        roles: ['SUPERADMIN', 'ADMIN_SEDE'],
       },
       {
         to: '/productos-limpieza',

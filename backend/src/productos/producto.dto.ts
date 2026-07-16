@@ -9,6 +9,7 @@ import {
 
 export class CreateProductoDto {
   @IsOptional() @IsInt() sedeId?: number;
+  @IsInt() categoriaId: number;
   @IsString() nombre: string;
   @IsOptional() @IsString() descripcion?: string;
   @Type(() => Number) @IsNumber() precio: number;
@@ -19,6 +20,7 @@ export class CreateProductoDto {
 }
 
 export class UpdateProductoDto {
+  @IsOptional() @IsInt() categoriaId?: number;
   @IsOptional() @IsString() nombre?: string;
   @IsOptional() @IsString() descripcion?: string;
   @IsOptional() @Type(() => Number) @IsNumber() precio?: number;

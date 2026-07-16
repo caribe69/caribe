@@ -9,6 +9,7 @@ import Login from '@/pages/Login';
 const Dashboard = lazy(() => import('@/pages/Dashboard'));
 const Habitaciones = lazy(() => import('@/pages/Habitaciones'));
 const Productos = lazy(() => import('@/pages/Productos'));
+const Categorias = lazy(() => import('@/pages/Categorias'));
 const ProductosLimpieza = lazy(() => import('@/pages/ProductosLimpieza'));
 const Ventas = lazy(() => import('@/pages/Ventas'));
 const Alquileres = lazy(() => import('@/pages/Alquileres'));
@@ -79,6 +80,14 @@ export default function App() {
           element={
             <Suspense fallback={<RouteFallback />}>
               <Productos />
+            </Suspense>
+          }
+        />
+        <Route
+          path="categorias-productos"
+          element={
+            <Suspense fallback={<RouteFallback />}>
+              <Categorias />
             </Suspense>
           }
         />

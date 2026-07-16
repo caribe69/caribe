@@ -41,6 +41,7 @@ model Sede {
   pisos             Piso[]
   habitaciones      Habitacion[]
   productos         Producto[]
+  categoriasProducto CategoriaProducto[]
   productosLimpieza ProductoLimpieza[]
   implementos       Implemento[]
   tiposImplemento   TipoImplemento[]
@@ -204,10 +205,29 @@ model FotoSede {
 // ============================================================
 // PRODUCTOS (consumibles para venta)
 // ============================================================
+model CategoriaProducto {
+  id        Int        @id @default(autoincrement())
+  sedeId    Int
+  sede      Sede       @relation(fields: [sedeId], references: [id])
+  nombre    String
+  /// Orden de aparición en listados (menor primero).
+  orden     Int        @default(0)
+  activo    Boolean    @default(true)
+  creadoEn  DateTime   @default(now())
+
+  productos Producto[]
+
+  @@index([sedeId])
+}
+
 model Producto {
   id          Int      @id @default(autoincrement())
   sedeId      Int
   sede        Sede     @relation(fields: [sedeId], references: [id])
+  /// Categoría para agrupar productos (por sede). Nullable en BD para no
+  /// romper datos existentes; el backend/formulario la exigen al crear.
+  categoriaId Int?
+  categoria   CategoriaProducto? @relation(fields: [categoriaId], references: [id])
   nombre      String
   descripcion String?
   precio      Decimal  @db.Decimal(10, 2)

@@ -1507,13 +1507,17 @@ function MultisedeSection({ personal }: { personal: Personal }) {
                     type="checkbox"
                     checked={marcada}
                     onChange={() => toggle(s.id)}
-                    className="w-4 h-4 accent-violet-600"
+                    disabled={esBase}
+                    className="w-4 h-4 accent-violet-600 disabled:opacity-60"
                   />
                   <span className="flex-1 text-sm font-medium text-slate-800 dark:text-slate-200">
                     {s.nombre}
                   </span>
                   {esBase && (
-                    <span className="text-[9px] uppercase tracking-widest font-bold text-slate-400">
+                    <span
+                      className="text-[9px] uppercase tracking-widest font-bold text-slate-400"
+                      title="La sede base siempre queda con acceso"
+                    >
                       sede base
                     </span>
                   )}

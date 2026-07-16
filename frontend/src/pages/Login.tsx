@@ -34,10 +34,15 @@ export default function Login() {
 
   const esMultisede = sedes.length >= 2;
 
-  // Consulta si el username es multisede para mostrar el selector de sede.
-  const checarUsuario = async (u: string) => {
+  // Consulta si el username es multisede. Devuelve el resultado además de
+  // actualizar el estado, para que submit lo use sin depender del re-render.
+  const checarUsuario = async (
+    u: string,
+  ): Promise<{ multisede: boolean; sedes: SedeOpcion[] }> => {
     const user = u.trim();
-    if (!user || user === ultimoCheck) return;
+    if (!user) return { multisede: false, sedes: [] };
+    // Si ya consultamos este mismo usuario, reutiliza el estado actual
+    if (user === ultimoCheck) return { multisede: esMultisede, sedes };
     setUltimoCheck(user);
     setChecando(true);
     try {
@@ -46,15 +51,17 @@ export default function Login() {
       });
       if (data?.multisede && Array.isArray(data.sedes) && data.sedes.length) {
         setSedes(data.sedes);
-        setSedeId(data.sedes[0].id);
-      } else {
-        setSedes([]);
-        setSedeId(null);
+        setSedeId((prev) => prev ?? data.sedes[0].id);
+        return { multisede: true, sedes: data.sedes };
       }
+      setSedes([]);
+      setSedeId(null);
+      return { multisede: false, sedes: [] };
     } catch {
       // Silencioso: si falla, simplemente no mostramos selector (login normal)
       setSedes([]);
       setSedeId(null);
+      return { multisede: false, sedes: [] };
     } finally {
       setChecando(false);
     }
@@ -63,9 +70,16 @@ export default function Login() {
   const submit = async (e: FormEvent) => {
     e.preventDefault();
     setError(null);
-    // Asegura tener las opciones de sede para este usuario (por si envió con Enter)
+    // Si aún no consultamos este usuario (ej. envió con Enter sin salir del
+    // campo) y resulta multisede, muestra el selector y pide elegir.
     if (username.trim() && username.trim() !== ultimoCheck) {
-      await checarUsuario(username);
+      const res = await checarUsuario(username);
+      if (res.multisede) {
+        setError(
+          'Tu cuenta tiene acceso a varias sedes. Elige una y presiona Iniciar sesión.',
+        );
+        return;
+      }
     }
     if (esMultisede && !sedeId) {
       setError('Elige la sede a la que quieres ingresar.');

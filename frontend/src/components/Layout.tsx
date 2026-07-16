@@ -9,7 +9,6 @@ import {
   Sparkles,
   Wallet,
   Building,
-  Users,
   LogOut,
   ShoppingCart,
   LayoutDashboard,
@@ -194,12 +193,6 @@ const groups: Group[] = [
         label: 'Sedes',
         icon: Building,
         roles: ['SUPERADMIN'],
-      },
-      {
-        to: '/usuarios',
-        label: 'Usuarios',
-        icon: Users,
-        roles: ['SUPERADMIN', 'ADMIN_SEDE'],
       },
       {
         to: '/personal',

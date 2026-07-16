@@ -101,6 +101,13 @@ class TransferirDto {
   @IsString() @MinLength(3) motivo!: string;
 }
 
+class SedesAccesoDto {
+  @IsOptional()
+  @IsInt({ each: true })
+  @Type(() => Number)
+  sedeIds!: number[];
+}
+
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('personal')
 export class PersonalController {
@@ -266,5 +273,23 @@ export class PersonalController {
     @CurrentUser() user: JwtPayload,
   ) {
     return this.service.historialCompleto(id, user);
+  }
+
+  /** Sedes de acceso multisede del usuario vinculado a este personal. */
+  @Roles(Rol.SUPERADMIN, Rol.ADMIN_SEDE)
+  @Get(':id/sedes-acceso')
+  sedesAcceso(@Param('id', ParseIntPipe) id: number) {
+    return this.service.getSedesAcceso(id);
+  }
+
+  /** Define las sedes de acceso multisede (solo SUPERADMIN). */
+  @Roles(Rol.SUPERADMIN)
+  @Post(':id/sedes-acceso')
+  setSedesAcceso(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: SedesAccesoDto,
+    @CurrentUser() user: JwtPayload,
+  ) {
+    return this.service.setSedesAcceso(id, dto.sedeIds ?? [], user);
   }
 }

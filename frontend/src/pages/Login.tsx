@@ -12,21 +12,72 @@ import {
 import { api } from '@/lib/api';
 import { useAuthStore } from '@/store/auth';
 
+interface SedeOpcion {
+  id: number;
+  nombre: string;
+}
+
 export default function Login() {
   const [username, setUsername] = useState('superadmin');
   const [password, setPassword] = useState('admin123');
   const [showPwd, setShowPwd] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  // Multisede: si el usuario tiene acceso a varias sedes, elige a cuál entrar
+  // antes de la contraseña.
+  const [sedes, setSedes] = useState<SedeOpcion[]>([]);
+  const [sedeId, setSedeId] = useState<number | null>(null);
+  const [checando, setChecando] = useState(false);
+  const [ultimoCheck, setUltimoCheck] = useState('');
   const setAuth = useAuthStore((s) => s.setAuth);
   const navigate = useNavigate();
+
+  const esMultisede = sedes.length >= 2;
+
+  // Consulta si el username es multisede para mostrar el selector de sede.
+  const checarUsuario = async (u: string) => {
+    const user = u.trim();
+    if (!user || user === ultimoCheck) return;
+    setUltimoCheck(user);
+    setChecando(true);
+    try {
+      const { data } = await api.post('/auth/login-options', {
+        username: user,
+      });
+      if (data?.multisede && Array.isArray(data.sedes) && data.sedes.length) {
+        setSedes(data.sedes);
+        setSedeId(data.sedes[0].id);
+      } else {
+        setSedes([]);
+        setSedeId(null);
+      }
+    } catch {
+      // Silencioso: si falla, simplemente no mostramos selector (login normal)
+      setSedes([]);
+      setSedeId(null);
+    } finally {
+      setChecando(false);
+    }
+  };
 
   const submit = async (e: FormEvent) => {
     e.preventDefault();
     setError(null);
+    // Asegura tener las opciones de sede para este usuario (por si envió con Enter)
+    if (username.trim() && username.trim() !== ultimoCheck) {
+      await checarUsuario(username);
+    }
+    if (esMultisede && !sedeId) {
+      setError('Elige la sede a la que quieres ingresar.');
+      return;
+    }
     setLoading(true);
     try {
-      const { data } = await api.post('/auth/login', { username, password });
+      const { data } = await api.post('/auth/login', {
+        username,
+        password,
+        ...(esMultisede && sedeId ? { sedeId } : {}),
+      });
       setAuth(data.access_token, data.usuario);
       navigate('/');
     } catch (err: any) {
@@ -161,12 +212,45 @@ export default function Login() {
                 </label>
                 <input
                   value={username}
-                  onChange={(e) => setUsername(e.target.value)}
+                  onChange={(e) => {
+                    setUsername(e.target.value);
+                    // Al cambiar el usuario, resetea el selector de sede
+                    if (sedes.length) {
+                      setSedes([]);
+                      setSedeId(null);
+                    }
+                  }}
+                  onBlur={() => checarUsuario(username)}
                   autoComplete="username"
                   className="mt-1.5 w-full border border-slate-200 rounded-xl px-4 py-3 text-sm outline-none focus:ring-4 focus:ring-violet-100 focus:border-violet-500 transition bg-slate-50 focus:bg-white"
                   required
                 />
               </div>
+
+              {/* Selector de sede — solo para cuentas multisede */}
+              {esMultisede && (
+                <div className="animate-fade-in">
+                  <label className="text-[10px] font-semibold text-violet-700 uppercase tracking-widest flex items-center gap-1.5">
+                    <BedDouble size={12} /> Sede a la que ingresas
+                  </label>
+                  <select
+                    value={sedeId ?? ''}
+                    onChange={(e) => setSedeId(Number(e.target.value))}
+                    className="mt-1.5 w-full border border-violet-300 rounded-xl px-4 py-3 text-sm outline-none focus:ring-4 focus:ring-violet-100 focus:border-violet-500 transition bg-violet-50/50"
+                  >
+                    {sedes.map((s) => (
+                      <option key={s.id} value={s.id}>
+                        {s.nombre}
+                      </option>
+                    ))}
+                  </select>
+                  <p className="text-[11px] text-slate-500 mt-1">
+                    Tu cuenta tiene acceso a varias sedes. Elige con cuál
+                    trabajar en esta sesión.
+                  </p>
+                </div>
+              )}
+
               <div>
                 <label className="text-[10px] font-semibold text-slate-600 uppercase tracking-widest">
                   Contraseña
@@ -199,7 +283,7 @@ export default function Login() {
 
               <button
                 type="submit"
-                disabled={loading}
+                disabled={loading || checando}
                 className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-violet-700 via-violet-600 to-violet-500 hover:shadow-violet-500/40 text-white py-3.5 rounded-xl font-semibold shadow-lg shadow-violet-600/30 transition-all disabled:opacity-60 active:scale-[0.98]"
               >
                 {loading ? (

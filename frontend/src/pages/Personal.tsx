@@ -15,6 +15,8 @@ import {
   ArrowRightLeft,
   History,
   Building,
+  Building2,
+  Check,
   BarChart3,
   AlertTriangle,
 } from 'lucide-react';
@@ -50,6 +52,7 @@ interface Personal {
     username: string;
     rol: string;
     activo: boolean;
+    sedesAcceso?: { sedeId: number }[];
   } | null;
   sede?: { id: number; nombre: string } | null;
 }
@@ -85,7 +88,9 @@ export default function PersonalPage() {
   const [editar, setEditar] = useState<Personal | null>(null);
   const [crearUsuarioFor, setCrearUsuarioFor] = useState<Personal | null>(null);
   const [transferirFor, setTransferirFor] = useState<Personal | null>(null);
+  const [multisedeFor, setMultisedeFor] = useState<Personal | null>(null);
   const [historialFor, setHistorialFor] = useState<Personal | null>(null);
+  const esSuperadmin = usuario?.rol === 'SUPERADMIN';
   const [busqueda, setBusqueda] = useState('');
 
   const { data, isLoading } = useQuery({
@@ -215,6 +220,8 @@ export default function PersonalPage() {
                     onCrearUsuario={() => setCrearUsuarioFor(p)}
                     onTransferir={() => setTransferirFor(p)}
                     onHistorial={() => setHistorialFor(p)}
+                    esSuperadmin={esSuperadmin}
+                    onMultisede={() => setMultisedeFor(p)}
                   />
                 ))}
             </tbody>
@@ -275,6 +282,17 @@ export default function PersonalPage() {
           onClose={() => setHistorialFor(null)}
         />
       )}
+      {multisedeFor && (
+        <MultisedeModal
+          personal={multisedeFor}
+          onClose={() => setMultisedeFor(null)}
+          onSaved={() => {
+            setMultisedeFor(null);
+            qc.invalidateQueries({ queryKey: ['personal'] });
+            toast({ type: 'success', title: 'Acceso multisede actualizado' });
+          }}
+        />
+      )}
     </div>
   );
 }
@@ -287,6 +305,8 @@ function FilaPersonal({
   onCrearUsuario,
   onTransferir,
   onHistorial,
+  esSuperadmin,
+  onMultisede,
 }: {
   p: Personal;
   puedeEditar: boolean;
@@ -295,8 +315,12 @@ function FilaPersonal({
   onCrearUsuario: () => void;
   onTransferir: () => void;
   onHistorial: () => void;
+  esSuperadmin: boolean;
+  onMultisede: () => void;
 }) {
   const edad = edadDe(p.fechaNacimiento);
+  const nSedesAcceso = p.usuario?.sedesAcceso?.length ?? 0;
+  const esMultisede = nSedesAcceso >= 2;
   const initials =
     (p.nombre?.[0] || '').toUpperCase() +
     (p.apellidoPaterno?.[0] || '').toUpperCase();
@@ -350,9 +374,19 @@ function FilaPersonal({
       </td>
       <td className="px-5 py-3 text-xs">
         {p.usuario ? (
-          <span className="inline-flex items-center gap-1.5 bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300 px-2 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest">
-            <UserCheck size={10} /> @{p.usuario.username} · {p.usuario.rol}
-          </span>
+          <div className="flex flex-wrap items-center gap-1.5">
+            <span className="inline-flex items-center gap-1.5 bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300 px-2 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest">
+              <UserCheck size={10} /> @{p.usuario.username} · {p.usuario.rol}
+            </span>
+            {esMultisede && (
+              <span
+                className="inline-flex items-center gap-1 bg-violet-100 dark:bg-violet-900/40 text-violet-700 dark:text-violet-300 px-2 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest"
+                title="Puede iniciar sesión en varias sedes"
+              >
+                <Building2 size={10} /> {nSedesAcceso} sedes
+              </span>
+            )}
+          </div>
         ) : (
           <button
             onClick={onCrearUsuario}
@@ -380,6 +414,19 @@ function FilaPersonal({
             >
               <ArrowRightLeft size={13} />
             </button>
+            {esSuperadmin && p.usuario && (
+              <button
+                onClick={onMultisede}
+                className={`inline-flex items-center justify-center w-7 h-7 rounded-lg ${
+                  esMultisede
+                    ? 'text-violet-600 dark:text-violet-300 bg-violet-50 dark:bg-violet-900/30'
+                    : 'text-slate-400 hover:text-violet-600 dark:hover:text-violet-300 hover:bg-violet-50 dark:hover:bg-violet-900/30'
+                }`}
+                title="Acceso multisede (sedes donde puede iniciar sesión)"
+              >
+                <Building2 size={13} />
+              </button>
+            )}
             <button
               onClick={onEditar}
               className="inline-flex items-center gap-1.5 text-xs text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 px-2.5 py-1.5 rounded-lg"
@@ -1333,6 +1380,194 @@ function KV({ k, v }: { k: string; v: string }) {
       </div>
       <div className="font-semibold text-slate-700 dark:text-slate-200 tabular-nums">
         {v}
+      </div>
+    </div>
+  );
+}
+
+// ───────────────────────────────────────────────────────────
+// MODAL: Acceso multisede — sedes donde el usuario puede iniciar sesión
+// ───────────────────────────────────────────────────────────
+interface SedeItem {
+  id: number;
+  nombre: string;
+}
+
+function MultisedeModal({
+  personal,
+  onClose,
+  onSaved,
+}: {
+  personal: Personal;
+  onClose: () => void;
+  onSaved: () => void;
+}) {
+  const { show: toast } = useToast();
+  const [seleccion, setSeleccion] = useState<Set<number>>(new Set());
+  const [error, setError] = useState<string | null>(null);
+  const [guardando, setGuardando] = useState(false);
+  const [cargado, setCargado] = useState(false);
+
+  // Todas las sedes disponibles
+  const { data: sedes } = useQuery({
+    queryKey: ['sedes'],
+    queryFn: async () => (await api.get<SedeItem[]>('/sedes')).data,
+  });
+
+  // Sedes de acceso actuales del usuario vinculado
+  const { data: acceso } = useQuery({
+    queryKey: ['personal', personal.id, 'sedes-acceso'],
+    queryFn: async () =>
+      (
+        await api.get<{ sedeIds: number[]; multisede: boolean }>(
+          `/personal/${personal.id}/sedes-acceso`,
+        )
+      ).data,
+  });
+
+  // Inicializa la selección una sola vez con lo que ya tenía (o su sede base)
+  useMemo(() => {
+    if (cargado || !acceso) return;
+    const inicial = new Set<number>(acceso.sedeIds || []);
+    if (personal.sedeId) inicial.add(personal.sedeId); // su sede base siempre
+    setSeleccion(inicial);
+    setCargado(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [acceso]);
+
+  const toggle = (id: number) => {
+    setSeleccion((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const guardar = async () => {
+    setError(null);
+    const ids = Array.from(seleccion);
+    if (ids.length === 1) {
+      setError(
+        'Para multisede elige al menos 2 sedes. Con 1 sede, desmarca todas para dejarlo en modo normal.',
+      );
+      return;
+    }
+    setGuardando(true);
+    try {
+      await api.post(`/personal/${personal.id}/sedes-acceso`, {
+        sedeIds: ids,
+      });
+      onSaved();
+    } catch (err: any) {
+      setError(err.response?.data?.message || 'Error al guardar');
+      setGuardando(false);
+    }
+  };
+
+  const nombreCompleto = `${personal.nombre} ${personal.apellidoPaterno}`;
+  const activarLimpiar = () => {
+    setSeleccion(new Set(personal.sedeId ? [personal.sedeId] : []));
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/40 dark:bg-black/70 flex items-center justify-center p-4 z-50">
+      <div className="bg-white dark:bg-slate-900 dark:ring-1 dark:ring-slate-700 rounded-2xl w-full max-w-md overflow-hidden shadow-2xl animate-scale-in">
+        <div className="px-5 py-4 border-b border-slate-100 dark:border-slate-700 flex items-center justify-between">
+          <div>
+            <h2 className="font-hotel text-lg font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
+              <Building2 size={18} className="text-violet-600" /> Acceso
+              multisede
+            </h2>
+            <p className="text-[11px] text-slate-500 mt-0.5">
+              {nombreCompleto}
+              {personal.usuario && ` · @${personal.usuario.username}`}
+            </p>
+          </div>
+          <button
+            onClick={onClose}
+            className="text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 p-1 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800"
+          >
+            <X size={18} />
+          </button>
+        </div>
+
+        <div className="p-5">
+          <p className="text-xs text-slate-500 dark:text-slate-400 mb-3">
+            Marca las sedes donde esta persona podrá <b>iniciar sesión</b> con
+            sus mismas credenciales. Aparecerá en el personal de todas ellas sin
+            transferencias. Al loguearse elegirá a cuál entrar.
+          </p>
+
+          <div className="space-y-1.5 max-h-72 overflow-y-auto scroll-premium">
+            {(sedes || []).map((s) => {
+              const marcada = seleccion.has(s.id);
+              const esBase = s.id === personal.sedeId;
+              return (
+                <label
+                  key={s.id}
+                  className={`flex items-center gap-3 px-3 py-2.5 rounded-xl border cursor-pointer transition ${
+                    marcada
+                      ? 'border-violet-300 dark:border-violet-700 bg-violet-50 dark:bg-violet-900/20'
+                      : 'border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800'
+                  }`}
+                >
+                  <input
+                    type="checkbox"
+                    checked={marcada}
+                    onChange={() => toggle(s.id)}
+                    className="w-4 h-4 accent-violet-600"
+                  />
+                  <span className="flex-1 text-sm font-medium text-slate-800 dark:text-slate-200">
+                    {s.nombre}
+                  </span>
+                  {esBase && (
+                    <span className="text-[9px] uppercase tracking-widest font-bold text-slate-400">
+                      sede base
+                    </span>
+                  )}
+                  {marcada && <Check size={14} className="text-violet-600" />}
+                </label>
+              );
+            })}
+          </div>
+
+          <div className="mt-3 flex items-center justify-between text-[11px] text-slate-500">
+            <span>
+              {seleccion.size >= 2
+                ? `Multisede · ${seleccion.size} sedes`
+                : 'Modo normal (1 sede)'}
+            </span>
+            <button
+              onClick={activarLimpiar}
+              className="text-slate-400 hover:text-rose-600 underline"
+            >
+              Dejar solo su sede base
+            </button>
+          </div>
+
+          {error && (
+            <div className="mt-3 text-sm text-rose-700 dark:text-rose-300 bg-rose-50 dark:bg-rose-900/30 border border-rose-200 dark:border-rose-800 rounded-lg p-2.5">
+              {error}
+            </div>
+          )}
+        </div>
+
+        <div className="px-5 py-4 border-t border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 flex gap-2">
+          <button
+            onClick={onClose}
+            className="flex-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 py-2.5 rounded-xl font-medium btn-press"
+          >
+            Cancelar
+          </button>
+          <button
+            onClick={guardar}
+            disabled={guardando}
+            className="flex-1 bg-gradient-to-r from-violet-600 to-violet-500 hover:from-violet-700 hover:to-violet-600 text-white py-2.5 rounded-xl font-semibold shadow-md shadow-violet-500/30 disabled:opacity-40 btn-press"
+          >
+            {guardando ? 'Guardando...' : 'Guardar acceso'}
+          </button>
+        </div>
       </div>
     </div>
   );

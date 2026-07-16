@@ -29,10 +29,36 @@ export class AuthService {
     private audit: AuditService,
   ) {}
 
+  /**
+   * Opciones de login para un username: si la cuenta es multisede (tiene
+   * acceso a ≥2 sedes), devuelve la lista de sedes para que el usuario elija
+   * ANTES de escribir la contraseña. Para cuentas normales o inexistentes
+   * devuelve multisede:false (no revela si el usuario existe).
+   */
+  async loginOptions(username: string) {
+    const user = await this.prisma.usuario.findUnique({
+      where: { username },
+      include: { sedesAcceso: { include: { sede: true } } },
+    });
+    if (!user || !user.activo || user.rol === 'SUPERADMIN') {
+      return { multisede: false, sedes: [] as { id: number; nombre: string }[] };
+    }
+    if (user.sedesAcceso.length >= 2) {
+      return {
+        multisede: true,
+        sedes: user.sedesAcceso.map((a) => ({
+          id: a.sede.id,
+          nombre: a.sede.nombre,
+        })),
+      };
+    }
+    return { multisede: false, sedes: [] as { id: number; nombre: string }[] };
+  }
+
   async login(dto: LoginDto, ctx: LoginContext = {}) {
     const user = await this.prisma.usuario.findUnique({
       where: { username: dto.username },
-      include: { sede: true },
+      include: { sede: true, sedesAcceso: { include: { sede: true } } },
     });
     if (!user || !user.activo) {
       // Registrar intento fallido (si es que el usuario existe o no)
@@ -82,6 +108,19 @@ export class AuthService {
         sedeIdEfectivo = primera.id;
         sedeEfectiva = primera;
       }
+    }
+
+    // Cuenta multisede (≥2 sedes de acceso): debe elegir a cuál sede entra,
+    // y esa sede tiene que estar entre las suyas.
+    if (user.rol !== 'SUPERADMIN' && user.sedesAcceso.length >= 2) {
+      const permitida = user.sedesAcceso.find((a) => a.sedeId === dto.sedeId);
+      if (!dto.sedeId || !permitida) {
+        throw new UnauthorizedException(
+          'Debes elegir una sede válida para iniciar sesión',
+        );
+      }
+      sedeIdEfectivo = permitida.sedeId;
+      sedeEfectiva = permitida.sede;
     }
 
     const payload: JwtPayload = {

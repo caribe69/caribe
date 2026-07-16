@@ -37,17 +37,31 @@ export class PersonalService {
   constructor(private prisma: PrismaService) {}
 
   async listar(user: JwtPayload, sedeIdQuery?: number) {
+    const sedeFiltro =
+      user.rol !== 'SUPERADMIN'
+        ? resolveSedeId(user, sedeIdQuery)
+        : sedeIdQuery || undefined;
+
     const where: any = {};
-    if (user.rol !== 'SUPERADMIN') {
-      where.sedeId = resolveSedeId(user, sedeIdQuery);
-    } else if (sedeIdQuery) {
-      where.sedeId = sedeIdQuery;
+    if (sedeFiltro) {
+      // Aparece en la sede si es su sede base O si su usuario tiene acceso
+      // multisede a esa sede (así se ve sin necesidad de transferencias).
+      where.OR = [
+        { sedeId: sedeFiltro },
+        { usuario: { sedesAcceso: { some: { sedeId: sedeFiltro } } } },
+      ];
     }
     return this.prisma.personal.findMany({
       where,
       include: {
         usuario: {
-          select: { id: true, username: true, rol: true, activo: true },
+          select: {
+            id: true,
+            username: true,
+            rol: true,
+            activo: true,
+            sedesAcceso: { select: { sedeId: true } },
+          },
         },
         sede: { select: { id: true, nombre: true } },
       },
@@ -60,13 +74,77 @@ export class PersonalService {
       where: { id },
       include: {
         usuario: {
-          select: { id: true, username: true, rol: true, activo: true },
+          select: {
+            id: true,
+            username: true,
+            rol: true,
+            activo: true,
+            sedesAcceso: { select: { sedeId: true } },
+          },
         },
         sede: { select: { id: true, nombre: true } },
       },
     });
     if (!p) throw new NotFoundException('Personal no encontrado');
     return p;
+  }
+
+  /** Sedes de acceso multisede del usuario vinculado a este personal. */
+  async getSedesAcceso(id: number) {
+    const personal = await this.findOne(id);
+    if (!personal.usuarioId)
+      return { usuarioId: null, multisede: false, sedeIds: [] as number[] };
+    const rows = await this.prisma.usuarioSede.findMany({
+      where: { usuarioId: personal.usuarioId },
+      select: { sedeId: true },
+    });
+    const sedeIds = rows.map((r) => r.sedeId);
+    return {
+      usuarioId: personal.usuarioId,
+      multisede: sedeIds.length >= 2,
+      sedeIds,
+    };
+  }
+
+  /**
+   * Define las sedes a las que puede entrar el usuario vinculado (multisede).
+   * Solo SUPERADMIN. Requiere que el personal tenga usuario vinculado.
+   * - sedeIds con ≥2 sedes → activa multisede con ese conjunto.
+   * - sedeIds con <2 → desactiva multisede (borra las filas).
+   */
+  async setSedesAcceso(id: number, sedeIds: number[], user: JwtPayload) {
+    if (user.rol !== 'SUPERADMIN')
+      throw new ForbiddenException(
+        'Solo SUPERADMIN puede gestionar el acceso multisede',
+      );
+    const personal = await this.findOne(id);
+    if (!personal.usuarioId)
+      throw new BadRequestException(
+        'Este personal no tiene usuario vinculado. Crea o vincula un usuario primero.',
+      );
+
+    const uniq = Array.from(
+      new Set((sedeIds || []).filter((n) => Number.isInteger(n))),
+    );
+    if (uniq.length > 0) {
+      const existen = await this.prisma.sede.count({
+        where: { id: { in: uniq } },
+      });
+      if (existen !== uniq.length)
+        throw new BadRequestException('Alguna sede indicada no existe');
+    }
+
+    const usuarioId = personal.usuarioId;
+    await this.prisma.$transaction(async (tx) => {
+      await tx.usuarioSede.deleteMany({ where: { usuarioId } });
+      if (uniq.length >= 2) {
+        await tx.usuarioSede.createMany({
+          data: uniq.map((sedeId) => ({ usuarioId, sedeId })),
+          skipDuplicates: true,
+        });
+      }
+    });
+    return this.getSedesAcceso(id);
   }
 
   async crear(dto: CrearPersonalInput, user: JwtPayload) {
@@ -140,18 +218,18 @@ export class PersonalService {
     if (exists)
       throw new ConflictException(`El username '${username}' ya está en uso`);
 
-    // Normaliza el email: '' → null para no chocar con la constraint UNIQUE
-    const email = personal.correo && personal.correo.trim()
+    // Normaliza el email: '' → null para no chocar con la constraint UNIQUE.
+    // Si el correo ya está tomado por otra cuenta, NO rompemos: creamos el
+    // usuario SIN correo (el correo sigue viviendo en el registro de Personal).
+    // Así se evita el bug de "correo duplicado" al crear usuarios desde Personal.
+    let email = personal.correo && personal.correo.trim()
       ? personal.correo.trim().toLowerCase()
       : null;
     if (email) {
       const emailExists = await this.prisma.usuario.findUnique({
         where: { email },
       });
-      if (emailExists)
-        throw new ConflictException(
-          `Ya existe un usuario con el email '${email}'`,
-        );
+      if (emailExists) email = null;
     }
 
     const passwordHash = await bcrypt.hash(dto.password, 10);

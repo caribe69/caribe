@@ -38,6 +38,7 @@ model Sede {
   fotos             FotoSede[]
 
   usuarios          Usuario[]
+  usuariosAcceso    UsuarioSede[]
   pisos             Piso[]
   habitaciones      Habitacion[]
   productos         Producto[]
@@ -125,7 +126,24 @@ model Usuario {
   personalRecord           Personal?
   transferenciasPersonalEjecutadas TransferenciaPersonal[] @relation("TPTransferidoPor")
   movimientosImplemento    MovimientoImplemento[]
+  /// Sedes adicionales a las que esta cuenta puede entrar (acceso multisede).
+  /// Si tiene filas aquí con ≥2 sedes, en el login se le pide elegir sede.
+  sedesAcceso              UsuarioSede[]
 
+  @@index([sedeId])
+}
+
+/// Acceso multisede de una cuenta de login. Cada fila = una sede en la que
+/// el usuario puede iniciar sesión con las mismas credenciales. Al loguear,
+/// si tiene ≥2 sedes registradas, elige a cuál entrar (el JWT lleva esa sede).
+model UsuarioSede {
+  id        Int     @id @default(autoincrement())
+  usuarioId Int
+  usuario   Usuario @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  sedeId    Int
+  sede      Sede    @relation(fields: [sedeId], references: [id])
+
+  @@unique([usuarioId, sedeId])
   @@index([sedeId])
 }
 

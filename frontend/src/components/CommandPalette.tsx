@@ -8,7 +8,6 @@ import {
   Sparkles,
   Wallet,
   Building,
-  Users,
   LayoutDashboard,
   FileBarChart,
   Settings,
@@ -53,7 +52,6 @@ const COMMANDS: Command[] = [
   { id: 'nav-limp', label: 'Ir a Limpieza', icon: Sparkles, group: 'Navegación', roles: ['SUPERADMIN', 'ADMIN_SEDE', 'LIMPIEZA'], action: (c) => { c.navigate('/limpieza'); c.close(); } },
   { id: 'nav-chat', label: 'Ir a Conversaciones', icon: MessageSquare, group: 'Navegación', action: (c) => { c.navigate('/chat'); c.close(); } },
   { id: 'nav-sedes', label: 'Ir a Sedes', icon: Building, group: 'Configuración', roles: ['SUPERADMIN'], action: (c) => { c.navigate('/sedes'); c.close(); } },
-  { id: 'nav-usuarios', label: 'Ir a Usuarios', icon: Users, group: 'Configuración', roles: ['SUPERADMIN', 'ADMIN_SEDE'], action: (c) => { c.navigate('/usuarios'); c.close(); } },
   { id: 'nav-config', label: 'Ir a Configuración', icon: Settings, group: 'Configuración', roles: ['SUPERADMIN', 'ADMIN_SEDE'], action: (c) => { c.navigate('/configuracion'); c.close(); } },
 
   // Acciones

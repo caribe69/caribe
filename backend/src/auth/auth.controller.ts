@@ -1,7 +1,7 @@
 import { Body, Controller, Get, Patch, Post, Req, UseGuards } from '@nestjs/common';
 import type { Request } from 'express';
 import { AuthService } from './auth.service';
-import { LoginDto } from './dto/login.dto';
+import { LoginDto, LoginOptionsDto } from './dto/login.dto';
 import { ChangePasswordDto } from './dto/change-password.dto';
 import { JwtAuthGuard } from './jwt-auth.guard';
 import { CurrentUser } from './current-user.decorator';
@@ -11,6 +11,12 @@ import { extractIp } from '../audit/audit.interceptor';
 @Controller('auth')
 export class AuthController {
   constructor(private readonly auth: AuthService) {}
+
+  /** Devuelve si el username es multisede y sus sedes (antes de la contraseña). */
+  @Post('login-options')
+  loginOptions(@Body() dto: LoginOptionsDto) {
+    return this.auth.loginOptions(dto.username);
+  }
 
   @Post('login')
   login(@Body() dto: LoginDto, @Req() req: Request) {

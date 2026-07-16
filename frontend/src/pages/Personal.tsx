@@ -446,8 +446,15 @@ function PersonalModal({
   const [guardando, setGuardando] = useState(false);
 
   const guardar = async () => {
-    if (!form.dni || !form.nombre || !form.apellidoPaterno)
-      return setError('DNI, nombre y apellido paterno son obligatorios');
+    if (
+      !form.dni ||
+      !form.nombre ||
+      !form.apellidoPaterno ||
+      !form.telefono.trim()
+    )
+      return setError(
+        'DNI, nombre, apellido paterno y teléfono son obligatorios',
+      );
     setGuardando(true);
     setError(null);
     try {
@@ -530,7 +537,7 @@ function PersonalModal({
                 className={`${inputCls} ${esEdicion ? 'opacity-60' : ''}`}
               />
             </Field>
-            <Field label="Cargo">
+            <Field label="Cargo (opcional)">
               <input
                 value={form.cargo}
                 onChange={(e) => setForm({ ...form, cargo: e.target.value })}
@@ -556,7 +563,7 @@ function PersonalModal({
                 className={inputCls}
               />
             </Field>
-            <Field label="Apellido materno">
+            <Field label="Apellido materno (opcional)">
               <input
                 value={form.apellidoMaterno}
                 onChange={(e) =>
@@ -567,7 +574,7 @@ function PersonalModal({
             </Field>
           </div>
           <div className="grid grid-cols-2 gap-3">
-            <Field label="Fecha de nacimiento">
+            <Field label="Fecha de nacimiento (opcional)">
               <input
                 type="date"
                 value={form.fechaNacimiento}
@@ -589,23 +596,25 @@ function PersonalModal({
             </Field>
           </div>
           <div className="grid grid-cols-2 gap-3">
-            <Field label="Correo">
+            <Field label="Correo (opcional)">
               <input
                 type="email"
                 value={form.correo}
                 onChange={(e) => setForm({ ...form, correo: e.target.value })}
+                placeholder="No es obligatorio"
                 className={inputCls}
               />
             </Field>
-            <Field label="Teléfono">
+            <Field label="Teléfono *">
               <input
                 value={form.telefono}
                 onChange={(e) => setForm({ ...form, telefono: e.target.value })}
+                placeholder="Ej: 999888777"
                 className={inputCls}
               />
             </Field>
           </div>
-          <Field label="Dirección">
+          <Field label="Dirección (opcional)">
             <input
               value={form.direccion}
               onChange={(e) => setForm({ ...form, direccion: e.target.value })}
@@ -959,10 +968,20 @@ function CrearUsuarioModal({
 
 // helpers
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
+  // Marcadores en el texto del label: " *" = obligatorio, "(opcional)" = opcional
+  const req = / \*$/.test(label);
+  const opt = /\(opcional\)/i.test(label);
+  const base = label.replace(/ \*$/, '').replace(/\s*\(opcional\)/i, '');
   return (
     <div>
       <label className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-widest">
-        {label}
+        {base}
+        {req && <span className="text-rose-500 ml-0.5">*</span>}
+        {opt && (
+          <span className="text-slate-400 dark:text-slate-500 font-normal normal-case tracking-normal ml-1">
+            (opcional)
+          </span>
+        )}
       </label>
       <div className="mt-1">{children}</div>
     </div>

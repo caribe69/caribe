@@ -22,6 +22,7 @@ import {
   IsEmail,
   IsEnum,
   IsInt,
+  IsNotEmpty,
   IsOptional,
   IsString,
   Matches,
@@ -69,7 +70,7 @@ class CrearPersonalDto {
   @IsOptional() @IsDateString() fechaNacimiento?: string;
   @IsOptional() @IsDateString() fechaIngreso?: string;
   @IsOptional() @IsEmail() correo?: string;
-  @IsOptional() @IsString() telefono?: string;
+  @IsString() @IsNotEmpty({ message: 'El teléfono es obligatorio' }) telefono!: string;
   @IsOptional() @IsString() direccion?: string;
   @IsOptional() @IsString() cargo?: string;
   @IsOptional() @IsString() notas?: string;

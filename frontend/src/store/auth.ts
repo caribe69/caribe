@@ -9,6 +9,16 @@ export type Rol =
   | 'CAJERO'
   | 'LAVANDERIA';
 
+/**
+ * Etiqueta visible del rol. SOLO cambia el texto mostrado al usuario; el valor
+ * real del rol (usado en permisos, comparaciones y backend) sigue siendo el
+ * mismo. HOTELERO se muestra como "Recepcionista"; el resto se muestra igual.
+ */
+export function rolLabel(rol?: string | null): string {
+  if (!rol) return '';
+  return rol === 'HOTELERO' ? 'Recepcionista' : rol;
+}
+
 export interface UsuarioInfo {
   id: number;
   nombre: string;

@@ -12,7 +12,7 @@ import {
   ArrowLeft,
 } from 'lucide-react';
 import { api } from '@/lib/api';
-import { useAuthStore } from '@/store/auth';
+import { useAuthStore, rolLabel } from '@/store/auth';
 import { usePresence } from '@/store/presence';
 import { getSocket } from '@/lib/socket';
 import { useToast } from '@/components/ToastProvider';
@@ -401,7 +401,7 @@ export default function Chat() {
                       </>
                     ) : (
                       <span className="text-slate-400 italic">
-                        {x.usuario.rol.replace('_', ' ').toLowerCase()}
+                        {rolLabel(x.usuario.rol).replace('_', ' ').toLowerCase()}
                       </span>
                     )}
                   </div>
@@ -488,12 +488,14 @@ export default function Chat() {
                       ) : online.has(activeContacto.id) ? (
                         <>
                           <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-                          en línea · {activeContacto.rol.replace('_', ' ').toLowerCase()}
+                          en línea ·{' '}
+                          {rolLabel(activeContacto.rol).replace('_', ' ').toLowerCase()}
                         </>
                       ) : (
                         <>
                           <span className="w-1.5 h-1.5 rounded-full bg-slate-400" />
-                          desconectado · {activeContacto.rol.replace('_', ' ').toLowerCase()}
+                          desconectado ·{' '}
+                          {rolLabel(activeContacto.rol).replace('_', ' ').toLowerCase()}
                         </>
                       )}
                     </div>

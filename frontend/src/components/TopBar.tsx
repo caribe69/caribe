@@ -25,7 +25,7 @@ import {
   Monitor,
   Clock,
 } from 'lucide-react';
-import { useAuthStore, UsuarioInfo } from '@/store/auth';
+import { useAuthStore, UsuarioInfo, rolLabel } from '@/store/auth';
 import { useThemeStore, ThemeMode } from '@/store/theme';
 import { api } from '@/lib/api';
 import SedeSwitchOverlay from './SedeSwitchOverlay';
@@ -277,7 +277,7 @@ export default function TopBar({ usuario }: { usuario: UsuarioInfo | null }) {
                 {usuario?.nombre?.split(' ')[0]}
               </div>
               <div className="text-[10px] text-slate-400 dark:text-slate-500 uppercase tracking-wider">
-                {usuario?.rol?.replace('_', ' ')}
+                {rolLabel(usuario?.rol).replace('_', ' ')}
               </div>
             </div>
             <ChevronDown size={13} className="text-slate-400 dark:text-slate-500 hidden sm:block" />
@@ -299,7 +299,7 @@ export default function TopBar({ usuario }: { usuario: UsuarioInfo | null }) {
                       {usuario?.nombre}
                     </div>
                     <div className="text-[10px] text-slate-400 dark:text-slate-500 uppercase tracking-wider">
-                      {usuario?.rol?.replace('_', ' ')}
+                      {rolLabel(usuario?.rol).replace('_', ' ')}
                     </div>
                   </div>
                 </div>

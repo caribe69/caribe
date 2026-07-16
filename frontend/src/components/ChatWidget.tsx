@@ -14,7 +14,7 @@ import {
   Users as UsersIcon,
 } from 'lucide-react';
 import { api } from '@/lib/api';
-import { useAuthStore } from '@/store/auth';
+import { useAuthStore, rolLabel } from '@/store/auth';
 import { usePresence } from '@/store/presence';
 import { getSocket } from '@/lib/socket';
 import { useToast } from './ToastProvider';
@@ -323,7 +323,8 @@ export default function ChatWidget() {
                       ) : (
                         <>
                           <span className="w-1.5 h-1.5 rounded-full bg-slate-400 dark:bg-slate-500" />
-                          desconectado · {activeContacto.rol?.replace('_', ' ')}
+                          desconectado ·{' '}
+                          {rolLabel(activeContacto.rol).replace('_', ' ')}
                         </>
                       )}
                     </div>
@@ -623,7 +624,7 @@ function Inbox({
                       en línea ·
                     </span>
                   )}
-                  {u.rol?.replace('_', ' ')}
+                  {rolLabel(u.rol).replace('_', ' ')}
                 </div>
               </div>
             </button>

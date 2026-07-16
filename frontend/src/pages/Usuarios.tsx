@@ -12,7 +12,7 @@ import {
 } from 'lucide-react';
 import { useState } from 'react';
 import { api } from '@/lib/api';
-import { useAuthStore } from '@/store/auth';
+import { useAuthStore, rolLabel } from '@/store/auth';
 import { useDialog } from '@/components/ConfirmProvider';
 import { useToast } from '@/components/ToastProvider';
 import { usePagination } from '@/hooks/usePagination';
@@ -154,7 +154,7 @@ export default function Usuarios() {
                     <span
                       className={`text-[10px] px-2.5 py-1 rounded-full font-bold uppercase tracking-wider ${rolBadge(u.rol)}`}
                     >
-                      {u.rol.replace('_', ' ')}
+                      {rolLabel(u.rol).replace('_', ' ')}
                     </span>
                   </Td>
                   <Td className="text-slate-600">

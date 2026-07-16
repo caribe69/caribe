@@ -22,7 +22,7 @@ import {
 } from 'lucide-react';
 import { api } from '@/lib/api';
 import { ThumbImg } from '@/lib/imageUrl';
-import { useAuthStore } from '@/store/auth';
+import { useAuthStore, rolLabel } from '@/store/auth';
 import { useDialog } from '@/components/ConfirmProvider';
 import { useToast } from '@/components/ToastProvider';
 import { Skeleton } from '@/components/ui/Skeleton';
@@ -88,9 +88,7 @@ export default function PersonalPage() {
   const [editar, setEditar] = useState<Personal | null>(null);
   const [crearUsuarioFor, setCrearUsuarioFor] = useState<Personal | null>(null);
   const [transferirFor, setTransferirFor] = useState<Personal | null>(null);
-  const [multisedeFor, setMultisedeFor] = useState<Personal | null>(null);
   const [historialFor, setHistorialFor] = useState<Personal | null>(null);
-  const esSuperadmin = usuario?.rol === 'SUPERADMIN';
   const [busqueda, setBusqueda] = useState('');
 
   const { data, isLoading } = useQuery({
@@ -220,8 +218,6 @@ export default function PersonalPage() {
                     onCrearUsuario={() => setCrearUsuarioFor(p)}
                     onTransferir={() => setTransferirFor(p)}
                     onHistorial={() => setHistorialFor(p)}
-                    esSuperadmin={esSuperadmin}
-                    onMultisede={() => setMultisedeFor(p)}
                   />
                 ))}
             </tbody>
@@ -282,17 +278,6 @@ export default function PersonalPage() {
           onClose={() => setHistorialFor(null)}
         />
       )}
-      {multisedeFor && (
-        <MultisedeModal
-          personal={multisedeFor}
-          onClose={() => setMultisedeFor(null)}
-          onSaved={() => {
-            setMultisedeFor(null);
-            qc.invalidateQueries({ queryKey: ['personal'] });
-            toast({ type: 'success', title: 'Acceso multisede actualizado' });
-          }}
-        />
-      )}
     </div>
   );
 }
@@ -305,8 +290,6 @@ function FilaPersonal({
   onCrearUsuario,
   onTransferir,
   onHistorial,
-  esSuperadmin,
-  onMultisede,
 }: {
   p: Personal;
   puedeEditar: boolean;
@@ -315,8 +298,6 @@ function FilaPersonal({
   onCrearUsuario: () => void;
   onTransferir: () => void;
   onHistorial: () => void;
-  esSuperadmin: boolean;
-  onMultisede: () => void;
 }) {
   const edad = edadDe(p.fechaNacimiento);
   const nSedesAcceso = p.usuario?.sedesAcceso?.length ?? 0;
@@ -376,7 +357,8 @@ function FilaPersonal({
         {p.usuario ? (
           <div className="flex flex-wrap items-center gap-1.5">
             <span className="inline-flex items-center gap-1.5 bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300 px-2 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest">
-              <UserCheck size={10} /> @{p.usuario.username} · {p.usuario.rol}
+              <UserCheck size={10} /> @{p.usuario.username} ·{' '}
+              {rolLabel(p.usuario.rol)}
             </span>
             {esMultisede && (
               <span
@@ -414,19 +396,6 @@ function FilaPersonal({
             >
               <ArrowRightLeft size={13} />
             </button>
-            {esSuperadmin && p.usuario && (
-              <button
-                onClick={onMultisede}
-                className={`inline-flex items-center justify-center w-7 h-7 rounded-lg ${
-                  esMultisede
-                    ? 'text-violet-600 dark:text-violet-300 bg-violet-50 dark:bg-violet-900/30'
-                    : 'text-slate-400 hover:text-violet-600 dark:hover:text-violet-300 hover:bg-violet-50 dark:hover:bg-violet-900/30'
-                }`}
-                title="Acceso multisede (sedes donde puede iniciar sesión)"
-              >
-                <Building2 size={13} />
-              </button>
-            )}
             <button
               onClick={onEditar}
               className="inline-flex items-center gap-1.5 text-xs text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 px-2.5 py-1.5 rounded-lg"
@@ -457,6 +426,7 @@ function PersonalModal({
   onSaved: () => void;
 }) {
   const esEdicion = !!personal;
+  const usuarioActual = useAuthStore((s) => s.usuario);
   const [form, setForm] = useState({
     dni: personal?.dni || '',
     nombre: personal?.nombre || '',
@@ -670,6 +640,24 @@ function PersonalModal({
             </div>
           </div>
 
+          {/* Acceso multisede — solo al editar, si tiene usuario y soy SUPERADMIN */}
+          {esEdicion &&
+            personal?.usuario &&
+            usuarioActual?.rol === 'SUPERADMIN' && (
+              <MultisedeSection personal={personal} />
+            )}
+
+          {esEdicion && personal && !personal.usuario && (
+            <div className="text-[11px] text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-xl p-3 flex items-start gap-2">
+              <Building2 size={14} className="mt-0.5 text-slate-400 shrink-0" />
+              <span>
+                Para dar <b>acceso multisede</b> primero crea o vincula un
+                usuario a esta persona (columna "Usuario"). El acceso multisede
+                usa esas credenciales.
+              </span>
+            </div>
+          )}
+
           {error && (
             <div className="text-sm text-rose-700 dark:text-rose-300 bg-rose-50 dark:bg-rose-900/30 border border-rose-200 dark:border-rose-800 rounded-lg p-2.5">
               {error}
@@ -855,7 +843,7 @@ function CrearUsuarioModal({
                     {candidato.nombre}
                   </div>
                   <div className="text-[12px] text-slate-600 dark:text-slate-300 font-mono">
-                    @{candidato.username} · {candidato.rol}
+                    @{candidato.username} · {rolLabel(candidato.rol)}
                   </div>
                   {candidato.email && (
                     <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
@@ -929,7 +917,7 @@ function CrearUsuarioModal({
                 >
                   {ROLES.map((r) => (
                     <option key={r} value={r}>
-                      {r}
+                      {rolLabel(r)}
                     </option>
                   ))}
                 </select>
@@ -1393,28 +1381,22 @@ interface SedeItem {
   nombre: string;
 }
 
-function MultisedeModal({
-  personal,
-  onClose,
-  onSaved,
-}: {
-  personal: Personal;
-  onClose: () => void;
-  onSaved: () => void;
-}) {
+// Sección embebida en el formulario de editar personal: da acceso multisede
+// (sedes donde el usuario vinculado puede iniciar sesión). Guarda por su cuenta.
+function MultisedeSection({ personal }: { personal: Personal }) {
+  const qc = useQueryClient();
   const { show: toast } = useToast();
   const [seleccion, setSeleccion] = useState<Set<number>>(new Set());
+  const [habilitado, setHabilitado] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [guardando, setGuardando] = useState(false);
   const [cargado, setCargado] = useState(false);
 
-  // Todas las sedes disponibles
   const { data: sedes } = useQuery({
     queryKey: ['sedes'],
     queryFn: async () => (await api.get<SedeItem[]>('/sedes')).data,
   });
 
-  // Sedes de acceso actuales del usuario vinculado
   const { data: acceso } = useQuery({
     queryKey: ['personal', personal.id, 'sedes-acceso'],
     queryFn: async () =>
@@ -1425,17 +1407,19 @@ function MultisedeModal({
       ).data,
   });
 
-  // Inicializa la selección una sola vez con lo que ya tenía (o su sede base)
+  // Inicializa una vez con lo que ya tenía (o su sede base)
   useMemo(() => {
     if (cargado || !acceso) return;
     const inicial = new Set<number>(acceso.sedeIds || []);
-    if (personal.sedeId) inicial.add(personal.sedeId); // su sede base siempre
+    if (personal.sedeId) inicial.add(personal.sedeId);
     setSeleccion(inicial);
+    setHabilitado(!!acceso.multisede);
     setCargado(true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [acceso]);
 
   const toggle = (id: number) => {
+    setError(null);
     setSeleccion((prev) => {
       const next = new Set(prev);
       if (next.has(id)) next.delete(id);
@@ -1446,70 +1430,76 @@ function MultisedeModal({
 
   const guardar = async () => {
     setError(null);
-    const ids = Array.from(seleccion);
-    if (ids.length === 1) {
-      setError(
-        'Para multisede elige al menos 2 sedes. Con 1 sede, desmarca todas para dejarlo en modo normal.',
-      );
+    // Si está deshabilitado → deja solo su sede base (modo normal, sin multisede)
+    const ids = habilitado
+      ? Array.from(seleccion)
+      : personal.sedeId
+        ? [personal.sedeId]
+        : [];
+    if (habilitado && ids.length < 2) {
+      setError('Elige al menos 2 sedes para el acceso multisede.');
       return;
     }
     setGuardando(true);
     try {
-      await api.post(`/personal/${personal.id}/sedes-acceso`, {
-        sedeIds: ids,
+      await api.post(`/personal/${personal.id}/sedes-acceso`, { sedeIds: ids });
+      qc.invalidateQueries({ queryKey: ['personal'] });
+      qc.invalidateQueries({
+        queryKey: ['personal', personal.id, 'sedes-acceso'],
       });
-      onSaved();
+      toast({ type: 'success', title: 'Acceso multisede actualizado' });
     } catch (err: any) {
       setError(err.response?.data?.message || 'Error al guardar');
+    } finally {
       setGuardando(false);
     }
   };
 
-  const nombreCompleto = `${personal.nombre} ${personal.apellidoPaterno}`;
-  const activarLimpiar = () => {
-    setSeleccion(new Set(personal.sedeId ? [personal.sedeId] : []));
-  };
-
   return (
-    <div className="fixed inset-0 bg-black/40 dark:bg-black/70 flex items-center justify-center p-4 z-50">
-      <div className="bg-white dark:bg-slate-900 dark:ring-1 dark:ring-slate-700 rounded-2xl w-full max-w-md overflow-hidden shadow-2xl animate-scale-in">
-        <div className="px-5 py-4 border-b border-slate-100 dark:border-slate-700 flex items-center justify-between">
-          <div>
-            <h2 className="font-hotel text-lg font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
-              <Building2 size={18} className="text-violet-600" /> Acceso
-              multisede
-            </h2>
-            <p className="text-[11px] text-slate-500 mt-0.5">
-              {nombreCompleto}
-              {personal.usuario && ` · @${personal.usuario.username}`}
-            </p>
+    <div className="rounded-xl border border-violet-200 dark:border-violet-800/50 bg-violet-50/40 dark:bg-violet-900/10 p-3">
+      <label className="flex items-start gap-2.5 cursor-pointer select-none">
+        <input
+          type="checkbox"
+          checked={habilitado}
+          onChange={(e) => {
+            setHabilitado(e.target.checked);
+            setError(null);
+            // Al activar, asegura que su sede base quede marcada
+            if (e.target.checked && personal.sedeId) {
+              setSeleccion((prev) => new Set(prev).add(personal.sedeId!));
+            }
+          }}
+          className="mt-0.5 w-4 h-4 accent-violet-600"
+        />
+        <div className="flex-1">
+          <div className="text-sm font-semibold text-violet-900 dark:text-violet-100 flex items-center gap-1.5">
+            <Building2 size={14} /> Acceso multisede
           </div>
-          <button
-            onClick={onClose}
-            className="text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 p-1 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800"
-          >
-            <X size={18} />
-          </button>
+          <div className="text-[11px] text-violet-700 dark:text-violet-300 mt-0.5 leading-snug">
+            Permite que{' '}
+            {personal.usuario ? `@${personal.usuario.username}` : 'esta persona'}{' '}
+            inicie sesión en <b>varias sedes</b> con las mismas credenciales.
+            Aparecerá en el personal de todas ellas y elegirá la sede al entrar.
+          </div>
         </div>
+      </label>
 
-        <div className="p-5">
-          <p className="text-xs text-slate-500 dark:text-slate-400 mb-3">
-            Marca las sedes donde esta persona podrá <b>iniciar sesión</b> con
-            sus mismas credenciales. Aparecerá en el personal de todas ellas sin
-            transferencias. Al loguearse elegirá a cuál entrar.
-          </p>
-
-          <div className="space-y-1.5 max-h-72 overflow-y-auto scroll-premium">
+      {habilitado && (
+        <div className="mt-3 pt-3 border-t border-violet-200 dark:border-violet-800/50">
+          <div className="text-[10px] uppercase tracking-widest font-bold text-violet-800 dark:text-violet-200 mb-1.5">
+            Sedes con acceso
+          </div>
+          <div className="space-y-1.5 max-h-56 overflow-y-auto scroll-premium">
             {(sedes || []).map((s) => {
               const marcada = seleccion.has(s.id);
               const esBase = s.id === personal.sedeId;
               return (
                 <label
                   key={s.id}
-                  className={`flex items-center gap-3 px-3 py-2.5 rounded-xl border cursor-pointer transition ${
+                  className={`flex items-center gap-3 px-3 py-2 rounded-lg border cursor-pointer transition ${
                     marcada
-                      ? 'border-violet-300 dark:border-violet-700 bg-violet-50 dark:bg-violet-900/20'
-                      : 'border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800'
+                      ? 'border-violet-300 dark:border-violet-700 bg-white dark:bg-violet-900/20'
+                      : 'border-slate-200 dark:border-slate-700 bg-white/60 dark:bg-slate-800/40 hover:bg-white dark:hover:bg-slate-800'
                   }`}
                 >
                   <input
@@ -1531,44 +1521,28 @@ function MultisedeModal({
               );
             })}
           </div>
-
-          <div className="mt-3 flex items-center justify-between text-[11px] text-slate-500">
-            <span>
-              {seleccion.size >= 2
-                ? `Multisede · ${seleccion.size} sedes`
-                : 'Modo normal (1 sede)'}
-            </span>
-            <button
-              onClick={activarLimpiar}
-              className="text-slate-400 hover:text-rose-600 underline"
-            >
-              Dejar solo su sede base
-            </button>
+          <div className="text-[11px] text-slate-500 mt-2">
+            {seleccion.size >= 2
+              ? `Tendrá acceso a ${seleccion.size} sedes.`
+              : 'Marca al menos 2 sedes.'}
           </div>
-
-          {error && (
-            <div className="mt-3 text-sm text-rose-700 dark:text-rose-300 bg-rose-50 dark:bg-rose-900/30 border border-rose-200 dark:border-rose-800 rounded-lg p-2.5">
-              {error}
-            </div>
-          )}
         </div>
+      )}
 
-        <div className="px-5 py-4 border-t border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 flex gap-2">
-          <button
-            onClick={onClose}
-            className="flex-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 py-2.5 rounded-xl font-medium btn-press"
-          >
-            Cancelar
-          </button>
-          <button
-            onClick={guardar}
-            disabled={guardando}
-            className="flex-1 bg-gradient-to-r from-violet-600 to-violet-500 hover:from-violet-700 hover:to-violet-600 text-white py-2.5 rounded-xl font-semibold shadow-md shadow-violet-500/30 disabled:opacity-40 btn-press"
-          >
-            {guardando ? 'Guardando...' : 'Guardar acceso'}
-          </button>
+      {error && (
+        <div className="mt-2 text-xs text-rose-700 dark:text-rose-300 bg-rose-50 dark:bg-rose-900/30 border border-rose-200 dark:border-rose-800 rounded-lg p-2">
+          {error}
         </div>
-      </div>
+      )}
+
+      <button
+        type="button"
+        onClick={guardar}
+        disabled={guardando}
+        className="mt-3 w-full bg-violet-600 hover:bg-violet-700 text-white py-2 rounded-lg text-sm font-semibold disabled:opacity-40 btn-press"
+      >
+        {guardando ? 'Guardando…' : 'Guardar acceso multisede'}
+      </button>
     </div>
   );
 }

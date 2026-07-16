@@ -222,7 +222,6 @@ export default function PersonalPage() {
                       if (ok) eliminar.mutate(p.id);
                     }}
                     onCrearUsuario={() => setCrearUsuarioFor(p)}
-                    onTransferir={() => setTransferirFor(p)}
                     onHistorial={() => setHistorialFor(p)}
                   />
                 ))}
@@ -294,7 +293,6 @@ function FilaPersonal({
   onEditar,
   onEliminar,
   onCrearUsuario,
-  onTransferir,
   onHistorial,
 }: {
   p: Personal;
@@ -302,7 +300,6 @@ function FilaPersonal({
   onEditar: () => void;
   onEliminar: () => void;
   onCrearUsuario: () => void;
-  onTransferir: () => void;
   onHistorial: () => void;
 }) {
   const edad = edadDe(p.fechaNacimiento);
@@ -394,13 +391,6 @@ function FilaPersonal({
               title="Historial completo"
             >
               <History size={13} />
-            </button>
-            <button
-              onClick={onTransferir}
-              className="inline-flex items-center justify-center text-slate-400 hover:text-amber-600 dark:hover:text-amber-300 hover:bg-amber-50 dark:hover:bg-amber-900/30 w-7 h-7 rounded-lg"
-              title="Transferir de sede"
-            >
-              <ArrowRightLeft size={13} />
             </button>
             <button
               onClick={onEditar}

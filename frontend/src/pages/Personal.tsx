@@ -1,4 +1,10 @@
-import { useMemo, useState } from 'react';
+import {
+  forwardRef,
+  useImperativeHandle,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Users,
@@ -427,6 +433,7 @@ function PersonalModal({
 }) {
   const esEdicion = !!personal;
   const usuarioActual = useAuthStore((s) => s.usuario);
+  const multisedeRef = useRef<{ save: () => Promise<void> } | null>(null);
   const [form, setForm] = useState({
     dni: personal?.dni || '',
     nombre: personal?.nombre || '',
@@ -494,9 +501,15 @@ function PersonalModal({
           headers: { 'Content-Type': 'multipart/form-data' },
         });
       }
+      // Guardar acceso multisede (si la sección está presente)
+      if (multisedeRef.current) {
+        await multisedeRef.current.save();
+      }
       onSaved();
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Error al guardar');
+      setError(
+        err.response?.data?.message || err.message || 'Error al guardar',
+      );
     } finally {
       setGuardando(false);
     }
@@ -645,7 +658,7 @@ function PersonalModal({
             personal?.usuario &&
             (usuarioActual?.rol === 'SUPERADMIN' ||
               usuarioActual?.rol === 'ADMIN_SEDE') && (
-              <MultisedeSection personal={personal} />
+              <MultisedeSection personal={personal} ref={multisedeRef} />
             )}
 
           {esEdicion && personal && !personal.usuario && (
@@ -1383,14 +1396,15 @@ interface SedeItem {
 }
 
 // Sección embebida en el formulario de editar personal: da acceso multisede
-// (sedes donde el usuario vinculado puede iniciar sesión). Guarda por su cuenta.
-function MultisedeSection({ personal }: { personal: Personal }) {
+// (sedes donde el usuario vinculado puede iniciar sesión). Se guarda junto con
+// el botón principal "Guardar cambios" (vía ref → save()).
+const MultisedeSection = forwardRef<
+  { save: () => Promise<void> },
+  { personal: Personal }
+>(function MultisedeSection({ personal }, ref) {
   const qc = useQueryClient();
-  const { show: toast } = useToast();
   const [seleccion, setSeleccion] = useState<Set<number>>(new Set());
   const [habilitado, setHabilitado] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [guardando, setGuardando] = useState(false);
   const [cargado, setCargado] = useState(false);
 
   const { data: sedes } = useQuery({
@@ -1420,7 +1434,6 @@ function MultisedeSection({ personal }: { personal: Personal }) {
   }, [acceso]);
 
   const toggle = (id: number) => {
-    setError(null);
     setSeleccion((prev) => {
       const next = new Set(prev);
       if (next.has(id)) next.delete(id);
@@ -1429,32 +1442,30 @@ function MultisedeSection({ personal }: { personal: Personal }) {
     });
   };
 
-  const guardar = async () => {
-    setError(null);
-    // Si está deshabilitado → deja solo su sede base (modo normal, sin multisede)
-    const ids = habilitado
-      ? Array.from(seleccion)
-      : personal.sedeId
-        ? [personal.sedeId]
-        : [];
-    if (habilitado && ids.length < 2) {
-      setError('Elige al menos 2 sedes para el acceso multisede.');
-      return;
-    }
-    setGuardando(true);
-    try {
-      await api.post(`/personal/${personal.id}/sedes-acceso`, { sedeIds: ids });
-      qc.invalidateQueries({ queryKey: ['personal'] });
-      qc.invalidateQueries({
-        queryKey: ['personal', personal.id, 'sedes-acceso'],
-      });
-      toast({ type: 'success', title: 'Acceso multisede actualizado' });
-    } catch (err: any) {
-      setError(err.response?.data?.message || 'Error al guardar');
-    } finally {
-      setGuardando(false);
-    }
-  };
+  // Guardado disparado por el botón principal del formulario. Lanza error si
+  // hay algo inválido (lo captura el modal padre y lo muestra).
+  useImperativeHandle(
+    ref,
+    () => ({
+      save: async () => {
+        const ids = habilitado
+          ? Array.from(seleccion)
+          : personal.sedeId
+            ? [personal.sedeId]
+            : [];
+        if (habilitado && ids.length < 2) {
+          throw new Error('Marca al menos 2 sedes para el acceso multisede.');
+        }
+        await api.post(`/personal/${personal.id}/sedes-acceso`, {
+          sedeIds: ids,
+        });
+        qc.invalidateQueries({
+          queryKey: ['personal', personal.id, 'sedes-acceso'],
+        });
+      },
+    }),
+    [habilitado, seleccion, personal, qc],
+  );
 
   return (
     <div className="rounded-xl border border-violet-200 dark:border-violet-800/50 bg-violet-50/40 dark:bg-violet-900/10 p-3">
@@ -1464,7 +1475,6 @@ function MultisedeSection({ personal }: { personal: Personal }) {
           checked={habilitado}
           onChange={(e) => {
             setHabilitado(e.target.checked);
-            setError(null);
             // Al activar, asegura que su sede base quede marcada
             if (e.target.checked && personal.sedeId) {
               setSeleccion((prev) => new Set(prev).add(personal.sedeId!));
@@ -1528,26 +1538,11 @@ function MultisedeSection({ personal }: { personal: Personal }) {
           </div>
           <div className="text-[11px] text-slate-500 mt-2">
             {seleccion.size >= 2
-              ? `Tendrá acceso a ${seleccion.size} sedes.`
+              ? `Tendrá acceso a ${seleccion.size} sedes. Se guarda con "Guardar cambios".`
               : 'Marca al menos 2 sedes.'}
           </div>
         </div>
       )}
-
-      {error && (
-        <div className="mt-2 text-xs text-rose-700 dark:text-rose-300 bg-rose-50 dark:bg-rose-900/30 border border-rose-200 dark:border-rose-800 rounded-lg p-2">
-          {error}
-        </div>
-      )}
-
-      <button
-        type="button"
-        onClick={guardar}
-        disabled={guardando}
-        className="mt-3 w-full bg-violet-600 hover:bg-violet-700 text-white py-2 rounded-lg text-sm font-semibold disabled:opacity-40 btn-press"
-      >
-        {guardando ? 'Guardando…' : 'Guardar acceso multisede'}
-      </button>
     </div>
   );
-}
+});

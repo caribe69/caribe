@@ -5,7 +5,7 @@ import {
   useRef,
   useState,
 } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   Users,
   Plus,
@@ -25,11 +25,12 @@ import {
   Check,
   BarChart3,
   AlertTriangle,
+  Eye,
+  EyeOff,
 } from 'lucide-react';
 import { api } from '@/lib/api';
 import { ThumbImg } from '@/lib/imageUrl';
 import { useAuthStore, rolLabel } from '@/store/auth';
-import { useDialog } from '@/components/ConfirmProvider';
 import { useToast } from '@/components/ToastProvider';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { EmptyState } from '@/components/ui/EmptyState';
@@ -85,7 +86,6 @@ function edadDe(fechaNac?: string | null): number | null {
 export default function PersonalPage() {
   const qc = useQueryClient();
   const { show: toast } = useToast();
-  const { confirm } = useDialog();
   const usuario = useAuthStore((s) => s.usuario);
   const puedeEditar =
     usuario?.rol === 'SUPERADMIN' || usuario?.rol === 'ADMIN_SEDE';
@@ -119,19 +119,7 @@ export default function PersonalPage() {
     return arr;
   }, [data, busqueda]);
 
-  const eliminar = useMutation({
-    mutationFn: async (id: number) => api.delete(`/personal/${id}`),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['personal'] });
-      toast({ type: 'success', title: 'Personal eliminado' });
-    },
-    onError: (err: any) =>
-      toast({
-        type: 'error',
-        title: 'No se pudo eliminar',
-        description: err.response?.data?.message,
-      }),
-  });
+  const [eliminarFor, setEliminarFor] = useState<Personal | null>(null);
 
   return (
     <div className="space-y-4">
@@ -212,15 +200,7 @@ export default function PersonalPage() {
                     p={p}
                     puedeEditar={puedeEditar}
                     onEditar={() => setEditar(p)}
-                    onEliminar={async () => {
-                      const ok = await confirm({
-                        title: `¿Eliminar a ${p.nombre} ${p.apellidoPaterno}?`,
-                        message: 'Esta acción no se puede deshacer.',
-                        variant: 'danger',
-                        confirmText: 'Eliminar',
-                      });
-                      if (ok) eliminar.mutate(p.id);
-                    }}
+                    onEliminar={() => setEliminarFor(p)}
                     onCrearUsuario={() => setCrearUsuarioFor(p)}
                     onHistorial={() => setHistorialFor(p)}
                   />
@@ -281,6 +261,16 @@ export default function PersonalPage() {
         <HistorialModal
           personal={historialFor}
           onClose={() => setHistorialFor(null)}
+        />
+      )}
+      {eliminarFor && (
+        <EliminarModal
+          personal={eliminarFor}
+          onClose={() => setEliminarFor(null)}
+          onDone={() => {
+            setEliminarFor(null);
+            qc.invalidateQueries({ queryKey: ['personal'] });
+          }}
         />
       )}
     </div>
@@ -967,6 +957,166 @@ function CrearUsuarioModal({
 }
 
 // helpers
+// ───────────────────────────────────────────────────────────
+// MODAL: Eliminar / Anular personal (requiere clave de eliminación)
+// ───────────────────────────────────────────────────────────
+function EliminarModal({
+  personal,
+  onClose,
+  onDone,
+}: {
+  personal: Personal;
+  onClose: () => void;
+  onDone: () => void;
+}) {
+  const { show: toast } = useToast();
+  const [clave, setClave] = useState('');
+  const [showClave, setShowClave] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [tieneHistorial, setTieneHistorial] = useState(false);
+  const [procesando, setProcesando] = useState(false);
+
+  const nombre = `${personal.nombre} ${personal.apellidoPaterno}`;
+
+  const eliminar = async () => {
+    if (!clave.trim()) return setError('Ingresa la clave de eliminación.');
+    setError(null);
+    setProcesando(true);
+    try {
+      await api.delete(`/personal/${personal.id}`, { data: { clave } });
+      toast({ type: 'success', title: 'Personal eliminado' });
+      onDone();
+    } catch (err: any) {
+      const msg = err.response?.data?.message || 'No se pudo eliminar';
+      // Si el motivo es historial, ofrecemos anular
+      if (/historial/i.test(msg)) setTieneHistorial(true);
+      setError(msg);
+    } finally {
+      setProcesando(false);
+    }
+  };
+
+  const anular = async () => {
+    if (!clave.trim()) return setError('Ingresa la clave de eliminación.');
+    setError(null);
+    setProcesando(true);
+    try {
+      await api.post(`/personal/${personal.id}/anular`, { clave });
+      toast({
+        type: 'success',
+        title: 'Personal anulado',
+        description: 'Ya no podrá iniciar sesión; su historial se conserva.',
+      });
+      onDone();
+    } catch (err: any) {
+      setError(err.response?.data?.message || 'No se pudo anular');
+    } finally {
+      setProcesando(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/40 dark:bg-black/70 flex items-center justify-center p-4 z-50">
+      <div className="bg-white dark:bg-slate-900 dark:ring-1 dark:ring-slate-700 rounded-2xl w-full max-w-md overflow-hidden shadow-2xl animate-scale-in">
+        <div className="px-5 py-4 border-b border-slate-100 dark:border-slate-700 flex items-center justify-between">
+          <h2 className="font-hotel text-lg font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
+            <Trash2 size={18} className="text-rose-600" /> Eliminar personal
+          </h2>
+          <button
+            onClick={onClose}
+            className="text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 p-1 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800"
+          >
+            <X size={18} />
+          </button>
+        </div>
+
+        <div className="p-5 space-y-4">
+          <p className="text-sm text-slate-600 dark:text-slate-300">
+            Vas a eliminar a <b>{nombre}</b>
+            {personal.usuario && (
+              <>
+                {' '}
+                y su usuario <b>@{personal.usuario.username}</b>
+              </>
+            )}
+            . Esta acción no se puede deshacer.
+          </p>
+
+          <div>
+            <label className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-widest">
+              Clave de eliminación
+            </label>
+            <div className="relative mt-1">
+              <input
+                type={showClave ? 'text' : 'password'}
+                autoFocus
+                className={`${inputCls} pr-10`}
+                value={clave}
+                placeholder="La clave definida en Configuración"
+                onChange={(e) => {
+                  setClave(e.target.value);
+                  setError(null);
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !tieneHistorial) eliminar();
+                }}
+              />
+              <button
+                type="button"
+                onClick={() => setShowClave((v) => !v)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-violet-600"
+                tabIndex={-1}
+              >
+                {showClave ? <EyeOff size={16} /> : <Eye size={16} />}
+              </button>
+            </div>
+          </div>
+
+          {error && (
+            <div className="text-sm text-rose-700 dark:text-rose-300 bg-rose-50 dark:bg-rose-900/30 border border-rose-200 dark:border-rose-800 rounded-lg p-2.5">
+              {error}
+            </div>
+          )}
+
+          {tieneHistorial && (
+            <div className="text-[12px] text-amber-800 dark:text-amber-200 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800/50 rounded-lg p-2.5">
+              Este personal tiene historial, por eso no se puede eliminar. Puedes{' '}
+              <b>anularlo</b>: no podrá iniciar sesión, pero se conservan sus
+              ventas/alquileres.
+            </div>
+          )}
+        </div>
+
+        <div className="px-5 py-4 border-t border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 flex gap-2">
+          <button
+            onClick={onClose}
+            className="flex-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 py-2.5 rounded-xl font-medium btn-press"
+          >
+            Cancelar
+          </button>
+          {tieneHistorial ? (
+            <button
+              onClick={anular}
+              disabled={procesando}
+              className="flex-1 bg-amber-500 hover:bg-amber-600 text-white py-2.5 rounded-xl font-semibold shadow-md disabled:opacity-40 btn-press"
+            >
+              {procesando ? 'Anulando…' : 'Anular en su lugar'}
+            </button>
+          ) : (
+            <button
+              onClick={eliminar}
+              disabled={procesando}
+              className="flex-1 bg-rose-600 hover:bg-rose-700 text-white py-2.5 rounded-xl font-semibold shadow-md disabled:opacity-40 btn-press"
+            >
+              {procesando ? 'Eliminando…' : 'Eliminar'}
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   // Marcadores en el texto del label: " *" = obligatorio, "(opcional)" = opcional
   const req = / \*$/.test(label);

@@ -4,11 +4,13 @@ import {
   Injectable,
   NotFoundException,
   ConflictException,
+  UnauthorizedException,
 } from '@nestjs/common';
 import * as bcrypt from 'bcryptjs';
 import { Rol } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { JwtPayload } from '../auth/auth.service';
+import { SettingsService } from '../settings/settings.service';
 import { resolveSedeId } from '../common/sede-scope';
 
 interface CrearPersonalInput {
@@ -34,7 +36,10 @@ interface FotosInput {
 
 @Injectable()
 export class PersonalService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private settings: SettingsService,
+  ) {}
 
   async listar(user: JwtPayload, sedeIdQuery?: number) {
     const sedeFiltro =
@@ -189,9 +194,88 @@ export class PersonalService {
     return this.prisma.personal.update({ where: { id }, data });
   }
 
-  async eliminar(id: number) {
-    await this.findOne(id);
-    return this.prisma.personal.delete({ where: { id } });
+  /** Cuenta el historial operativo del usuario vinculado (lo que se perdería). */
+  private async contarHistorial(usuarioId: number) {
+    const [ventas, alqCreados, alqCobrados, turnos, pagos, movs] =
+      await Promise.all([
+        this.prisma.venta.count({ where: { usuarioId } }),
+        this.prisma.alquiler.count({ where: { creadoPorId: usuarioId } }),
+        this.prisma.alquiler.count({ where: { cobradoPorId: usuarioId } }),
+        this.prisma.turnoCaja.count({ where: { usuarioId } }),
+        this.prisma.pagoAlquiler.count({ where: { usuarioId } }),
+        this.prisma.movimientoStock.count({ where: { usuarioId } }),
+      ]);
+    const alquileres = alqCreados + alqCobrados;
+    const total = ventas + alquileres + turnos + pagos + movs;
+    return { ventas, alquileres, turnos, total };
+  }
+
+  /** Valida la clave de eliminación configurada en Configuración. */
+  private async validarClave(clave: string) {
+    const configurada = await this.settings.claveEliminacionConfigurada();
+    if (!configurada)
+      throw new BadRequestException(
+        'No hay clave de eliminación configurada. Defínela en Configuración → Seguridad.',
+      );
+    const ok = await this.settings.verificarClaveEliminacion(clave);
+    if (!ok) throw new UnauthorizedException('Clave de eliminación incorrecta');
+  }
+
+  /**
+   * Elimina el personal Y su usuario vinculado (limpieza total). Requiere la
+   * clave de eliminación. Si el personal tiene historial (ventas/alquileres/
+   * turnos), NO se elimina: se pide anularlo para conservar los registros.
+   */
+  async eliminar(id: number, clave: string) {
+    await this.validarClave(clave);
+    const personal = await this.findOne(id);
+
+    if (personal.usuarioId) {
+      const hist = await this.contarHistorial(personal.usuarioId);
+      if (hist.total > 0) {
+        throw new BadRequestException(
+          `Este personal tiene historial (${hist.ventas} ventas, ${hist.alquileres} alquileres, ${hist.turnos} turnos de caja). ` +
+            `No se puede eliminar sin perder esos registros. Usa "Anular" para desactivarlo y conservar el historial.`,
+        );
+      }
+    }
+
+    try {
+      await this.prisma.$transaction(async (tx) => {
+        // Primero el personal (libera el FK usuarioId), luego el usuario.
+        await tx.personal.delete({ where: { id } });
+        if (personal.usuarioId) {
+          await tx.usuario.delete({ where: { id: personal.usuarioId } });
+        }
+      });
+    } catch (e: any) {
+      if (e?.code === 'P2003') {
+        throw new BadRequestException(
+          'Este personal tiene registros asociados. Usa "Anular" en su lugar.',
+        );
+      }
+      throw e;
+    }
+    return { ok: true, eliminado: true };
+  }
+
+  /**
+   * Anula (desactiva) el personal y su usuario: no podrá iniciar sesión, pero
+   * se conserva todo su historial. Requiere la clave de eliminación.
+   */
+  async anular(id: number, clave: string) {
+    await this.validarClave(clave);
+    const personal = await this.findOne(id);
+    await this.prisma.$transaction(async (tx) => {
+      await tx.personal.update({ where: { id }, data: { activo: false } });
+      if (personal.usuarioId) {
+        await tx.usuario.update({
+          where: { id: personal.usuarioId },
+          data: { activo: false },
+        });
+      }
+    });
+    return { ok: true, anulado: true };
   }
 
   /**

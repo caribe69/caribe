@@ -1,4 +1,5 @@
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
+import * as bcrypt from 'bcryptjs';
 import { PrismaService } from '../prisma/prisma.service';
 
 export interface UpdateSettingsInput {
@@ -52,11 +53,44 @@ export class SettingsService {
       nubefactIgvHospedaje: cfg.nubefactIgvHospedaje,
       nubefactIgvProductos: cfg.nubefactIgvProductos,
       nubefactConfigured: !!(cfg.nubefactRuta && cfg.nubefactToken),
+      claveEliminacionConfigurada: !!cfg.claveEliminacionHash,
     };
   }
 
+  /** Define/actualiza la clave de eliminación (se guarda hasheada). */
+  async setClaveEliminacion(clave: string) {
+    if (!clave || clave.length < 4)
+      throw new BadRequestException(
+        'La clave de eliminación debe tener al menos 4 caracteres',
+      );
+    await this.ensureRow();
+    const hash = await bcrypt.hash(clave, 10);
+    await this.prisma.appConfig.update({
+      where: { id: 1 },
+      data: { claveEliminacionHash: hash },
+    });
+    return { ok: true, configurada: true };
+  }
+
+  /** Verifica la clave de eliminación contra el hash guardado. */
+  async verificarClaveEliminacion(clave: string): Promise<boolean> {
+    const cfg = await this.ensureRow();
+    if (!cfg.claveEliminacionHash) return false;
+    if (!clave) return false;
+    return bcrypt.compare(clave, cfg.claveEliminacionHash);
+  }
+
+  /** ¿Ya hay una clave de eliminación configurada? */
+  async claveEliminacionConfigurada(): Promise<boolean> {
+    const cfg = await this.ensureRow();
+    return !!cfg.claveEliminacionHash;
+  }
+
   async getFull() {
-    return this.ensureRow();
+    const cfg = await this.ensureRow();
+    // No exponer el hash de la clave de eliminación; solo si está configurada.
+    const { claveEliminacionHash, ...resto } = cfg;
+    return { ...resto, claveEliminacionConfigurada: !!claveEliminacionHash };
   }
 
   async update(data: UpdateSettingsInput) {

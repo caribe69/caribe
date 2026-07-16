@@ -80,6 +80,27 @@ export default function Configuracion() {
   const [resultadoProbar, setResultadoProbar] = useState<any | null>(null);
   const [probandoNubefact, setProbandoNubefact] = useState(false);
   const [resultadoNubefact, setResultadoNubefact] = useState<any | null>(null);
+  const [claveElim, setClaveElim] = useState('');
+  const [showClaveElim, setShowClaveElim] = useState(false);
+
+  const claveElimConfigurada = !!(data as any)?.claveEliminacionConfigurada;
+
+  const guardarClaveElim = useMutation({
+    mutationFn: async () =>
+      (await api.post('/settings/clave-eliminacion', { clave: claveElim }))
+        .data,
+    onSuccess: () => {
+      toast({ type: 'success', title: 'Clave de eliminación actualizada' });
+      setClaveElim('');
+      qc.invalidateQueries({ queryKey: ['config'] });
+    },
+    onError: (err: any) =>
+      toast({
+        type: 'error',
+        title: 'No se pudo guardar',
+        description: err.response?.data?.message,
+      }),
+  });
 
   useEffect(() => {
     if (data) {
@@ -551,6 +572,63 @@ export default function Configuracion() {
           </div>
         </section>
       )}
+
+      {/* Clave de eliminación — requerida para eliminar/anular personal */}
+      <section className="bg-white rounded-3xl p-6 shadow-sm">
+        <div className="flex items-center gap-2 mb-1">
+          <Key size={18} className="text-rose-600" />
+          <h2 className="font-hotel text-lg font-bold text-slate-900">
+            Clave de eliminación
+          </h2>
+          {claveElimConfigurada ? (
+            <span className="ml-2 text-[10px] uppercase tracking-widest font-bold bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full">
+              Configurada
+            </span>
+          ) : (
+            <span className="ml-2 text-[10px] uppercase tracking-widest font-bold bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full">
+              Sin configurar
+            </span>
+          )}
+        </div>
+        <p className="text-sm text-slate-500 mb-4">
+          Clave que se pedirá para <b>eliminar</b> o <b>anular</b> personal.
+          Es distinta a las contraseñas de login. Si no la configuras, no se
+          podrá eliminar personal.
+        </p>
+        <div className="flex items-end gap-3 max-w-lg">
+          <div className="flex-1">
+            <label className="text-[10px] font-semibold text-slate-500 uppercase tracking-widest">
+              {claveElimConfigurada ? 'Nueva clave' : 'Definir clave'} (mín. 4)
+            </label>
+            <div className="relative mt-1">
+              <input
+                type={showClaveElim ? 'text' : 'password'}
+                className={`${inputCls} pr-10`}
+                value={claveElim}
+                autoComplete="new-password"
+                placeholder="••••••"
+                onChange={(e) => setClaveElim(e.target.value)}
+              />
+              <button
+                type="button"
+                onClick={() => setShowClaveElim((v) => !v)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-violet-600"
+                tabIndex={-1}
+              >
+                {showClaveElim ? <EyeOff size={16} /> : <Eye size={16} />}
+              </button>
+            </div>
+          </div>
+          <button
+            type="button"
+            disabled={guardarClaveElim.isPending || claveElim.trim().length < 4}
+            onClick={() => guardarClaveElim.mutate()}
+            className="bg-rose-600 hover:bg-rose-700 text-white px-5 py-2.5 rounded-xl font-semibold shadow-md disabled:opacity-40 btn-press"
+          >
+            {guardarClaveElim.isPending ? 'Guardando…' : 'Guardar clave'}
+          </button>
+        </div>
+      </section>
 
       {/* ─────────── Facturación electrónica (NubeFact) ─────────── */}
       <section className="bg-white rounded-3xl p-6 shadow-sm">

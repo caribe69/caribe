@@ -833,6 +833,10 @@ model AppConfig {
   // Duración de la sesión en días (controla expiresIn del JWT al login)
   sessionTtlDays    Int      @default(30)
 
+  // Clave (hash bcrypt) requerida para eliminar/anular personal. Se configura
+  // en Configuración. Si está vacía, no se permite eliminar personal.
+  claveEliminacionHash String?
+
   // ── Facturación electrónica (NubeFact / PSE) ─────────────
   nubefactRuta            String? // URL única del cliente (api.nubefact.com o api.pse.pe reseller)
   nubefactToken           String? // Token de autenticación (puede ser UUID o JWT)

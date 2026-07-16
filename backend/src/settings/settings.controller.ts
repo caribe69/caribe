@@ -59,6 +59,10 @@ class UpdateSettingsDto {
   @IsOptional() @Type(() => Number) nubefactIgvProductos?: number;
 }
 
+class ClaveEliminacionDto {
+  @IsString() @MaxLength(100) clave!: string;
+}
+
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('settings')
 export class SettingsController {
@@ -88,6 +92,13 @@ export class SettingsController {
     if (dto.apiDniToken === '') delete data.apiDniToken;
     if (dto.apiRucToken === '') delete data.apiRucToken;
     return this.service.update(data);
+  }
+
+  /** Define/actualiza la clave requerida para eliminar personal. */
+  @Roles(Rol.SUPERADMIN, Rol.ADMIN_SEDE)
+  @Post('clave-eliminacion')
+  setClaveEliminacion(@Body() dto: ClaveEliminacionDto) {
+    return this.service.setClaveEliminacion(dto.clave);
   }
 
   @Roles(Rol.SUPERADMIN, Rol.ADMIN_SEDE)

@@ -109,6 +109,10 @@ class SedesAccesoDto {
   sedeIds!: number[];
 }
 
+class ClaveDto {
+  @IsString() clave!: string;
+}
+
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('personal')
 export class PersonalController {
@@ -163,10 +167,21 @@ export class PersonalController {
     } as any);
   }
 
+  /** Elimina personal + usuario (requiere clave de eliminación). */
   @Roles(Rol.SUPERADMIN, Rol.ADMIN_SEDE)
   @Delete(':id')
-  eliminar(@Param('id', ParseIntPipe) id: number) {
-    return this.service.eliminar(id);
+  eliminar(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: ClaveDto,
+  ) {
+    return this.service.eliminar(id, dto?.clave);
+  }
+
+  /** Anula (desactiva) personal + usuario, conservando el historial. */
+  @Roles(Rol.SUPERADMIN, Rol.ADMIN_SEDE)
+  @Post(':id/anular')
+  anular(@Param('id', ParseIntPipe) id: number, @Body() dto: ClaveDto) {
+    return this.service.anular(id, dto?.clave);
   }
 
   /** Sube hasta 3 fotos (perfil, dni frente, dni reverso) */

@@ -466,7 +466,17 @@ export class PersonalService {
             ],
           },
         });
-      if (!enSuSedeActualmente && !huboTransferenciaConSuSede) {
+      // También puede verlo si el personal tiene acceso multisede a su sede.
+      const tieneAccesoASuSede = personal.usuarioId
+        ? !!(await this.prisma.usuarioSede.findFirst({
+            where: { usuarioId: personal.usuarioId, sedeId: user.sedeId },
+          }))
+        : false;
+      if (
+        !enSuSedeActualmente &&
+        !huboTransferenciaConSuSede &&
+        !tieneAccesoASuSede
+      ) {
         throw new ForbiddenException(
           'Este personal nunca trabajó en tu sede; no puedes ver su historial.',
         );
@@ -495,13 +505,19 @@ export class PersonalService {
       };
     }
 
-    // Recopilar todas las sedes donde el usuario haya estado
+    // Recopilar todas las sedes donde el usuario haya estado:
+    // su sede base, transferencias, y las sedes de acceso multisede.
     const sedesIdsSet = new Set<number>();
     if (personal.sedeId) sedesIdsSet.add(personal.sedeId);
     for (const t of transferencias) {
       if (t.desdeSedeId) sedesIdsSet.add(t.desdeSedeId);
       sedesIdsSet.add(t.hastaSedeId);
     }
+    const accesoMultisede = await this.prisma.usuarioSede.findMany({
+      where: { usuarioId: personal.usuarioId },
+      select: { sedeId: true },
+    });
+    for (const a of accesoMultisede) sedesIdsSet.add(a.sedeId);
     const sedesIds = Array.from(sedesIdsSet);
 
     const sedes = await this.prisma.sede.findMany({

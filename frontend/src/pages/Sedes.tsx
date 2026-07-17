@@ -28,7 +28,12 @@ export default function Sedes() {
   const usuario = useAuthStore((s) => s.usuario);
   const esSuperadmin = usuario?.rol === 'SUPERADMIN';
   const [show, setShow] = useState(false);
-  const [form, setForm] = useState({ nombre: '', direccion: '', telefono: '' });
+  const [form, setForm] = useState({
+    nombre: '',
+    direccion: '',
+    telefono: '',
+    sedePadreId: '' as string,
+  });
   const [editar, setEditar] = useState<any | null>(null);
   const [sunatPara, setSunatPara] = useState<{
     id: number;
@@ -58,13 +63,35 @@ export default function Sedes() {
   const pag = usePagination(data, 10);
 
   const crear = useMutation({
-    mutationFn: async () => (await api.post('/sedes', form)).data,
+    mutationFn: async () =>
+      (
+        await api.post('/sedes', {
+          nombre: form.nombre,
+          direccion: form.direccion,
+          telefono: form.telefono,
+          sedePadreId: form.sedePadreId ? Number(form.sedePadreId) : null,
+        })
+      ).data,
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['sedes'] });
       setShow(false);
-      setForm({ nombre: '', direccion: '', telefono: '' });
+      setForm({ nombre: '', direccion: '', telefono: '', sedePadreId: '' });
     },
+    onError: (err: any) =>
+      toast({
+        type: 'error',
+        title: 'No se pudo crear',
+        description: err.response?.data?.message || err.message,
+      }),
   });
+
+  // Candidatos a "sede padre": sedes de nivel superior (sin padre)
+  const padresDisponibles = (data || []).filter(
+    (s: any) => s.sedePadreId == null,
+  );
+  const sedeNombreById = new Map<number, string>(
+    (data || []).map((s: any) => [s.id, s.nombre]),
+  );
 
   const marcarPrincipal = useMutation({
     mutationFn: async (id: number) =>
@@ -88,6 +115,7 @@ export default function Sedes() {
       latitud?: number | null;
       longitud?: number | null;
       estrellas?: number | null;
+      sedePadreId?: number | null;
     }) => {
       const { id, ...data } = payload;
       return (await api.patch(`/sedes/${id}`, data)).data;
@@ -218,7 +246,19 @@ export default function Sedes() {
                             </span>
                           </span>
                         )}
+                        {s._count?.edificios > 0 && (
+                          <span className="inline-flex items-center text-[10px] font-bold uppercase tracking-widest bg-violet-100 text-violet-700 px-1.5 py-0.5 rounded-md">
+                            Agrupador · {s._count.edificios} edificio
+                            {s._count.edificios === 1 ? '' : 's'}
+                          </span>
+                        )}
                       </div>
+                      {s.sedePadreId && (
+                        <div className="text-[10px] text-slate-400">
+                          Edificio de{' '}
+                          {sedeNombreById.get(s.sedePadreId) || 'otra sede'}
+                        </div>
+                      )}
                       {s.esPrincipal && (
                         <div className="text-[10px] uppercase tracking-widest text-amber-600 dark:text-amber-300 font-bold">
                           ⭐ Sede principal
@@ -399,6 +439,30 @@ export default function Sedes() {
                   setForm({ ...form, telefono: e.target.value })
                 }
               />
+              <div>
+                <label className="text-[11px] font-semibold text-slate-500 uppercase tracking-wide">
+                  Pertenece a (opcional)
+                </label>
+                <select
+                  className="w-full border rounded-lg px-3 py-2 mt-1"
+                  value={form.sedePadreId}
+                  onChange={(e) =>
+                    setForm({ ...form, sedePadreId: e.target.value })
+                  }
+                >
+                  <option value="">Ninguna (sede independiente)</option>
+                  {padresDisponibles.map((s: any) => (
+                    <option key={s.id} value={s.id}>
+                      {s.nombre}
+                    </option>
+                  ))}
+                </select>
+                <p className="text-[11px] text-slate-400 mt-1">
+                  Elige una sede padre solo si esta es un <b>edificio</b> de un
+                  complejo (comparten facturación; cada edificio maneja su
+                  propio stock y caja).
+                </p>
+              </div>
               <div className="flex gap-2 pt-2">
                 <button
                   onClick={() => setShow(false)}
@@ -423,6 +487,10 @@ export default function Sedes() {
       {editar && (
         <EditarSedeModal
           sede={editar}
+          padres={padresDisponibles
+            .filter((p: any) => p.id !== editar.id)
+            .map((p: any) => ({ id: p.id, nombre: p.nombre }))}
+          tieneEdificios={(editar._count?.edificios ?? 0) > 0}
           onClose={() => setEditar(null)}
           onGuardar={(data) =>
             actualizar.mutate({ id: editar.id, ...data })
@@ -560,16 +628,21 @@ interface SedeEditable {
   latitud?: string | number | null;
   longitud?: string | number | null;
   estrellas?: number | null;
+  sedePadreId?: number | null;
   fotos?: SedeFotoMini[];
 }
 
 function EditarSedeModal({
   sede,
+  padres,
+  tieneEdificios,
   onClose,
   onGuardar,
   guardando,
 }: {
   sede: SedeEditable;
+  padres: { id: number; nombre: string }[];
+  tieneEdificios: boolean;
   onClose: () => void;
   onGuardar: (data: {
     nombre: string;
@@ -578,6 +651,7 @@ function EditarSedeModal({
     latitud?: number | null;
     longitud?: number | null;
     estrellas?: number | null;
+    sedePadreId?: number | null;
   }) => void;
   guardando: boolean;
 }) {
@@ -594,6 +668,9 @@ function EditarSedeModal({
   );
   const [estrellas, setEstrellas] = useState<number | null>(
     sede.estrellas ?? null,
+  );
+  const [sedePadreId, setSedePadreId] = useState<string>(
+    sede.sedePadreId != null ? String(sede.sedePadreId) : '',
   );
   const [obteniendoGps, setObteniendoGps] = useState(false);
   const [subiendo, setSubiendo] = useState(false);
@@ -687,7 +764,8 @@ function EditarSedeModal({
     telefono !== (sede.telefono ?? '') ||
     latitud !== (sede.latitud != null ? String(sede.latitud) : '') ||
     longitud !== (sede.longitud != null ? String(sede.longitud) : '') ||
-    estrellas !== (sede.estrellas ?? null);
+    estrellas !== (sede.estrellas ?? null) ||
+    sedePadreId !== (sede.sedePadreId != null ? String(sede.sedePadreId) : '');
 
   return (
     <div
@@ -904,6 +982,38 @@ function EditarSedeModal({
             )}
           </div>
 
+          {/* Jerarquía: a qué sede pertenece (edificio de) */}
+          <div>
+            <label className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-widest">
+              Pertenece a (opcional)
+            </label>
+            {tieneEdificios ? (
+              <p className="text-[11px] text-slate-500 mt-1 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-lg p-2">
+                Esta sede es un <b>agrupador</b> (ya tiene edificios), por eso no
+                puede pertenecer a otra.
+              </p>
+            ) : (
+              <>
+                <select
+                  className="w-full border border-slate-200 dark:border-slate-700 dark:bg-slate-800 rounded-lg px-3 py-2 mt-1 text-sm"
+                  value={sedePadreId}
+                  onChange={(e) => setSedePadreId(e.target.value)}
+                >
+                  <option value="">Ninguna (sede independiente)</option>
+                  {padres.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.nombre}
+                    </option>
+                  ))}
+                </select>
+                <p className="text-[11px] text-slate-400 mt-1">
+                  Marca una sede padre solo si esta es un <b>edificio</b> de un
+                  complejo.
+                </p>
+              </>
+            )}
+          </div>
+
           <div className="flex gap-2 pt-2">
             <button
               onClick={onClose}
@@ -920,6 +1030,11 @@ function EditarSedeModal({
                   latitud: latitud ? Number(latitud) : null,
                   longitud: longitud ? Number(longitud) : null,
                   estrellas: estrellas,
+                  sedePadreId: tieneEdificios
+                    ? undefined
+                    : sedePadreId
+                      ? Number(sedePadreId)
+                      : null,
                 })
               }
               disabled={guardando || !nombre.trim() || !cambios}

@@ -33,6 +33,15 @@ model Sede {
   estrellas   Int?
   activa      Boolean  @default(true)
   esPrincipal Boolean  @default(false)
+
+  /// Jerarquía de edificios (1 nivel). Si una sede tiene `edificios`, es un
+  /// AGRUPADOR: no se opera en ella (sin stock/caja/habitaciones propios ni
+  /// login) — se opera en cada edificio (hoja). Una sede sin edificios es una
+  /// hoja normal y funciona como siempre.
+  sedePadreId Int?
+  sedePadre   Sede?    @relation("SedeEdificios", fields: [sedePadreId], references: [id])
+  edificios   Sede[]   @relation("SedeEdificios")
+
   creadaEn    DateTime @default(now())
 
   fotos             FotoSede[]

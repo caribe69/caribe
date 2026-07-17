@@ -177,6 +177,18 @@ export default function TopBar({ usuario }: { usuario: UsuarioInfo | null }) {
     setTimeout(() => setSwitching(null), 1500);
   };
 
+  // Solo se opera en sedes hoja (edificios/sedes normales), no en agrupadores.
+  const nombreSedeById = new Map<number, string>(
+    (sedes || []).map((s: any) => [s.id, s.nombre]),
+  );
+  const sedesOperativas = (sedes || []).filter(
+    (s: any) => !((s._count?.edificios ?? 0) > 0),
+  );
+  const etiquetaSede = (s: any) =>
+    s.sedePadreId
+      ? `${nombreSedeById.get(s.sedePadreId) ?? ''} · ${s.nombre}`
+      : s.nombre;
+
   return (
     <>
       <div className="bg-white dark:bg-slate-900 dark:ring-1 dark:ring-slate-800 rounded-3xl px-5 py-3 shadow-sm flex items-center gap-4 flex-wrap animate-fade-in">
@@ -213,7 +225,7 @@ export default function TopBar({ usuario }: { usuario: UsuarioInfo | null }) {
         </div>
 
         {/* Sede selector */}
-        {usuario?.rol === 'SUPERADMIN' && sedes && sedes.length > 0 ? (
+        {usuario?.rol === 'SUPERADMIN' && sedesOperativas.length > 0 ? (
           <div className="relative">
             <select
               value={activeSedeId ?? ''}
@@ -223,9 +235,9 @@ export default function TopBar({ usuario }: { usuario: UsuarioInfo | null }) {
               }}
               className="appearance-none bg-slate-50 dark:bg-slate-800 dark:text-slate-200 hover:bg-white dark:hover:bg-slate-700 rounded-xl text-sm pl-8 pr-8 py-2 border border-slate-200 dark:border-slate-700 focus:outline-none focus:border-violet-400 focus:ring-2 focus:ring-violet-100 dark:focus:ring-violet-900/30 font-medium cursor-pointer btn-press transition"
             >
-              {sedes.map((s: any) => (
+              {sedesOperativas.map((s: any) => (
                 <option key={s.id} value={s.id}>
-                  {s.nombre}
+                  {etiquetaSede(s)}
                 </option>
               ))}
             </select>

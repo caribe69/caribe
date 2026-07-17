@@ -28,11 +28,12 @@ export class SunatSeriesService {
   async listar(user: JwtPayload, sedeIdQuery?: number) {
     const where: any = {};
     if (user.rol === 'SUPERADMIN') {
-      if (sedeIdQuery) where.sedeId = sedeIdQuery;
+      if (sedeIdQuery) where.sedeId = await this.raizSedeId(sedeIdQuery);
     } else {
       if (user.sedeId == null)
         throw new ForbiddenException('Usuario sin sede asignada');
-      where.sedeId = user.sedeId;
+      // Si es un edificio, muestra las series de su sede padre (las que usa).
+      where.sedeId = await this.raizSedeId(user.sedeId);
     }
     return this.prisma.sunatSerie.findMany({
       where,
@@ -158,11 +159,22 @@ export class SunatSeriesService {
    * Si no hay serie configurada para esta sede+tipo, lanza error claro
    * para que el usuario sepa que debe configurarla en Settings.
    */
+  /** Resuelve la sede raíz: si es un edificio, usa las series de su padre. */
+  private async raizSedeId(sedeId: number): Promise<number> {
+    const s = await this.prisma.sede.findUnique({
+      where: { id: sedeId },
+      select: { sedePadreId: true },
+    });
+    return s?.sedePadreId ?? sedeId;
+  }
+
   async reservarSiguiente(
-    sedeId: number,
+    sedeIdOriginal: number,
     tipo: TipoComprobanteSerie,
     serieEspecifica?: string,
   ): Promise<{ serie: string; numero: number; serieId: number }> {
+    // Edificios comparten la serie/correlativo de su sede padre.
+    const sedeId = await this.raizSedeId(sedeIdOriginal);
     // 1. Buscar la serie a usar
     let serie;
     if (serieEspecifica) {

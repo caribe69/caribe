@@ -1554,6 +1554,8 @@ function KV({ k, v }: { k: string; v: string }) {
 interface SedeItem {
   id: number;
   nombre: string;
+  sedePadreId?: number | null;
+  _count?: { edificios: number };
 }
 
 // Sección embebida en el formulario de editar personal: da acceso multisede
@@ -1572,6 +1574,14 @@ const MultisedeSection = forwardRef<
     queryKey: ['sedes'],
     queryFn: async () => (await api.get<SedeItem[]>('/sedes')).data,
   });
+
+  // Solo hojas (edificios / sedes normales); los agrupadores no son operativos.
+  const nombreSedeById = new Map<number, string>(
+    (sedes || []).map((s) => [s.id, s.nombre]),
+  );
+  const sedesHoja = (sedes || []).filter(
+    (s) => !((s._count?.edificios ?? 0) > 0),
+  );
 
   const { data: acceso } = useQuery({
     queryKey: ['personal', personal.id, 'sedes-acceso'],
@@ -1662,9 +1672,12 @@ const MultisedeSection = forwardRef<
             Sedes con acceso
           </div>
           <div className="space-y-1.5 max-h-56 overflow-y-auto scroll-premium">
-            {(sedes || []).map((s) => {
+            {sedesHoja.map((s) => {
               const marcada = seleccion.has(s.id);
               const esBase = s.id === personal.sedeId;
+              const etiqueta = s.sedePadreId
+                ? `${nombreSedeById.get(s.sedePadreId) ?? ''} · ${s.nombre}`
+                : s.nombre;
               return (
                 <label
                   key={s.id}
@@ -1682,7 +1695,7 @@ const MultisedeSection = forwardRef<
                     className="w-4 h-4 accent-violet-600 disabled:opacity-60"
                   />
                   <span className="flex-1 text-sm font-medium text-slate-800 dark:text-slate-200">
-                    {s.nombre}
+                    {etiqueta}
                   </span>
                   {esBase && (
                     <span

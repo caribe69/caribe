@@ -22,6 +22,9 @@ export class CreateSedeDto {
   @IsOptional() @Type(() => Number) @IsNumber() @Min(-180) @Max(180) longitud?: number;
 
   @IsOptional() @Type(() => Number) @IsInt() @Min(1) @Max(5) estrellas?: number;
+
+  /// Sede padre (agrupador). Si se indica, esta sede es un edificio de ella.
+  @IsOptional() @Type(() => Number) @IsInt() sedePadreId?: number | null;
 }
 
 export class UpdateSedeDto {
@@ -34,4 +37,7 @@ export class UpdateSedeDto {
   @IsOptional() @Type(() => Number) @IsNumber() @Min(-180) @Max(180) longitud?: number;
 
   @IsOptional() @Type(() => Number) @IsInt() @Min(1) @Max(5) estrellas?: number;
+
+  /// null = quitar el padre (volver a sede independiente).
+  @IsOptional() @Type(() => Number) @IsInt() sedePadreId?: number | null;
 }

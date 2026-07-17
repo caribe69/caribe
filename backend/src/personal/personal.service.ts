@@ -137,6 +137,15 @@ export class PersonalService {
       });
       if (existen !== uniq.length)
         throw new BadRequestException('Alguna sede indicada no existe');
+      // No se puede dar acceso a un AGRUPADOR (sede con edificios): se opera
+      // en los edificios (hojas), no en el padre.
+      const agrupadores = await this.prisma.sede.count({
+        where: { id: { in: uniq }, edificios: { some: {} } },
+      });
+      if (agrupadores > 0)
+        throw new BadRequestException(
+          'No se puede dar acceso a una sede agrupadora; elige sus edificios.',
+        );
     }
 
     const usuarioId = personal.usuarioId;

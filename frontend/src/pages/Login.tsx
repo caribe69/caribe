@@ -15,6 +15,7 @@ import { useAuthStore } from '@/store/auth';
 interface SedeOpcion {
   id: number;
   nombre: string;
+  grupo?: string | null;
 }
 
 export default function Login() {
@@ -254,7 +255,7 @@ export default function Login() {
                   >
                     {sedes.map((s) => (
                       <option key={s.id} value={s.id}>
-                        {s.nombre}
+                        {s.grupo ? `${s.grupo} · ${s.nombre}` : s.nombre}
                       </option>
                     ))}
                   </select>

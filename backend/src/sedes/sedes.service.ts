@@ -15,26 +15,69 @@ export class SedesService {
   findAll() {
     return this.prisma.sede.findMany({
       orderBy: { id: 'asc' },
-      include: { fotos: { orderBy: { orden: 'asc' } } },
+      include: {
+        fotos: { orderBy: { orden: 'asc' } },
+        // Cantidad de edificios: si > 0, esta sede es un AGRUPADOR (no operativa)
+        _count: { select: { edificios: true } },
+      },
     });
   }
 
   async findOne(id: number) {
     const sede = await this.prisma.sede.findUnique({
       where: { id },
-      include: { fotos: { orderBy: { orden: 'asc' } } },
+      include: {
+        fotos: { orderBy: { orden: 'asc' } },
+        _count: { select: { edificios: true } },
+      },
     });
     if (!sede) throw new NotFoundException('Sede no encontrada');
     return sede;
   }
 
-  create(dto: CreateSedeDto) {
-    return this.prisma.sede.create({ data: dto });
+  /**
+   * Valida la jerarquía de edificios (1 solo nivel):
+   * - el padre debe existir, estar activo y NO ser a su vez un edificio;
+   * - una sede que YA tiene edificios no puede convertirse en edificio;
+   * - una sede no puede ser su propio padre.
+   */
+  private async validarPadre(sedeId: number | null, padreId: number) {
+    if (sedeId && padreId === sedeId)
+      throw new BadRequestException('Una sede no puede ser su propio padre');
+    const padre = await this.prisma.sede.findUnique({
+      where: { id: padreId },
+      select: { id: true, sedePadreId: true },
+    });
+    if (!padre)
+      throw new BadRequestException('La sede padre indicada no existe');
+    if (padre.sedePadreId)
+      throw new BadRequestException(
+        'Solo se permite 1 nivel: la sede padre no puede ser a su vez un edificio',
+      );
+    if (sedeId) {
+      const tieneHijos = await this.prisma.sede.count({
+        where: { sedePadreId: sedeId },
+      });
+      if (tieneHijos > 0)
+        throw new BadRequestException(
+          'Esta sede ya tiene edificios; no puede volverse edificio de otra',
+        );
+    }
+  }
+
+  async create(dto: CreateSedeDto) {
+    if (dto.sedePadreId != null) {
+      await this.validarPadre(null, dto.sedePadreId);
+    }
+    return this.prisma.sede.create({ data: dto as any });
   }
 
   async update(id: number, dto: UpdateSedeDto) {
     await this.findOne(id);
-    return this.prisma.sede.update({ where: { id }, data: dto });
+    if (dto.sedePadreId != null) {
+      await this.validarPadre(id, dto.sedePadreId);
+    }
+    return this.prisma.sede.update({ where: { id }, data: dto as any });
   }
 
   async toggleActiva(id: number) {

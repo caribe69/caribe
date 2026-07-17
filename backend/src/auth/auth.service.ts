@@ -36,23 +36,25 @@ export class AuthService {
    * devuelve multisede:false (no revela si el usuario existe).
    */
   async loginOptions(username: string) {
+    const vacio = { multisede: false, sedes: [] as any[] };
     const user = await this.prisma.usuario.findUnique({
       where: { username },
-      include: { sedesAcceso: { include: { sede: true } } },
+      include: {
+        sedesAcceso: { include: { sede: { include: { sedePadre: true } } } },
+      },
     });
-    if (!user || !user.activo || user.rol === 'SUPERADMIN') {
-      return { multisede: false, sedes: [] as { id: number; nombre: string }[] };
-    }
+    if (!user || !user.activo || user.rol === 'SUPERADMIN') return vacio;
     if (user.sedesAcceso.length >= 2) {
       return {
         multisede: true,
         sedes: user.sedesAcceso.map((a) => ({
           id: a.sede.id,
           nombre: a.sede.nombre,
+          grupo: a.sede.sedePadre?.nombre ?? null,
         })),
       };
     }
-    return { multisede: false, sedes: [] as { id: number; nombre: string }[] };
+    return vacio;
   }
 
   async login(dto: LoginDto, ctx: LoginContext = {}) {
@@ -101,7 +103,8 @@ export class AuthService {
     let sedeIdEfectivo = user.sedeId;
     if (user.rol === 'SUPERADMIN' && !sedeIdEfectivo) {
       const primera = await this.prisma.sede.findFirst({
-        where: { activa: true },
+        // Solo una sede operativa (hoja), nunca un agrupador de edificios.
+        where: { activa: true, edificios: { none: {} } },
         orderBy: { id: 'asc' },
       });
       if (primera) {

@@ -255,7 +255,12 @@ export default function Transferencias() {
 
       {nueva && esPrincipal && (
         <NuevaTransferenciaModal
-          sedes={misData.filter((s) => s.id !== activeSedeId && s.activa)}
+          sedes={misData.filter(
+            (s) =>
+              s.id !== activeSedeId &&
+              s.activa &&
+              !(((s as any)._count?.edificios ?? 0) > 0),
+          )}
           onClose={() => setNueva(false)}
         />
       )}

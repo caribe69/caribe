@@ -32,8 +32,8 @@ export default function Sedes() {
     nombre: '',
     direccion: '',
     telefono: '',
-    sedePadreId: '' as string,
   });
+  const [agregarEdificioA, setAgregarEdificioA] = useState<any | null>(null);
   const [editar, setEditar] = useState<any | null>(null);
   const [sunatPara, setSunatPara] = useState<{
     id: number;
@@ -69,13 +69,12 @@ export default function Sedes() {
           nombre: form.nombre,
           direccion: form.direccion,
           telefono: form.telefono,
-          sedePadreId: form.sedePadreId ? Number(form.sedePadreId) : null,
         })
       ).data,
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['sedes'] });
       setShow(false);
-      setForm({ nombre: '', direccion: '', telefono: '', sedePadreId: '' });
+      setForm({ nombre: '', direccion: '', telefono: '' });
     },
     onError: (err: any) =>
       toast({
@@ -85,10 +84,6 @@ export default function Sedes() {
       }),
   });
 
-  // Candidatos a "sede padre": sedes de nivel superior (sin padre)
-  const padresDisponibles = (data || []).filter(
-    (s: any) => s.sedePadreId == null,
-  );
   const sedeNombreById = new Map<number, string>(
     (data || []).map((s: any) => [s.id, s.nombre]),
   );
@@ -321,6 +316,15 @@ export default function Sedes() {
                 {esSuperadmin && (
                   <td className="px-6 py-4 text-right">
                     <div className="inline-flex items-center gap-1.5 flex-wrap justify-end">
+                      {!s.sedePadreId && (
+                        <button
+                          onClick={() => setAgregarEdificioA(s)}
+                          className="inline-flex items-center gap-1 text-xs bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 px-2.5 py-1.5 rounded-lg transition btn-press"
+                          title="Agregar un edificio a esta sede"
+                        >
+                          <Plus size={12} /> Edificio
+                        </button>
+                      )}
                       <button
                         onClick={() => setEditar(s)}
                         className="inline-flex items-center gap-1 text-xs bg-violet-50 hover:bg-violet-100 text-violet-700 border border-violet-200 px-2.5 py-1.5 rounded-lg transition btn-press"
@@ -439,30 +443,6 @@ export default function Sedes() {
                   setForm({ ...form, telefono: e.target.value })
                 }
               />
-              <div>
-                <label className="text-[11px] font-semibold text-slate-500 uppercase tracking-wide">
-                  Pertenece a (opcional)
-                </label>
-                <select
-                  className="w-full border rounded-lg px-3 py-2 mt-1"
-                  value={form.sedePadreId}
-                  onChange={(e) =>
-                    setForm({ ...form, sedePadreId: e.target.value })
-                  }
-                >
-                  <option value="">Ninguna (sede independiente)</option>
-                  {padresDisponibles.map((s: any) => (
-                    <option key={s.id} value={s.id}>
-                      {s.nombre}
-                    </option>
-                  ))}
-                </select>
-                <p className="text-[11px] text-slate-400 mt-1">
-                  Elige una sede padre solo si esta es un <b>edificio</b> de un
-                  complejo (comparten facturación; cada edificio maneja su
-                  propio stock y caja).
-                </p>
-              </div>
               <div className="flex gap-2 pt-2">
                 <button
                   onClick={() => setShow(false)}
@@ -487,15 +467,24 @@ export default function Sedes() {
       {editar && (
         <EditarSedeModal
           sede={editar}
-          padres={padresDisponibles
-            .filter((p: any) => p.id !== editar.id)
-            .map((p: any) => ({ id: p.id, nombre: p.nombre }))}
-          tieneEdificios={(editar._count?.edificios ?? 0) > 0}
           onClose={() => setEditar(null)}
           onGuardar={(data) =>
             actualizar.mutate({ id: editar.id, ...data })
           }
           guardando={actualizar.isPending}
+        />
+      )}
+
+      {agregarEdificioA && (
+        <AgregarEdificioModal
+          sede={agregarEdificioA}
+          onClose={() => setAgregarEdificioA(null)}
+          onDone={() => {
+            setAgregarEdificioA(null);
+            qc.invalidateQueries({ queryKey: ['sedes'] });
+            qc.invalidateQueries({ queryKey: ['sunat-series'] });
+            toast({ type: 'success', title: 'Edificio agregado' });
+          }}
         />
       )}
 
@@ -634,15 +623,11 @@ interface SedeEditable {
 
 function EditarSedeModal({
   sede,
-  padres,
-  tieneEdificios,
   onClose,
   onGuardar,
   guardando,
 }: {
   sede: SedeEditable;
-  padres: { id: number; nombre: string }[];
-  tieneEdificios: boolean;
   onClose: () => void;
   onGuardar: (data: {
     nombre: string;
@@ -651,7 +636,6 @@ function EditarSedeModal({
     latitud?: number | null;
     longitud?: number | null;
     estrellas?: number | null;
-    sedePadreId?: number | null;
   }) => void;
   guardando: boolean;
 }) {
@@ -668,9 +652,6 @@ function EditarSedeModal({
   );
   const [estrellas, setEstrellas] = useState<number | null>(
     sede.estrellas ?? null,
-  );
-  const [sedePadreId, setSedePadreId] = useState<string>(
-    sede.sedePadreId != null ? String(sede.sedePadreId) : '',
   );
   const [obteniendoGps, setObteniendoGps] = useState(false);
   const [subiendo, setSubiendo] = useState(false);
@@ -764,8 +745,7 @@ function EditarSedeModal({
     telefono !== (sede.telefono ?? '') ||
     latitud !== (sede.latitud != null ? String(sede.latitud) : '') ||
     longitud !== (sede.longitud != null ? String(sede.longitud) : '') ||
-    estrellas !== (sede.estrellas ?? null) ||
-    sedePadreId !== (sede.sedePadreId != null ? String(sede.sedePadreId) : '');
+    estrellas !== (sede.estrellas ?? null);
 
   return (
     <div
@@ -982,38 +962,6 @@ function EditarSedeModal({
             )}
           </div>
 
-          {/* Jerarquía: a qué sede pertenece (edificio de) */}
-          <div>
-            <label className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-widest">
-              Pertenece a (opcional)
-            </label>
-            {tieneEdificios ? (
-              <p className="text-[11px] text-slate-500 mt-1 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-lg p-2">
-                Esta sede es un <b>agrupador</b> (ya tiene edificios), por eso no
-                puede pertenecer a otra.
-              </p>
-            ) : (
-              <>
-                <select
-                  className="w-full border border-slate-200 dark:border-slate-700 dark:bg-slate-800 rounded-lg px-3 py-2 mt-1 text-sm"
-                  value={sedePadreId}
-                  onChange={(e) => setSedePadreId(e.target.value)}
-                >
-                  <option value="">Ninguna (sede independiente)</option>
-                  {padres.map((p) => (
-                    <option key={p.id} value={p.id}>
-                      {p.nombre}
-                    </option>
-                  ))}
-                </select>
-                <p className="text-[11px] text-slate-400 mt-1">
-                  Marca una sede padre solo si esta es un <b>edificio</b> de un
-                  complejo.
-                </p>
-              </>
-            )}
-          </div>
-
           <div className="flex gap-2 pt-2">
             <button
               onClick={onClose}
@@ -1030,11 +978,6 @@ function EditarSedeModal({
                   latitud: latitud ? Number(latitud) : null,
                   longitud: longitud ? Number(longitud) : null,
                   estrellas: estrellas,
-                  sedePadreId: tieneEdificios
-                    ? undefined
-                    : sedePadreId
-                      ? Number(sedePadreId)
-                      : null,
                 })
               }
               disabled={guardando || !nombre.trim() || !cambios}
@@ -1043,6 +986,142 @@ function EditarSedeModal({
               {guardando ? 'Guardando…' : 'Guardar cambios'}
             </button>
           </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ────────────────────────────────────────────────────────────
+// Modal: Agregar edificio a una sede (la convierte en complejo)
+// ────────────────────────────────────────────────────────────
+function AgregarEdificioModal({
+  sede,
+  onClose,
+  onDone,
+}: {
+  sede: any;
+  onClose: () => void;
+  onDone: () => void;
+}) {
+  const { show: toast } = useToast();
+  const yaEsComplejo = (sede._count?.edificios ?? 0) > 0;
+  const [nombreActual, setNombreActual] = useState('Edificio 1');
+  const [nombreNuevo, setNombreNuevo] = useState(
+    yaEsComplejo ? '' : 'Edificio 2',
+  );
+  const [guardando, setGuardando] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const guardar = async () => {
+    if (!nombreNuevo.trim()) return setError('Ponle un nombre al nuevo edificio.');
+    setError(null);
+    setGuardando(true);
+    try {
+      await api.post(`/sedes/${sede.id}/agregar-edificio`, {
+        nombre: nombreNuevo.trim(),
+        nombreActual: yaEsComplejo ? undefined : nombreActual.trim() || undefined,
+      });
+      onDone();
+    } catch (err: any) {
+      setError(err.response?.data?.message || 'No se pudo agregar el edificio');
+      setGuardando(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-slate-950/70 flex items-center justify-center p-4 z-50 animate-fade-in">
+      <div className="bg-white dark:bg-slate-900 rounded-2xl w-full max-w-md shadow-2xl overflow-hidden">
+        <div className="px-5 py-4 border-b border-slate-100 dark:border-slate-800 flex items-center gap-2">
+          <div className="w-9 h-9 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center">
+            <Building size={18} />
+          </div>
+          <h2 className="font-hotel text-lg font-bold text-slate-900 dark:text-slate-100">
+            Agregar edificio
+          </h2>
+        </div>
+
+        <div className="p-5 space-y-4">
+          {yaEsComplejo ? (
+            <p className="text-sm text-slate-600 dark:text-slate-300">
+              Vas a agregar un edificio más a <b>{sede.nombre}</b>.
+            </p>
+          ) : (
+            <div className="text-sm text-slate-600 dark:text-slate-300 space-y-2">
+              <p>
+                <b>{sede.nombre}</b> se convertirá en un <b>complejo</b> con
+                edificios:
+              </p>
+              <ul className="text-[13px] list-disc pl-5 text-slate-500 dark:text-slate-400">
+                <li>
+                  El edificio actual (con todos sus datos: habitaciones, stock,
+                  ventas, caja) queda como el <b>primer edificio</b>.
+                </li>
+                <li>
+                  Agregas un <b>segundo edificio</b> nuevo (vacío).
+                </li>
+                <li>
+                  Comparten <b>facturación</b> (misma serie/correlativo); cada
+                  uno maneja su <b>stock y caja aparte</b>.
+                </li>
+              </ul>
+            </div>
+          )}
+
+          {!yaEsComplejo && (
+            <div>
+              <label className="text-[10px] font-semibold text-slate-500 uppercase tracking-widest">
+                Nombre del edificio actual
+              </label>
+              <input
+                className="w-full border border-slate-200 dark:border-slate-700 dark:bg-slate-800 rounded-lg px-3 py-2 mt-1 text-sm"
+                value={nombreActual}
+                onChange={(e) => setNombreActual(e.target.value)}
+              />
+            </div>
+          )}
+
+          <div>
+            <label className="text-[10px] font-semibold text-slate-500 uppercase tracking-widest">
+              Nombre del nuevo edificio
+            </label>
+            <input
+              autoFocus
+              className="w-full border border-slate-200 dark:border-slate-700 dark:bg-slate-800 rounded-lg px-3 py-2 mt-1 text-sm"
+              placeholder="Ej: Edificio 2"
+              value={nombreNuevo}
+              onChange={(e) => setNombreNuevo(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') guardar();
+              }}
+            />
+          </div>
+
+          {error && (
+            <div className="text-sm text-rose-700 bg-rose-50 border border-rose-200 rounded-lg p-2.5">
+              {error}
+            </div>
+          )}
+        </div>
+
+        <div className="px-5 py-4 border-t border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50 flex gap-2">
+          <button
+            onClick={onClose}
+            className="flex-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 py-2.5 rounded-xl font-medium text-slate-700 dark:text-slate-200"
+          >
+            Cancelar
+          </button>
+          <button
+            onClick={guardar}
+            disabled={guardando || !nombreNuevo.trim()}
+            className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white py-2.5 rounded-xl font-semibold shadow-md disabled:opacity-40"
+          >
+            {guardando
+              ? 'Guardando…'
+              : yaEsComplejo
+                ? 'Agregar edificio'
+                : 'Convertir y agregar'}
+          </button>
         </div>
       </div>
     </div>

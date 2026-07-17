@@ -53,6 +53,16 @@ export class SedesController {
     return this.sedes.toggleActiva(id);
   }
 
+  /** Agrega un edificio a una sede (la convierte en complejo si hace falta). */
+  @Roles(Rol.SUPERADMIN)
+  @Post(':id/agregar-edificio')
+  agregarEdificio(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() body: { nombre: string; nombreActual?: string },
+  ) {
+    return this.sedes.agregarEdificio(id, body?.nombre, body?.nombreActual);
+  }
+
   @Roles(Rol.SUPERADMIN)
   @Patch(':id/principal')
   setPrincipal(@Param('id', ParseIntPipe) id: number) {

@@ -8,28 +8,43 @@ import { PrismaClient } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
-// Imagen de fondo que ya está publicada en la landing (URL absoluta para que
-// también se vea en el panel del sistema, no solo en caribeperu.com)
-const IMG =
-  'https://caribeperu.com/assets/web/images/tMMbIdHVcwQ8pNOlp9hVSLZwTMfvlCgoXcokGa28.webp';
+// Imágenes de fondo que SÍ existen en la landing (verificadas 200 image/webp).
+// URL absoluta para que también se vean en el panel del sistema.
+const BASE = 'https://caribeperu.com/assets/web/images/';
+const IMG = BASE + '9dca02cc8de40.webp';
+const IMG2 = BASE + '6ZbJofPG4FRs67t4WR4c3ZRTxfikqwUYMaN21FBY.webp';
+
+// Nombre de la imagen que se usó antes pero NO existe en el servidor (da 404).
+const IMG_ROTA = 'tMMbIdHVcwQ8pNOlp9hVSLZwTMfvlCgoXcokGa28.webp';
 
 async function main() {
   const existen = await prisma.landingSlide.count();
   if (existen > 0) {
-    // Ya importados: corrige imágenes con ruta relativa (que en el panel 404)
-    // a la URL absoluta de caribeperu.com para que se vean en el sistema.
-    const relativos = await prisma.landingSlide.findMany({
-      where: { imagen: { startsWith: '/assets/' } },
-      select: { id: true, imagen: true },
+    // Ya importados: corrige imágenes rotas para que se vean en panel y landing.
+    const todos = await prisma.landingSlide.findMany({
+      select: { id: true, imagen: true, orden: true },
     });
-    for (const s of relativos) {
-      await prisma.landingSlide.update({
-        where: { id: s.id },
-        data: { imagen: 'https://caribeperu.com' + s.imagen },
-      });
+    let corregidas = 0;
+    for (const s of todos) {
+      let nueva: string | null = null;
+      if (s.imagen && s.imagen.startsWith('/assets/')) {
+        // Ruta relativa -> absoluta
+        nueva = 'https://caribeperu.com' + s.imagen;
+      }
+      if (s.imagen && s.imagen.includes(IMG_ROTA)) {
+        // Imagen inexistente -> una que sí existe (alterna por orden)
+        nueva = s.orden % 2 === 0 ? IMG : IMG2;
+      }
+      if (nueva && nueva !== s.imagen) {
+        await prisma.landingSlide.update({
+          where: { id: s.id },
+          data: { imagen: nueva },
+        });
+        corregidas++;
+      }
     }
     console.log(
-      `Ya hay ${existen} slides — ${relativos.length} imagen(es) corregidas a URL absoluta.`,
+      `Ya hay ${existen} slides — ${corregidas} imagen(es) corregidas.`,
     );
     return;
   }
@@ -56,7 +71,7 @@ async function main() {
           '¿Buscas comodidad sin pagar de más? Descubre nuestras habitaciones con todo lo que necesitas para una estadía impecable. ¡Reserva en segundos!',
         botonTexto: 'Ver Ofertas',
         botonUrl: '#habitaciones',
-        imagen: IMG,
+        imagen: IMG2,
         orden: 1,
         activo: true,
       },

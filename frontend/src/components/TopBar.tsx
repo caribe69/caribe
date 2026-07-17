@@ -253,7 +253,9 @@ export default function TopBar({ usuario }: { usuario: UsuarioInfo | null }) {
         ) : sedeActual ? (
           <div className="hidden sm:flex items-center gap-1.5 bg-slate-50 dark:bg-slate-800 rounded-xl px-3 py-2 border border-slate-200 dark:border-slate-700 text-sm font-medium text-slate-700 dark:text-slate-300">
             <MapPin size={13} className="text-violet-500" />
-            {sedeActual.nombre}
+            {(sedeActual as any)?.grupo
+              ? `${(sedeActual as any).grupo} · ${sedeActual.nombre}`
+              : sedeActual.nombre}
           </div>
         ) : null}
 

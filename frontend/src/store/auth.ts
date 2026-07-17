@@ -26,7 +26,7 @@ export interface UsuarioInfo {
   email?: string | null;
   rol: Rol;
   sedeId: number | null;
-  sede: { id: number; nombre: string } | null;
+  sede: { id: number; nombre: string; grupo?: string | null } | null;
 }
 
 interface AuthState {

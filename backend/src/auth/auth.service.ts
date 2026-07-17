@@ -60,7 +60,10 @@ export class AuthService {
   async login(dto: LoginDto, ctx: LoginContext = {}) {
     const user = await this.prisma.usuario.findUnique({
       where: { username: dto.username },
-      include: { sede: true, sedesAcceso: { include: { sede: true } } },
+      include: {
+        sede: { include: { sedePadre: true } },
+        sedesAcceso: { include: { sede: { include: { sedePadre: true } } } },
+      },
     });
     if (!user || !user.activo) {
       // Registrar intento fallido (si es que el usuario existe o no)
@@ -106,6 +109,7 @@ export class AuthService {
         // Solo una sede operativa (hoja), nunca un agrupador de edificios.
         where: { activa: true, edificios: { none: {} } },
         orderBy: { id: 'asc' },
+        include: { sedePadre: true },
       });
       if (primera) {
         sedeIdEfectivo = primera.id;
@@ -171,7 +175,11 @@ export class AuthService {
         rol: user.rol,
         sedeId: sedeIdEfectivo,
         sede: sedeEfectiva
-          ? { id: sedeEfectiva.id, nombre: sedeEfectiva.nombre }
+          ? {
+              id: sedeEfectiva.id,
+              nombre: sedeEfectiva.nombre,
+              grupo: (sedeEfectiva as any).sedePadre?.nombre ?? null,
+            }
           : null,
       },
     };

@@ -38,6 +38,10 @@ else
   npx prisma db push --skip-generate --accept-data-loss
 fi
 
+# Importa una sola vez los slides actuales de la web para poder editarlos
+# desde "Página web" (idempotente: no hace nada si ya hay slides).
+npx ts-node prisma/seed-landing.ts || true
+
 log "Compilando backend (clean build)..."
 rm -rf "${APP_DIR}/backend/dist" "${APP_DIR}/backend/tsconfig.tsbuildinfo"
 npm run build

@@ -47,11 +47,12 @@ export class SedesService {
     });
     return sedes.map((s) => {
       const esAgrupador = (s._count.edificios ?? 0) > 0;
+      const tieneOperacion = SedesService.tieneOperacion(s._count);
       // Puede ser padre si es de nivel superior y está "vacía" (o ya agrupa).
-      const puedeSerPadre =
-        s.sedePadreId == null &&
-        (esAgrupador || !SedesService.tieneOperacion(s._count));
-      return { ...s, esAgrupador, puedeSerPadre };
+      const puedeSerPadre = s.sedePadreId == null && (esAgrupador || !tieneOperacion);
+      // Se puede eliminar solo si está vacía y no agrupa edificios.
+      const esEliminable = !esAgrupador && !tieneOperacion;
+      return { ...s, esAgrupador, puedeSerPadre, esEliminable };
     });
   }
 
@@ -181,6 +182,76 @@ export class SedesService {
       });
       return { complejoId: complejo.id, edificioActualId: id, nuevoId: nuevo.id };
     });
+  }
+
+  /**
+   * Elimina una sede — solo si está VACÍA (sin habitaciones, productos, ventas,
+   * alquileres, turnos, usuarios ni personal). Sirve para deshacer errores
+   * (ej. un edificio recién creado). Si al borrar un edificio el complejo queda
+   * con un solo edificio, se DESHACE el complejo: el edificio restante recupera
+   * el nombre y las series del complejo y vuelve a ser una sede independiente.
+   */
+  async eliminar(id: number) {
+    const sede = await this.prisma.sede.findUnique({
+      where: { id },
+      select: {
+        id: true,
+        nombre: true,
+        sedePadreId: true,
+        _count: { select: SedesService.OP_COUNT },
+      },
+    });
+    if (!sede) throw new NotFoundException('Sede no encontrada');
+    if ((sede._count.edificios ?? 0) > 0)
+      throw new BadRequestException(
+        'Esta sede agrupa edificios. Elimina primero sus edificios.',
+      );
+    if (SedesService.tieneOperacion(sede._count))
+      throw new BadRequestException(
+        'Esta sede tiene datos (habitaciones, productos, ventas, usuarios, etc.) y no se puede eliminar.',
+      );
+
+    const padreId = sede.sedePadreId;
+    try {
+      await this.prisma.$transaction(async (tx) => {
+        await tx.sede.delete({ where: { id } });
+
+        if (padreId) {
+          const hermanos = await tx.sede.findMany({
+            where: { sedePadreId: padreId },
+            select: { id: true },
+          });
+          if (hermanos.length === 1) {
+            // Deshacer el complejo: el edificio restante vuelve a ser sede normal
+            const restante = hermanos[0].id;
+            const padre = await tx.sede.findUnique({
+              where: { id: padreId },
+              select: { nombre: true },
+            });
+            // Devolver las series del complejo al edificio restante
+            await tx.sunatSerie.updateMany({
+              where: { sedeId: padreId },
+              data: { sedeId: restante },
+            });
+            await tx.sede.update({
+              where: { id: restante },
+              data: { sedePadreId: null, nombre: padre?.nombre ?? undefined },
+            });
+            await tx.sede.delete({ where: { id: padreId } });
+          } else if (hermanos.length === 0) {
+            // Complejo sin edificios: eliminar el agrupador vacío
+            await tx.sede.delete({ where: { id: padreId } });
+          }
+        }
+      });
+    } catch (e: any) {
+      if (e?.code === 'P2003')
+        throw new BadRequestException(
+          'La sede tiene registros asociados; no se puede eliminar.',
+        );
+      throw e;
+    }
+    return { ok: true };
   }
 
   async toggleActiva(id: number) {

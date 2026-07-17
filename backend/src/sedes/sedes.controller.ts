@@ -69,6 +69,13 @@ export class SedesController {
     return this.sedes.setPrincipal(id);
   }
 
+  /** Elimina una sede vacía (deshace complejo si queda 1 edificio). */
+  @Roles(Rol.SUPERADMIN)
+  @Delete(':id')
+  eliminar(@Param('id', ParseIntPipe) id: number) {
+    return this.sedes.eliminar(id);
+  }
+
   // ─── Fotos ───
   @Get(':id/fotos')
   listarFotos(@Param('id', ParseIntPipe) id: number) {

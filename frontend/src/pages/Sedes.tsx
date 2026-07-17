@@ -12,6 +12,7 @@ import {
   MapPin,
   Navigation,
   Camera,
+  Trash2,
 } from 'lucide-react';
 import React, { useState } from 'react';
 import { api } from '@/lib/api';
@@ -124,6 +125,21 @@ export default function Sedes() {
       toast({
         type: 'error',
         title: 'No se pudo actualizar',
+        description: err.response?.data?.message || err.message,
+      }),
+  });
+
+  const eliminarSede = useMutation({
+    mutationFn: async (id: number) => (await api.delete(`/sedes/${id}`)).data,
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['sedes'] });
+      qc.invalidateQueries({ queryKey: ['sunat-series'] });
+      toast({ type: 'success', title: 'Sede eliminada' });
+    },
+    onError: (err: any) =>
+      toast({
+        type: 'error',
+        title: 'No se pudo eliminar',
         description: err.response?.data?.message || err.message,
       }),
   });
@@ -323,6 +339,21 @@ export default function Sedes() {
                           title="Agregar un edificio a esta sede"
                         >
                           <Plus size={12} /> Edificio
+                        </button>
+                      )}
+                      {s.esEliminable && (
+                        <button
+                          onClick={() => {
+                            const esEdificio = !!s.sedePadreId;
+                            const msg = esEdificio
+                              ? `¿Eliminar el edificio "${s.nombre}"?\n\nSi el complejo queda con un solo edificio, se deshará y volverá a ser una sede normal.`
+                              : `¿Eliminar la sede vacía "${s.nombre}"?`;
+                            if (confirm(msg)) eliminarSede.mutate(s.id);
+                          }}
+                          className="inline-flex items-center justify-center text-xs bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-200 w-8 h-8 rounded-lg transition btn-press"
+                          title="Eliminar (deshacer)"
+                        >
+                          <Trash2 size={13} />
                         </button>
                       )}
                       <button

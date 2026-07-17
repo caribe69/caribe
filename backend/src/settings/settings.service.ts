@@ -23,6 +23,10 @@ export interface UpdateSettingsInput {
   nubefactSerieNotaDeb?: string;
   nubefactIgvHospedaje?: number | string;
   nubefactIgvProductos?: number | string;
+  landingWhatsapp?: string | null;
+  landingEmail?: string | null;
+  landingDireccion?: string | null;
+  landingMapsUrl?: string | null;
 }
 
 @Injectable()

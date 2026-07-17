@@ -11,9 +11,12 @@ import {
   Upload,
   Eye,
   EyeOff,
+  MessageCircle,
+  Mail,
+  MapPin,
+  Save,
 } from 'lucide-react';
 import { api } from '@/lib/api';
-import { ThumbImg } from '@/lib/imageUrl';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { useToast } from '@/components/ToastProvider';
@@ -92,6 +95,8 @@ export default function PaginaWeb() {
 
   return (
     <div className="space-y-4">
+      <ContactoCard />
+
       <div className="bg-white dark:bg-slate-900 dark:ring-1 dark:ring-slate-800 rounded-3xl p-4 shadow-sm flex flex-wrap items-center gap-3">
         <div className="flex items-center gap-2.5">
           <div className="w-9 h-9 rounded-xl bg-violet-100 dark:bg-violet-900/40 text-violet-700 dark:text-violet-300 flex items-center justify-center">
@@ -138,7 +143,7 @@ export default function PaginaWeb() {
                 </div>
                 <div className="w-28 h-16 rounded-lg bg-slate-100 dark:bg-slate-800 overflow-hidden shrink-0">
                   {s.imagen ? (
-                    <ThumbImg src={s.imagen} alt="" className="w-full h-full object-cover" />
+                    <img src={s.imagen} alt="" className="w-full h-full object-cover" />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center text-slate-300"><ImageIcon size={20} /></div>
                   )}
@@ -168,6 +173,127 @@ export default function PaginaWeb() {
           onClose={() => { setNuevo(false); setEditar(null); }}
           onSaved={() => { setNuevo(false); setEditar(null); invalidar(); }}
         />
+      )}
+    </div>
+  );
+}
+
+interface ContactoForm {
+  landingWhatsapp: string;
+  landingEmail: string;
+  landingDireccion: string;
+  landingMapsUrl: string;
+}
+
+function ContactoCard() {
+  const qc = useQueryClient();
+  const { show: toast } = useToast();
+  const [form, setForm] = useState<ContactoForm | null>(null);
+
+  const { data } = useQuery({
+    queryKey: ['settings'],
+    queryFn: async () => (await api.get('/settings')).data,
+  });
+
+  // Inicializa el formulario cuando llega la config (una sola vez)
+  if (data && form === null) {
+    setForm({
+      landingWhatsapp: data.landingWhatsapp || '',
+      landingEmail: data.landingEmail || '',
+      landingDireccion: data.landingDireccion || '',
+      landingMapsUrl: data.landingMapsUrl || '',
+    });
+  }
+
+  const guardar = useMutation({
+    mutationFn: async (f: ContactoForm) => {
+      const wsp = f.landingWhatsapp.replace(/\D/g, ''); // solo dígitos
+      return (await api.patch('/settings', { ...f, landingWhatsapp: wsp })).data;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['settings'] });
+      toast({ type: 'success', title: 'Contacto actualizado' });
+    },
+    onError: (err: any) =>
+      toast({ type: 'error', title: 'No se pudo guardar', description: err.response?.data?.message }),
+  });
+
+  return (
+    <div className="bg-white dark:bg-slate-900 dark:ring-1 dark:ring-slate-800 rounded-3xl p-5 shadow-sm">
+      <div className="flex items-center gap-2.5 mb-4">
+        <div className="w-9 h-9 rounded-xl bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300 flex items-center justify-center">
+          <MessageCircle size={18} />
+        </div>
+        <div>
+          <div className="font-hotel text-lg font-bold text-slate-900 dark:text-slate-100 leading-none">
+            Contacto de la página web
+          </div>
+          <div className="text-[11px] text-slate-400 mt-1">
+            WhatsApp, correo y dirección que aparecen en caribeperu.com
+          </div>
+        </div>
+      </div>
+
+      {!form ? (
+        <div className="space-y-3">
+          {Array.from({ length: 2 }).map((_, i) => <Skeleton key={i} className="h-11 w-full" />)}
+        </div>
+      ) : (
+        <>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <Campo label="WhatsApp (con código de país)">
+              <div className="relative">
+                <MessageCircle size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-emerald-500" />
+                <input
+                  className={inp + ' pl-9'}
+                  value={form.landingWhatsapp}
+                  onChange={(e) => setForm({ ...form, landingWhatsapp: e.target.value })}
+                  placeholder="51999888777"
+                  inputMode="tel"
+                />
+              </div>
+            </Campo>
+            <Campo label="Correo de contacto">
+              <div className="relative">
+                <Mail size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                <input
+                  className={inp + ' pl-9'}
+                  value={form.landingEmail}
+                  onChange={(e) => setForm({ ...form, landingEmail: e.target.value })}
+                  placeholder="info@caribeperu.com"
+                />
+              </div>
+            </Campo>
+            <Campo label="Dirección / ubicación">
+              <div className="relative">
+                <MapPin size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                <input
+                  className={inp + ' pl-9'}
+                  value={form.landingDireccion}
+                  onChange={(e) => setForm({ ...form, landingDireccion: e.target.value })}
+                  placeholder="Av. Ejemplo 123, Santa Anita, Lima"
+                />
+              </div>
+            </Campo>
+            <Campo label="Enlace de Google Maps (opcional)">
+              <input
+                className={inp}
+                value={form.landingMapsUrl}
+                onChange={(e) => setForm({ ...form, landingMapsUrl: e.target.value })}
+                placeholder="https://maps.app.goo.gl/…"
+              />
+            </Campo>
+          </div>
+          <div className="mt-4 flex justify-end">
+            <button
+              onClick={() => guardar.mutate(form)}
+              disabled={guardar.isPending}
+              className="inline-flex items-center gap-2 bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-700 hover:to-emerald-600 text-white px-4 py-2 rounded-xl text-sm font-medium shadow-md shadow-emerald-500/30 btn-press disabled:opacity-40"
+            >
+              <Save size={15} /> {guardar.isPending ? 'Guardando…' : 'Guardar contacto'}
+            </button>
+          </div>
+        </>
       )}
     </div>
   );
@@ -231,7 +357,7 @@ function SlideModal({ slide, onClose, onSaved }: { slide: Slide | null; onClose:
             <label className="text-[10px] font-semibold text-slate-500 uppercase tracking-widest">Imagen de fondo</label>
             <div className="mt-1.5 relative rounded-xl overflow-hidden border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 aspect-[16/7] flex items-center justify-center">
               {imagen ? (
-                <ThumbImg src={imagen} alt="" className="w-full h-full object-cover" />
+                <img src={imagen} alt="" className="w-full h-full object-cover" />
               ) : (
                 <div className="text-slate-400 text-sm">Sin imagen</div>
               )}

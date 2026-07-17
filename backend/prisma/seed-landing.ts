@@ -16,7 +16,21 @@ const IMG =
 async function main() {
   const existen = await prisma.landingSlide.count();
   if (existen > 0) {
-    console.log(`Ya hay ${existen} slides — no se importa nada.`);
+    // Ya importados: corrige imágenes con ruta relativa (que en el panel 404)
+    // a la URL absoluta de caribeperu.com para que se vean en el sistema.
+    const relativos = await prisma.landingSlide.findMany({
+      where: { imagen: { startsWith: '/assets/' } },
+      select: { id: true, imagen: true },
+    });
+    for (const s of relativos) {
+      await prisma.landingSlide.update({
+        where: { id: s.id },
+        data: { imagen: 'https://caribeperu.com' + s.imagen },
+      });
+    }
+    console.log(
+      `Ya hay ${existen} slides — ${relativos.length} imagen(es) corregidas a URL absoluta.`,
+    );
     return;
   }
 

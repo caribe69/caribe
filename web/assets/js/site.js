@@ -6,7 +6,8 @@
 (function () {
   // En caribeperu.com con /api proxeado al backend, deja API_BASE = ''.
   const API_BASE = '';
-  const WA_PHONE = '51999999999'; // <-- número real de WhatsApp
+  // Número por defecto; se sobreescribe con el de "Página web → Contacto".
+  let WA_PHONE = '51975494595';
   const PLACEHOLDER = 'assets/img/placeholder-habitacion.png';
 
   let SEDES = [];
@@ -177,6 +178,36 @@
     </div>`;
   }
 
+  // ── Datos de contacto (WhatsApp, correo, dirección) desde la API ──
+  function renderContacto(c) {
+    if (!c) return;
+    if (c.whatsapp) {
+      WA_PHONE = String(c.whatsapp).replace(/\D/g, '') || WA_PHONE;
+      // Reescribe todos los enlaces de WhatsApp ya existentes en la página
+      document.querySelectorAll('a[href*="wa.me/"], a[href*="api.whatsapp.com"]').forEach((a) => {
+        a.href = a.href.replace(/(wa\.me\/|phone=)\d+/, '$1' + WA_PHONE);
+      });
+    }
+    const tel = document.getElementById('contacto-telefono');
+    if (tel && (c.whatsapp || c.telefono)) {
+      const num = (c.whatsapp || c.telefono).replace(/\D/g, '');
+      tel.textContent = '+' + num;
+    }
+    const mail = document.getElementById('contacto-email');
+    if (mail && c.email) {
+      mail.href = 'mailto:' + c.email;
+      mail.textContent = c.email;
+    }
+    const dir = document.getElementById('contacto-direccion');
+    if (dir && c.direccion) {
+      dir.textContent = c.direccion;
+      if (c.mapsUrl && dir.parentElement) {
+        // Convierte la dirección en enlace al mapa si hay URL
+        dir.innerHTML = '<a href="' + esc(c.mapsUrl) + '" target="_blank" rel="noopener" class="hover:text-sol-gold transition-colors">' + esc(c.direccion) + '</a>';
+      }
+    }
+  }
+
   function renderSlides(slides) {
     if (!Array.isArray(slides) || slides.length === 0) return; // conserva los de la web si no hay
     const container = document.querySelector('.swiper'); // el primero es el hero
@@ -200,6 +231,7 @@
     .then((data) => {
       SEDES = Array.isArray(data.sedes) ? data.sedes : [];
       ROOMS = Array.isArray(data.rooms) ? data.rooms : [];
+      renderContacto(data.contacto);
       renderFiltros();
       renderRooms();
       wireBookingForm();

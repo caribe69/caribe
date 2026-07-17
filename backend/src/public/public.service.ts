@@ -11,7 +11,7 @@ export class PublicService {
    * Retorna sedes activas + habitaciones con sus fotos.
    */
   async landing() {
-    const [sedes, habitaciones, slidesRaw] = await Promise.all([
+    const [sedes, habitaciones, slidesRaw, cfg] = await Promise.all([
       this.prisma.sede.findMany({
         where: { activa: true },
         orderBy: [{ esPrincipal: 'desc' }, { id: 'asc' }],
@@ -56,6 +56,7 @@ export class PublicService {
         where: { activo: true },
         orderBy: [{ orden: 'asc' }, { id: 'asc' }],
       }),
+      this.prisma.appConfig.findUnique({ where: { id: 1 } }),
     ]);
 
     const slides = slidesRaw.map((s) => ({
@@ -166,10 +167,19 @@ export class PublicService {
       };
     });
 
+    const contacto = {
+      whatsapp: cfg?.landingWhatsapp || '',
+      email: cfg?.landingEmail || cfg?.empresaEmail || '',
+      direccion: cfg?.landingDireccion || cfg?.empresaDireccion || '',
+      telefono: cfg?.empresaTelefono || '',
+      mapsUrl: cfg?.landingMapsUrl || '',
+    };
+
     return {
       sedes: sedesFmt,
       rooms: roomsFmt,
       slides,
+      contacto,
     };
   }
 }

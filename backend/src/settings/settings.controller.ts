@@ -57,6 +57,11 @@ class UpdateSettingsDto {
   @IsOptional() @IsString() @MaxLength(4) nubefactSerieNotaDeb?: string;
   @IsOptional() @Type(() => Number) nubefactIgvHospedaje?: number;
   @IsOptional() @Type(() => Number) nubefactIgvProductos?: number;
+
+  @IsOptional() @IsString() @MaxLength(20) landingWhatsapp?: string;
+  @IsOptional() @IsString() @MaxLength(120) landingEmail?: string;
+  @IsOptional() @IsString() @MaxLength(200) landingDireccion?: string;
+  @IsOptional() @IsString() @MaxLength(500) landingMapsUrl?: string;
 }
 
 class ClaveEliminacionDto {

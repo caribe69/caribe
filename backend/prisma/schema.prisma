@@ -866,6 +866,12 @@ model AppConfig {
   // en Configuración. Si está vacía, no se permite eliminar personal.
   claveEliminacionHash String?
 
+  // ── Datos de contacto de la página web pública (landing) ──
+  landingWhatsapp  String? // solo dígitos, ej. "51999888777"
+  landingEmail     String?
+  landingDireccion String?
+  landingMapsUrl   String?
+
   // ── Facturación electrónica (NubeFact / PSE) ─────────────
   nubefactRuta            String? // URL única del cliente (api.nubefact.com o api.pse.pe reseller)
   nubefactToken           String? // Token de autenticación (puede ser UUID o JWT)

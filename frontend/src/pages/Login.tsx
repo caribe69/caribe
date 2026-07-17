@@ -19,8 +19,8 @@ interface SedeOpcion {
 }
 
 export default function Login() {
-  const [username, setUsername] = useState('superadmin');
-  const [password, setPassword] = useState('admin123');
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
   const [showPwd, setShowPwd] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -365,24 +365,6 @@ export default function Login() {
                 </button>
               </form>
             )}
-
-            <div className="mt-7 pt-5 border-t border-slate-100">
-              <div className="text-[10px] uppercase tracking-widest text-slate-400 text-center mb-3">
-                Usuarios demo
-              </div>
-              <div className="grid grid-cols-2 gap-1.5 text-[11px] text-slate-600">
-                <DemoUser name="superadmin" />
-                <DemoUser name="admin_central" />
-                <DemoUser name="hotelero_central" />
-                <DemoUser name="limpieza_central" />
-              </div>
-              <div className="text-center text-[11px] text-slate-400 mt-3">
-                Contraseña:{' '}
-                <code className="bg-slate-100 text-slate-700 px-1.5 py-0.5 rounded font-mono">
-                  admin123
-                </code>
-              </div>
-            </div>
           </div>
 
           <div className="text-center mt-6 text-[11px] text-slate-500 lg:text-slate-400">
@@ -422,10 +404,3 @@ function Feature({
   );
 }
 
-function DemoUser({ name }: { name: string }) {
-  return (
-    <code className="bg-slate-100 text-slate-700 px-2 py-1 rounded-lg font-mono text-center truncate">
-      {name}
-    </code>
-  );
-}

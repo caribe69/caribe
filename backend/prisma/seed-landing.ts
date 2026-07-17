@@ -8,8 +8,10 @@ import { PrismaClient } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
-// Imagen de fondo que ya está publicada en la landing (assets/web/images)
-const IMG = '/assets/web/images/tMMbIdHVcwQ8pNOlp9hVSLZwTMfvlCgoXcokGa28.webp';
+// Imagen de fondo que ya está publicada en la landing (URL absoluta para que
+// también se vea en el panel del sistema, no solo en caribeperu.com)
+const IMG =
+  'https://caribeperu.com/assets/web/images/tMMbIdHVcwQ8pNOlp9hVSLZwTMfvlCgoXcokGa28.webp';
 
 async function main() {
   const existen = await prisma.landingSlide.count();

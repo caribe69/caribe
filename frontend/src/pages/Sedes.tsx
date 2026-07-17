@@ -13,6 +13,8 @@ import {
   Navigation,
   Camera,
   Trash2,
+  ChevronDown,
+  ChevronRight,
 } from 'lucide-react';
 import React, { useState } from 'react';
 import { api } from '@/lib/api';
@@ -35,6 +37,7 @@ export default function Sedes() {
     telefono: '',
   });
   const [agregarEdificioA, setAgregarEdificioA] = useState<any | null>(null);
+  const [colapsados, setColapsados] = useState<Set<number>>(new Set());
   const [editar, setEditar] = useState<any | null>(null);
   const [sunatPara, setSunatPara] = useState<{
     id: number;
@@ -61,7 +64,37 @@ export default function Sedes() {
     sunatBySede.set(s.sedeId, entry);
   }
 
-  const pag = usePagination(data, 10);
+  // Acordeón: agrupa edificios bajo su complejo. Se paginan solo las sedes de
+  // nivel superior (normales + complejos); los edificios cuelgan de su complejo.
+  const sedesTop = (data || []).filter((s: any) => s.sedePadreId == null);
+  const edificiosPorPadre = new Map<number, any[]>();
+  for (const s of data || []) {
+    if (s.sedePadreId != null) {
+      const arr = edificiosPorPadre.get(s.sedePadreId) || [];
+      arr.push(s);
+      edificiosPorPadre.set(s.sedePadreId, arr);
+    }
+  }
+  const toggleColapsar = (id: number) =>
+    setColapsados((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+
+  const pag = usePagination(sedesTop, 10);
+
+  // Filas visibles: cada complejo (expandido por defecto) inserta sus edificios
+  // debajo; se pueden colapsar.
+  const filasVisibles: { s: any; esHijo: boolean }[] = [];
+  for (const s of pag.paginated) {
+    filasVisibles.push({ s, esHijo: false });
+    if (s.esAgrupador && !colapsados.has(s.id)) {
+      for (const e of edificiosPorPadre.get(s.id) || [])
+        filasVisibles.push({ s: e, esHijo: true });
+    }
+  }
 
   const crear = useMutation({
     mutationFn: async () =>
@@ -210,16 +243,41 @@ export default function Sedes() {
             </tr>
           </thead>
           <tbody>
-            {pag.paginated.map((s: any) => (
+            {filasVisibles.map(({ s, esHijo }) => (
               <tr
                 key={s.id}
-                className="border-b border-slate-50 last:border-0 hover:bg-violet-50/30 transition"
+                className={`border-b border-slate-50 last:border-0 hover:bg-violet-50/30 transition ${
+                  esHijo ? 'bg-violet-50/20' : ''
+                }`}
               >
                 <td className="px-6 py-4 text-slate-400 font-mono">
-                  {String(s.id).padStart(2, '0')}
+                  {esHijo ? (
+                    <span className="text-slate-300">└</span>
+                  ) : (
+                    String(s.id).padStart(2, '0')
+                  )}
                 </td>
                 <td className="px-6 py-4">
-                  <div className="flex items-center gap-3">
+                  <div
+                    className={`flex items-center gap-3 ${esHijo ? 'pl-6' : ''}`}
+                  >
+                    {!esHijo && s.esAgrupador && (
+                      <button
+                        onClick={() => toggleColapsar(s.id)}
+                        className="text-slate-400 hover:text-violet-600 -ml-1"
+                        title={
+                          colapsados.has(s.id)
+                            ? 'Ver edificios'
+                            : 'Colapsar edificios'
+                        }
+                      >
+                        {colapsados.has(s.id) ? (
+                          <ChevronRight size={16} />
+                        ) : (
+                          <ChevronDown size={16} />
+                        )}
+                      </button>
+                    )}
                     <div
                       className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${
                         s.esPrincipal
@@ -264,7 +322,7 @@ export default function Sedes() {
                           </span>
                         )}
                       </div>
-                      {s.sedePadreId && (
+                      {s.sedePadreId && !esHijo && (
                         <div className="text-[10px] text-slate-400">
                           Edificio de{' '}
                           {sedeNombreById.get(s.sedePadreId) || 'otra sede'}

@@ -1582,6 +1582,16 @@ const MultisedeSection = forwardRef<
   const sedesHoja = (sedes || []).filter(
     (s) => !((s._count?.edificios ?? 0) > 0),
   );
+  // Agrupar para el checklist: sedes sueltas + edificios bajo su complejo.
+  const sedesSueltas = sedesHoja.filter((s) => s.sedePadreId == null);
+  const gruposComplejo = new Map<number, SedeItem[]>();
+  for (const s of sedesHoja) {
+    if (s.sedePadreId != null) {
+      const arr = gruposComplejo.get(s.sedePadreId) || [];
+      arr.push(s);
+      gruposComplejo.set(s.sedePadreId, arr);
+    }
+  }
 
   const { data: acceso } = useQuery({
     queryKey: ['personal', personal.id, 'sedes-acceso'],
@@ -1638,6 +1648,41 @@ const MultisedeSection = forwardRef<
     [habilitado, seleccion, personal, qc],
   );
 
+  const filaCheckbox = (s: SedeItem) => {
+    const marcada = seleccion.has(s.id);
+    const esBase = s.id === personal.sedeId;
+    return (
+      <label
+        key={s.id}
+        className={`flex items-center gap-3 px-3 py-2 rounded-lg border cursor-pointer transition ${
+          marcada
+            ? 'border-violet-300 dark:border-violet-700 bg-white dark:bg-violet-900/20'
+            : 'border-slate-200 dark:border-slate-700 bg-white/60 dark:bg-slate-800/40 hover:bg-white dark:hover:bg-slate-800'
+        }`}
+      >
+        <input
+          type="checkbox"
+          checked={marcada}
+          onChange={() => toggle(s.id)}
+          disabled={esBase}
+          className="w-4 h-4 accent-violet-600 disabled:opacity-60"
+        />
+        <span className="flex-1 text-sm font-medium text-slate-800 dark:text-slate-200">
+          {s.nombre}
+        </span>
+        {esBase && (
+          <span
+            className="text-[9px] uppercase tracking-widest font-bold text-slate-400"
+            title="La sede base siempre queda con acceso"
+          >
+            sede base
+          </span>
+        )}
+        {marcada && <Check size={14} className="text-violet-600" />}
+      </label>
+    );
+  };
+
   return (
     <div className="rounded-xl border border-violet-200 dark:border-violet-800/50 bg-violet-50/40 dark:bg-violet-900/10 p-3">
       <label className="flex items-start gap-2.5 cursor-pointer select-none">
@@ -1672,43 +1717,18 @@ const MultisedeSection = forwardRef<
             Sedes con acceso
           </div>
           <div className="space-y-1.5 max-h-56 overflow-y-auto scroll-premium">
-            {sedesHoja.map((s) => {
-              const marcada = seleccion.has(s.id);
-              const esBase = s.id === personal.sedeId;
-              const etiqueta = s.sedePadreId
-                ? `${nombreSedeById.get(s.sedePadreId) ?? ''} · ${s.nombre}`
-                : s.nombre;
-              return (
-                <label
-                  key={s.id}
-                  className={`flex items-center gap-3 px-3 py-2 rounded-lg border cursor-pointer transition ${
-                    marcada
-                      ? 'border-violet-300 dark:border-violet-700 bg-white dark:bg-violet-900/20'
-                      : 'border-slate-200 dark:border-slate-700 bg-white/60 dark:bg-slate-800/40 hover:bg-white dark:hover:bg-slate-800'
-                  }`}
-                >
-                  <input
-                    type="checkbox"
-                    checked={marcada}
-                    onChange={() => toggle(s.id)}
-                    disabled={esBase}
-                    className="w-4 h-4 accent-violet-600 disabled:opacity-60"
-                  />
-                  <span className="flex-1 text-sm font-medium text-slate-800 dark:text-slate-200">
-                    {etiqueta}
-                  </span>
-                  {esBase && (
-                    <span
-                      className="text-[9px] uppercase tracking-widest font-bold text-slate-400"
-                      title="La sede base siempre queda con acceso"
-                    >
-                      sede base
-                    </span>
-                  )}
-                  {marcada && <Check size={14} className="text-violet-600" />}
-                </label>
-              );
-            })}
+            {sedesSueltas.map((s) => filaCheckbox(s))}
+            {Array.from(gruposComplejo.entries()).map(([padreId, edificios]) => (
+              <div key={padreId} className="space-y-1.5">
+                <div className="text-[10px] uppercase tracking-widest font-bold text-slate-500 dark:text-slate-400 pt-1 flex items-center gap-1">
+                  <Building2 size={11} />
+                  {nombreSedeById.get(padreId) ?? 'Complejo'}
+                </div>
+                <div className="pl-2 border-l-2 border-violet-200 dark:border-violet-800/60 space-y-1.5">
+                  {edificios.map((s) => filaCheckbox(s))}
+                </div>
+              </div>
+            ))}
           </div>
           <div className="text-[11px] text-slate-500 mt-2">
             {seleccion.size >= 2

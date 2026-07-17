@@ -7,7 +7,7 @@
   // En caribeperu.com con /api proxeado al backend, deja API_BASE = ''.
   const API_BASE = '';
   const WA_PHONE = '51999999999'; // <-- número real de WhatsApp
-  const PLACEHOLDER = 'https://caribeperu.com/assets/web/images/placeholder.webp';
+  const PLACEHOLDER = 'assets/img/placeholder-habitacion.png';
 
   let SEDES = [];
   let ROOMS = [];

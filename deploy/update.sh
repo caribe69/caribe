@@ -106,7 +106,7 @@ SNIPPET_LANDING_BODY='    root /var/www/landing;
     }
 
     location / {
-        try_files $uri $uri/ /index.html;
+        try_files $uri $uri.html $uri/ /index.html;
     }'
 
 SNIPPET_SISTEMA_BODY='    root /var/www/hotel;

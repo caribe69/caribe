@@ -417,11 +417,13 @@ function HabitacionesSedeModal({ sede, onClose }: { sede: SedeWeb; onClose: () =
   const [editar, setEditar] = useState<HabMaqueta | null>(null);
   const [nuevo, setNuevo] = useState(false);
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError, error } = useQuery({
     queryKey: ['landing-habitaciones', sede.id],
     queryFn: async () => (await api.get<HabMaqueta[]>(`/landing-habitaciones?sedeId=${sede.id}`)).data,
+    refetchOnMount: 'always',
+    staleTime: 0,
   });
-  const invalidar = () => qc.invalidateQueries({ queryKey: ['landing-habitaciones', sede.id] });
+  const invalidar = () => qc.refetchQueries({ queryKey: ['landing-habitaciones', sede.id] });
 
   const list = data || [];
 
@@ -459,7 +461,12 @@ function HabitacionesSedeModal({ sede, onClose }: { sede: SedeWeb; onClose: () =
 
         <div className="p-5">
           {isLoading && <div className="space-y-2">{Array.from({ length: 2 }).map((_, i) => <Skeleton key={i} className="h-20 w-full" />)}</div>}
-          {!isLoading && list.length === 0 && (
+          {isError && (
+            <div className="text-sm text-rose-700 bg-rose-50 border border-rose-200 rounded-xl p-3">
+              No se pudieron cargar las habitaciones: {(error as any)?.response?.data?.message || (error as any)?.message || 'error'}
+            </div>
+          )}
+          {!isLoading && !isError && list.length === 0 && (
             <EmptyState icon={<BedDouble size={26} />} title="Sin habitaciones aún" description='Crea la primera con "Nueva". Serán las que se muestren en la web para esta sede.' />
           )}
           {!isLoading && list.length > 0 && (

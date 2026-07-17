@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="es" class="scroll-smooth">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#b91c1c">
+  <title>Hs Sol Caribe — Hotel · Tu hogar fuera de casa</title>
+  <meta name="description"
+    content="Hs Sol Caribe: hospedaje cómodo con WiFi, TV, baño privado y atención 24/7. Conoce nuestras sedes y habitaciones.">
+  <link rel="icon" type="image/png" href="assets/img/logo-solcaribe-1.png">
+
+  <!-- Tailwind (CDN) con el tema de Sol Caribe -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            'sol-red': '#b91c1c',
+            'sol-orange': '#ff8006',
+            'sol-gold': '#d4af37',
+            'emerald-primary': '#228b22',
+            'blue-primary': '#2563eb',
+          },
+          fontFamily: {
+            inter: ['Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+            belle: ['"La Belle Aurore"', 'cursive'],
+          },
+          borderRadius: {
+            'sol-sm': '0.5rem',
+            'sol-default': '1rem',
+            'sol-lg': '2rem',
+          },
+        },
+      },
+    };
+  </script>
+  <style type="text/tailwindcss">
+    @layer base {
+      body { @apply bg-slate-50 font-inter text-slate-600 antialiased; }
+    }
+    @layer components {
+      .container { @apply mx-auto px-4 sm:px-6 max-w-screen-xl; }
+      .h1x2 { @apply font-bold text-3xl md:text-4xl lg:text-5xl leading-[1.1] tracking-tight; }
+      .h2x { @apply font-bold text-2xl md:text-3xl leading-snug tracking-tight; }
+      .btn { @apply inline-flex justify-center items-center gap-2 px-5 py-2.5 rounded-sol-sm font-semibold text-sm text-center transition-all duration-200 cursor-pointer; }
+      .btn-primary { @apply bg-sol-red hover:bg-red-900 border border-sol-red text-white shadow-sm hover:shadow-md; }
+      .btn-outline { @apply border border-slate-200 text-slate-700 hover:border-sol-red hover:text-sol-red bg-white; }
+      .btn-pill { @apply rounded-full; }
+      .btn-sun { @apply border-none text-white shadow-lg; background: linear-gradient(135deg,#d4af37 0%,#ff8006 100%); }
+      .btn-sun:hover { background: linear-gradient(135deg,#ff8006 0%,#d4af37 100%); }
+      .badge { @apply inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full font-semibold text-[10px] uppercase tracking-widest; }
+      .badge-gold { @apply bg-sol-gold/10 text-sol-gold border border-sol-gold/30; }
+      .badge-red { @apply bg-sol-red/10 text-sol-red border border-sol-red/20; }
+      .badge-green { @apply bg-emerald-50 text-emerald-600 border border-emerald-100; }
+      .card { @apply bg-white shadow-sm hover:shadow-xl border border-slate-200 rounded-sol-default overflow-hidden transition-all duration-300; }
+      .eyebrow { @apply text-[11px] font-bold uppercase tracking-[0.25em] text-sol-red; }
+    }
+  </style>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=La+Belle+Aurore&display=swap" rel="stylesheet">
+  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+</head>
+
+<body>
+  <!-- ==================== HEADER ==================== -->
+  <div x-data="{ scrolled: false, mobileMenu: false }"
+       x-init="scrolled = window.pageYOffset > 50"
+       @scroll.window="scrolled = (window.pageYOffset > 50)">
+    <header class="z-[5000] fixed w-full border-b border-white/0 transition-all duration-700 ease-in-out"
+      :class="scrolled ? 'bg-black/70 backdrop-blur-2xl border-white/10 shadow-2xl py-2' : 'bg-transparent py-4'">
+      <div class="container">
+        <div class="flex justify-between items-center transition-all duration-700" :class="scrolled ? 'h-16' : 'h-24'">
+          <a href="#inicio" class="flex items-center">
+            <img src="assets/img/logo-solcaribe-1.png" alt="Sol Caribe"
+              class="w-auto object-contain transition-all duration-700 drop-shadow-[0_0_20px_rgba(255,255,255,0.25)]"
+              :class="scrolled ? 'h-11' : 'h-16 md:h-20'">
+          </a>
+
+          <nav class="hidden lg:flex items-center gap-8 xl:gap-10 font-bold text-[10px] text-white uppercase tracking-[0.25em]">
+            <a href="#inicio" class="hover:text-sol-gold transition-colors">Inicio</a>
+            <a href="#sedes" class="hover:text-sol-gold transition-colors">Sedes</a>
+            <a href="#habitaciones" class="hover:text-sol-gold transition-colors">Habitaciones</a>
+            <a href="#contacto" class="hover:text-sol-gold transition-colors">Contacto</a>
+          </nav>
+
+          <div class="hidden lg:block">
+            <a href="#reservar" class="btn btn-sun btn-pill px-6">Reservar</a>
+          </div>
+
+          <button @click="mobileMenu = !mobileMenu" class="lg:hidden text-white">
+            <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16m-7 6h7" />
+            </svg>
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <!-- Menú móvil -->
+    <div x-show="mobileMenu" x-cloak @click="mobileMenu=false"
+      class="lg:hidden z-[6000] fixed inset-0 bg-black/60 backdrop-blur-sm" style="display:none"></div>
+    <div x-show="mobileMenu" x-cloak
+      x-transition:enter-start="-translate-x-full" x-transition:enter-end="translate-x-0"
+      class="lg:hidden left-0 z-[6001] fixed inset-y-0 w-3/4 max-w-sm overflow-y-auto shadow-2xl
+             bg-gradient-to-b from-[#0f0404] via-[#3b0909] to-[#3b0909]" style="display:none">
+      <div class="flex justify-between items-center p-6 border-b border-white/10">
+        <img src="assets/img/logo-solcaribe-1.png" alt="Sol Caribe" class="h-16 w-auto object-contain">
+        <button @click="mobileMenu=false" class="text-white/70 hover:text-white p-2">
+          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+        </button>
+      </div>
+      <nav class="flex flex-col gap-6 p-6 text-white/90 font-bold text-lg">
+        <a href="#inicio" @click="mobileMenu=false">Inicio</a>
+        <a href="#sedes" @click="mobileMenu=false">Sedes</a>
+        <a href="#habitaciones" @click="mobileMenu=false">Habitaciones</a>
+        <a href="#contacto" @click="mobileMenu=false">Contacto</a>
+        <a href="#reservar" @click="mobileMenu=false" class="btn btn-sun btn-pill mt-2">Reservar ahora</a>
+      </nav>
+    </div>
+  </div>
+
+  <!-- ==================== HERO ==================== -->
+  <section id="inicio" class="relative min-h-[92vh] flex items-center">
+    <div class="absolute inset-0 bg-cover bg-center" style="background-image:url('assets/img/art-07.webp')"></div>
+    <div class="absolute inset-0 bg-gradient-to-b from-black/60 via-black/45 to-black/85"></div>
+    <div class="container relative z-10 text-white pt-32 pb-20">
+      <span class="badge badge-gold mb-5">★ Hospedaje 3 estrellas · Perú</span>
+      <h1 class="h1x2 max-w-3xl">Tu hogar fuera de casa, <span class="text-sol-gold">en cada sede.</span></h1>
+      <p class="mt-5 max-w-xl text-lg text-white/85 font-light">
+        Habitaciones cómodas con WiFi, TV, baño privado y agua caliente. Conoce nuestras sedes y elige tu habitación.
+      </p>
+      <div class="mt-8 flex flex-wrap gap-3">
+        <a href="#habitaciones" class="btn btn-sun btn-pill px-7 py-3">Ver habitaciones</a>
+        <a href="#sedes" class="btn btn-pill px-7 py-3 bg-white/10 border border-white/25 text-white backdrop-blur hover:bg-white/20">Nuestras sedes</a>
+      </div>
+    </div>
+  </section>
+
+  <!-- ==================== SEDES ==================== -->
+  <section id="sedes" class="py-16 md:py-24">
+    <div class="container">
+      <div class="text-center max-w-2xl mx-auto mb-12">
+        <span class="eyebrow">Nuestra red</span>
+        <h2 class="h2x mt-2 text-slate-900">Nuestras sedes</h2>
+        <p class="mt-3 text-slate-500">Ubicación, cantidad de habitaciones y precios desde. Elige la sede que más te convenga.</p>
+      </div>
+      <div id="sedes-grid" class="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
+        <!-- JS -->
+      </div>
+      <p id="sedes-empty" class="hidden text-center text-slate-400 py-10">Aún no hay sedes publicadas.</p>
+    </div>
+  </section>
+
+  <!-- ==================== HABITACIONES ==================== -->
+  <section id="habitaciones" class="py-16 md:py-24 bg-white">
+    <div class="container">
+      <div class="text-center max-w-2xl mx-auto mb-10">
+        <span class="eyebrow">Disponibilidad</span>
+        <h2 class="h2x mt-2 text-slate-900">Habitaciones</h2>
+        <p class="mt-3 text-slate-500">Fotos, precios y detalles de cada habitación, en tiempo real desde nuestro sistema.</p>
+      </div>
+
+      <!-- Filtro por sede -->
+      <div id="filtro-sedes" class="flex flex-wrap justify-center gap-2 mb-10"></div>
+
+      <div id="rooms-grid" class="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
+        <!-- JS -->
+      </div>
+      <p id="rooms-empty" class="hidden text-center text-slate-400 py-10">No hay habitaciones para mostrar.</p>
+    </div>
+  </section>
+
+  <!-- ==================== CTA / RESERVAR ==================== -->
+  <section id="reservar" class="py-16">
+    <div class="container">
+      <div class="relative overflow-hidden rounded-sol-lg bg-gradient-to-br from-[#7f1010] via-[#b91c1c] to-[#7f1010] text-white p-10 md:p-14">
+        <div class="absolute -right-10 -top-10 w-56 h-56 rounded-full bg-sol-gold/20 blur-2xl"></div>
+        <div class="relative max-w-xl">
+          <h3 class="h2x">¿Listo para reservar?</h3>
+          <p class="mt-3 text-white/85">Escríbenos por WhatsApp y te ayudamos a elegir tu habitación en la sede que prefieras.</p>
+          <a id="wa-cta" href="#" target="_blank" rel="noopener" class="btn btn-sun btn-pill px-7 py-3 mt-6">
+            <svg class="w-5 h-5" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51l-.57-.01c-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/></svg>
+            Reservar por WhatsApp
+          </a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ==================== FOOTER ==================== -->
+  <footer id="contacto" class="bg-[#140404] text-white/70">
+    <div class="container py-14">
+      <div class="grid md:grid-cols-3 gap-10">
+        <div>
+          <img src="assets/img/logo-solcaribe-1.png" alt="Sol Caribe" class="h-16 w-auto object-contain mb-4">
+          <p class="text-sm text-white/60 max-w-xs">Hospedaje cómodo y bien ubicado. Tu hogar fuera de casa.</p>
+        </div>
+        <div>
+          <h4 class="text-white font-bold text-sm uppercase tracking-widest mb-4">Enlaces</h4>
+          <ul class="space-y-2 text-sm">
+            <li><a href="#sedes" class="hover:text-sol-gold">Sedes</a></li>
+            <li><a href="#habitaciones" class="hover:text-sol-gold">Habitaciones</a></li>
+            <li><a href="#reservar" class="hover:text-sol-gold">Reservar</a></li>
+          </ul>
+        </div>
+        <div>
+          <h4 class="text-white font-bold text-sm uppercase tracking-widest mb-4">Contacto</h4>
+          <p id="foot-contacto" class="text-sm text-white/60">—</p>
+        </div>
+      </div>
+      <div class="mt-10 pt-6 border-t border-white/10 text-xs text-white/40 text-center">
+        © <span id="year"></span> Hs Sol Caribe · Todos los derechos reservados.
+      </div>
+    </div>
+  </footer>
+
+  <script>
+    // Si la landing corre en caribeperu.com con /api proxeado al backend, deja
+    // API_BASE = ''. Para previsualizar desde otro dominio, apunta al sistema.
+    const API_BASE = '';
+    const WA_PHONE = '51999999999'; // <-- reemplaza por el número real
+    const PLACEHOLDER = 'assets/img/art-08.webp';
+
+    const money = (n) => 'S/ ' + Number(n || 0).toFixed(2);
+    const el = (id) => document.getElementById(id);
+    document.getElementById('year').textContent = new Date().getFullYear();
+    el('wa-cta').href = `https://wa.me/${WA_PHONE}?text=${encodeURIComponent('Hola, quiero información sobre Hs Sol Caribe.')}`;
+
+    let ROOMS = [];
+    let SEDES = [];
+    let sedeActiva = 'todas';
+
+    function cardSede(s) {
+      return `
+      <div class="card group">
+        <div class="relative h-44 bg-slate-900 overflow-hidden">
+          <img src="${s.cover || PLACEHOLDER}" onerror="this.src='${PLACEHOLDER}'"
+               class="w-full h-full object-cover opacity-80 group-hover:scale-105 transition-transform duration-500" alt="${s.nombre}">
+          <div class="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent"></div>
+          ${s.esPrincipal ? '<span class="badge badge-gold absolute top-3 left-3">★ Principal</span>' : ''}
+          <div class="absolute bottom-3 left-4 right-4 text-white">
+            <h3 class="font-bold text-lg leading-tight">${s.nombre}</h3>
+            ${s.direccion ? `<p class="text-[12px] text-white/80 line-clamp-1">${s.direccion}</p>` : ''}
+          </div>
+        </div>
+        <div class="p-5 flex items-center justify-between">
+          <div>
+            <div class="text-[11px] uppercase tracking-widest text-slate-400">Desde</div>
+            <div class="text-xl font-bold text-sol-red">${s.priceFrom ? money(s.priceFrom) : '—'}</div>
+          </div>
+          <div class="text-right">
+            <div class="text-[11px] uppercase tracking-widest text-slate-400">Habitaciones</div>
+            <div class="text-lg font-bold text-slate-800">${s.habitacionesCount ?? 0}</div>
+          </div>
+        </div>
+        ${s.telefono ? `<div class="px-5 pb-4"><a href="tel:${s.telefono}" class="text-[13px] text-slate-500 hover:text-sol-red">☎ ${s.telefono}</a></div>` : ''}
+      </div>`;
+    }
+
+    function cardRoom(r) {
+      const foto = (r.fotos && r.fotos[0]) || PLACEHOLDER;
+      const disp = r.disponible;
+      return `
+      <div class="card group">
+        <div class="relative h-52 bg-slate-900 overflow-hidden">
+          <img src="${foto}" onerror="this.src='${PLACEHOLDER}'"
+               class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" alt="${r.name}">
+          <span class="badge ${disp ? 'badge-green' : 'badge-red'} absolute top-3 left-3 bg-white/90">
+            <span class="w-1.5 h-1.5 rounded-full ${disp ? 'bg-emerald-500' : 'bg-rose-500'}"></span>
+            ${disp ? 'Disponible' : 'Ocupada'}
+          </span>
+          <span class="badge badge-gold absolute top-3 right-3 bg-black/50 !text-sol-gold border-white/10">${r.sedeNombre || ''}</span>
+        </div>
+        <div class="p-5">
+          <div class="flex items-start justify-between gap-3">
+            <div>
+              <h3 class="font-bold text-slate-900 leading-tight">${r.name}</h3>
+              <p class="text-[12px] text-slate-400 mt-0.5">Piso ${r.piso ?? '—'} · N° ${r.num ?? ''}</p>
+            </div>
+            <div class="text-right shrink-0">
+              <div class="text-xl font-bold text-sol-red">${money(r.precioNoche)}</div>
+              <div class="text-[11px] text-slate-400">por noche</div>
+            </div>
+          </div>
+          ${r.precioHora ? `<div class="text-[12px] text-slate-500 mt-1">o ${money(r.precioHora)} por hora</div>` : ''}
+          ${(r.features && r.features.length) ? `
+          <div class="flex flex-wrap gap-1.5 mt-3">
+            ${r.features.slice(0,4).map(f => `<span class="text-[10px] bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full">${f}</span>`).join('')}
+          </div>` : ''}
+          <a href="https://wa.me/${WA_PHONE}?text=${encodeURIComponent('Hola, me interesa la ' + (r.name||'habitación') + ' en ' + (r.sedeNombre||''))}"
+             target="_blank" rel="noopener" class="btn btn-outline btn-pill w-full mt-4 group-hover:btn-primary">Consultar</a>
+        </div>
+      </div>`;
+    }
+
+    function chip(label, value, active) {
+      return `<button data-sede="${value}"
+        class="px-4 py-1.5 rounded-full text-sm font-semibold transition ${active ? 'bg-sol-red text-white shadow' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}">${label}</button>`;
+    }
+
+    function renderFiltro() {
+      const cont = el('filtro-sedes');
+      let html = chip('Todas', 'todas', sedeActiva === 'todas');
+      SEDES.forEach(s => { html += chip(s.nombre, String(s.id), sedeActiva === String(s.id)); });
+      cont.innerHTML = html;
+      cont.querySelectorAll('button').forEach(b => b.addEventListener('click', () => {
+        sedeActiva = b.dataset.sede; renderRooms(); renderFiltro();
+      }));
+    }
+
+    function renderRooms() {
+      const grid = el('rooms-grid');
+      const list = sedeActiva === 'todas' ? ROOMS : ROOMS.filter(r => String(r.sedeId) === sedeActiva);
+      grid.innerHTML = list.map(cardRoom).join('');
+      el('rooms-empty').classList.toggle('hidden', list.length > 0);
+    }
+
+    function renderSedes() {
+      const grid = el('sedes-grid');
+      grid.innerHTML = SEDES.map(cardSede).join('');
+      el('sedes-empty').classList.toggle('hidden', SEDES.length > 0);
+      const principal = SEDES.find(s => s.esPrincipal) || SEDES[0];
+      if (principal) {
+        el('foot-contacto').innerHTML =
+          `${principal.nombre}<br>${principal.direccion || ''}<br>${principal.telefono ? '☎ ' + principal.telefono : ''}`;
+      }
+    }
+
+    function pintar() { renderSedes(); renderFiltro(); renderRooms(); }
+
+    // Datos de ejemplo (solo para previsualizar el diseño sin conexión a la API)
+    const DEMO = {
+      sedes: [
+        { id: 1, nombre: 'Hotel Caribe I', direccion: 'Av. Colectora Mz. A, Santa Anita', telefono: '01-3606024', esPrincipal: true, priceFrom: 60, habitacionesCount: 12 },
+        { id: 2, nombre: 'Hotel Caribe II', direccion: 'Av. Cultura Mz. H, Santa Anita', telefono: '01-3634872', esPrincipal: false, priceFrom: 55, habitacionesCount: 9 },
+        { id: 3, nombre: 'Hotel Caribe III', direccion: 'Av. Javier Prado, Ate', telefono: '01-3732567', esPrincipal: false, priceFrom: 50, habitacionesCount: 8 },
+      ],
+      rooms: [
+        { id: 1, name: 'Habitación Matrimonial', sedeId: 1, sedeNombre: 'Hotel Caribe I', num: 101, piso: 1, precioNoche: 80, precioHora: 25, disponible: true, features: ['WiFi', 'TV cable', 'Baño privado', 'Agua caliente'], fotos: [] },
+        { id: 2, name: 'Habitación Simple', sedeId: 1, sedeNombre: 'Hotel Caribe I', num: 102, piso: 1, precioNoche: 60, precioHora: 20, disponible: false, features: ['WiFi', 'TV cable'], fotos: [] },
+        { id: 3, name: 'Habitación Doble', sedeId: 2, sedeNombre: 'Hotel Caribe II', num: 201, piso: 2, precioNoche: 90, precioHora: 30, disponible: true, features: ['WiFi', 'Baño privado', 'Frigobar'], fotos: [] },
+      ],
+    };
+
+    fetch(API_BASE + '/api/public/landing')
+      .then(r => r.json())
+      .then(data => {
+        SEDES = Array.isArray(data.sedes) && data.sedes.length ? data.sedes : DEMO.sedes;
+        ROOMS = Array.isArray(data.rooms) && data.rooms.length ? data.rooms : DEMO.rooms;
+        pintar();
+      })
+      .catch(() => {
+        // Sin API (previsualización local): usa datos demo
+        SEDES = DEMO.sedes; ROOMS = DEMO.rooms; pintar();
+      });
+  </script>
+  <style>[x-cloak]{display:none!important}</style>
+</body>
+</html>

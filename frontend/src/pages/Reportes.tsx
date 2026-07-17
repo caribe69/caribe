@@ -90,6 +90,15 @@ interface KpisHoteleros {
     alquileres: number;
   }>;
   mejorDia: { fecha: string; ocupacionPct: number } | null;
+  esAgrupador: boolean;
+  edificios: Array<{ id: number; nombre: string }>;
+  porEdificio: Array<{
+    sedeId: number;
+    nombre: string;
+    ingresos: number;
+    ingresoHabitacion: number;
+    alquileres: number;
+  }>;
 }
 
 interface PanelGlobal {
@@ -131,13 +140,26 @@ export default function Reportes() {
   const [hasta, setHasta] = useState(today());
   const [tab, setTab] = useState<'kpis' | 'sede' | 'global'>('kpis');
 
+  // Sede elegida para el reporte (independiente del topbar). Permite elegir
+  // un agrupador (sede padre) para consolidar todos sus edificios.
+  const [reporteSedeId, setReporteSedeId] = useState<number | null>(activeSedeId);
+
+  // Sedes para el selector (solo SUPERADMIN puede cambiar de sede).
+  const { data: sedesSel } = useQuery<any[]>({
+    queryKey: ['sedes', 'reportes-selector'],
+    queryFn: async () => (await api.get('/sedes')).data,
+    enabled: esSuperadmin,
+  });
+
+  const sedeIdEfectivo = esSuperadmin ? reporteSedeId : activeSedeId;
+
   const params = useMemo(() => {
     const p: Record<string, string> = {};
     if (desde) p.desde = desde;
     if (hasta) p.hasta = hasta;
-    if (activeSedeId) p.sedeId = String(activeSedeId);
+    if (sedeIdEfectivo) p.sedeId = String(sedeIdEfectivo);
     return p;
-  }, [desde, hasta, activeSedeId]);
+  }, [desde, hasta, sedeIdEfectivo]);
 
   const habTop = useQuery<HabTop[]>({
     queryKey: ['reportes', 'hab-top', params],
@@ -154,11 +176,11 @@ export default function Reportes() {
   });
 
   const comparativo = useQuery<MesItem[]>({
-    queryKey: ['reportes', 'comparativo', activeSedeId],
+    queryKey: ['reportes', 'comparativo', sedeIdEfectivo],
     queryFn: async () =>
       (
         await api.get('/reportes/comparativo-mensual', {
-          params: { meses: 6, sedeId: activeSedeId },
+          params: { meses: 6, sedeId: sedeIdEfectivo },
         })
       ).data,
     enabled: tab === 'sede',
@@ -177,6 +199,26 @@ export default function Reportes() {
       (await api.get('/reportes/kpis-hoteleros', { params })).data,
     enabled: tab === 'kpis',
   });
+
+  // Opciones del selector: agrupadores primero (con sus edificios debajo),
+  // luego las sedes normales sin edificios.
+  const sedeOpciones = useMemo(() => {
+    const sedes = sedesSel || [];
+    const agrupadores = sedes.filter((s) => (s._count?.edificios ?? 0) > 0);
+    const edificios = sedes.filter((s) => s.sedePadreId != null);
+    const normales = sedes.filter(
+      (s) => (s._count?.edificios ?? 0) === 0 && s.sedePadreId == null,
+    );
+    const opts: Array<{ value: number; label: string; grupo: boolean }> = [];
+    for (const a of agrupadores) {
+      opts.push({ value: a.id, label: `${a.nombre} — Sede completa`, grupo: true });
+      edificios
+        .filter((e) => e.sedePadreId === a.id)
+        .forEach((e) => opts.push({ value: e.id, label: `   ↳ ${e.nombre}`, grupo: false }));
+    }
+    for (const s of normales) opts.push({ value: s.id, label: s.nombre, grupo: false });
+    return opts;
+  }, [sedesSel]);
 
   const totales = useMemo(() => {
     if (!habTop.data) return { alquileres: 0, ingresos: 0 };
@@ -227,6 +269,22 @@ export default function Reportes() {
             Ranking
           </button>
         </div>
+
+        {esSuperadmin && tab !== 'global' && sedeOpciones.length > 0 && (
+          <Field label="Sede / edificio">
+            <select
+              value={sedeIdEfectivo ?? ''}
+              onChange={(e) => setReporteSedeId(e.target.value ? Number(e.target.value) : null)}
+              className="border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-violet-400 min-w-[210px] bg-white"
+            >
+              {sedeOpciones.map((o) => (
+                <option key={o.value} value={o.value} style={o.grupo ? { fontWeight: 700 } : undefined}>
+                  {o.grupo ? '🏢 ' : ''}{o.label}
+                </option>
+              ))}
+            </select>
+          </Field>
+        )}
 
         <Field label="Desde">
           <input
@@ -310,6 +368,70 @@ export default function Reportes() {
               danger={kpis.data.alquileres.tasaAnulacionPct > 10}
             />
           </div>
+
+          {/* Aporte por edificio (solo si la sede elegida es un agrupador) */}
+          {kpis.data.esAgrupador && kpis.data.porEdificio.length > 0 && (
+            <div className="bg-white rounded-3xl p-5 shadow-sm">
+              <div className="flex items-center gap-2 mb-4">
+                <Building size={18} className="text-violet-500" />
+                <h2 className="font-hotel text-lg font-bold">
+                  Aporte por edificio
+                </h2>
+                <span className="text-[11px] text-slate-400">
+                  (consolidado de {kpis.data.edificios.length} edificios)
+                </span>
+              </div>
+              <div className="grid lg:grid-cols-2 gap-5 items-center">
+                <div className="h-64">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart
+                      data={kpis.data.porEdificio}
+                      layout="vertical"
+                      margin={{ left: 20 }}
+                    >
+                      <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                      <XAxis type="number" tick={{ fontSize: 11 }} tickFormatter={(v) => `S/${v}`} />
+                      <YAxis dataKey="nombre" type="category" tick={{ fontSize: 11 }} width={110} />
+                      <Tooltip formatter={(v: any) => `S/ ${Number(v).toFixed(2)}`} />
+                      <Bar dataKey="ingresos" name="Ingresos" radius={[0, 6, 6, 0]}>
+                        {kpis.data.porEdificio.map((_, i) => (
+                          <Cell key={i} fill={COLORS[i % COLORS.length]} />
+                        ))}
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="text-[10px] uppercase tracking-widest text-slate-500 border-b border-slate-200">
+                        <th className="text-left py-2">Edificio</th>
+                        <th className="text-right py-2">Alq.</th>
+                        <th className="text-right py-2">Ingresos</th>
+                        <th className="text-right py-2">% del total</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {kpis.data.porEdificio.map((e) => (
+                        <tr key={e.sedeId} className="border-b border-slate-100 hover:bg-violet-50/30">
+                          <td className="py-2.5 font-semibold">{e.nombre}</td>
+                          <td className="py-2.5 text-right tabular-nums">{e.alquileres}</td>
+                          <td className="py-2.5 text-right text-emerald-700 dark:text-emerald-300 font-semibold tabular-nums">
+                            S/ {e.ingresos.toFixed(2)}
+                          </td>
+                          <td className="py-2.5 text-right text-slate-500 tabular-nums">
+                            {kpis.data!.ingresos.total > 0
+                              ? ((e.ingresos / kpis.data!.ingresos.total) * 100).toFixed(0)
+                              : 0}%
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Grafica de ocupación + ingresos */}
           <div className="bg-white rounded-3xl p-5 shadow-sm">

@@ -16,8 +16,8 @@ export class ReportesService {
 
   /** Ranking de habitaciones con más alquileres finalizados en el rango */
   async habitacionesTop(user: JwtPayload, dto: RangoDto) {
-    const sedeId = resolveSedeId(user, dto.sedeId);
-    const where = this.whereConRango(sedeId, dto, false);
+    const { sedeIds } = await this.resolverSedeScope(user, dto.sedeId);
+    const where = this.whereConRango(sedeIds, dto, false);
 
     // groupBy habitacionId
     const grupos = await this.prisma.alquiler.groupBy({
@@ -57,8 +57,8 @@ export class ReportesService {
    * de alquileres finalizados + ingresos
    */
   async serieDiaria(user: JwtPayload, dto: RangoDto) {
-    const sedeId = resolveSedeId(user, dto.sedeId);
-    const where = this.whereConRango(sedeId, dto, false);
+    const { sedeIds } = await this.resolverSedeScope(user, dto.sedeId);
+    const where = this.whereConRango(sedeIds, dto, false);
 
     const alquileres = await this.prisma.alquiler.findMany({
       where,
@@ -88,7 +88,7 @@ export class ReportesService {
    * Útil para comparar mes vs mes (tendencia).
    */
   async comparativoMensual(user: JwtPayload, meses = 6, sedeIdQuery?: number) {
-    const sedeId = resolveSedeId(user, sedeIdQuery);
+    const { sedeIds } = await this.resolverSedeScope(user, sedeIdQuery);
     const desde = new Date();
     desde.setMonth(desde.getMonth() - meses + 1);
     desde.setDate(1);
@@ -96,7 +96,7 @@ export class ReportesService {
 
     const alquileres = await this.prisma.alquiler.findMany({
       where: {
-        sedeId,
+        sedeId: { in: sedeIds },
         estado: EstadoAlquiler.FINALIZADO,
         creadoEn: { gte: desde },
       },
@@ -138,7 +138,10 @@ export class ReportesService {
    * ingresos, clientes nuevos/recurrentes, top habitaciones y cajeros.
    */
   async kpisHoteleros(user: JwtPayload, dto: RangoDto) {
-    const sedeId = resolveSedeId(user, dto.sedeId);
+    const { sedeIds, esAgrupador, edificios } = await this.resolverSedeScope(
+      user,
+      dto.sedeId,
+    );
     const rango = this.rangoFechas(dto) ?? {
       gte: new Date(Date.now() - 30 * 24 * 3600 * 1000),
       lte: new Date(),
@@ -150,25 +153,27 @@ export class ReportesService {
       ),
     );
 
-    // Inventario de habitaciones
+    // Inventario de habitaciones (suma de todos los edificios si es agrupador)
     const [totalHab, activas] = await Promise.all([
-      this.prisma.habitacion.count({ where: { sedeId } }),
-      this.prisma.habitacion.count({ where: { sedeId, activa: true } }),
+      this.prisma.habitacion.count({ where: { sedeId: { in: sedeIds } } }),
+      this.prisma.habitacion.count({
+        where: { sedeId: { in: sedeIds }, activa: true },
+      }),
     ]);
 
     // Alquileres del período
     const whereFinalizados = {
-      sedeId,
+      sedeId: { in: sedeIds },
       estado: EstadoAlquiler.FINALIZADO,
       creadoEn: rango,
     };
     const whereAnulados = {
-      sedeId,
+      sedeId: { in: sedeIds },
       estado: EstadoAlquiler.ANULADO,
       creadoEn: rango,
     };
     const whereActivos = {
-      sedeId,
+      sedeId: { in: sedeIds },
       estado: EstadoAlquiler.ACTIVO,
       creadoEn: rango,
     };
@@ -178,6 +183,7 @@ export class ReportesService {
         where: whereFinalizados,
         select: {
           id: true,
+          sedeId: true,
           precioHabitacion: true,
           totalProductos: true,
           total: true,
@@ -351,7 +357,45 @@ export class ReportesService {
         ? (anulados / (totalAlquileres + anulados)) * 100
         : 0;
 
+    // Desglose por edificio (solo tiene sentido si la sede es un agrupador):
+    // cuánto aportó cada edificio en ingresos y alquileres.
+    const nombreEdificio = new Map(edificios.map((e) => [e.id, e.nombre]));
+    const porSedeMap = new Map<
+      number,
+      { ingresos: number; ingresoHab: number; alquileres: number }
+    >();
+    for (const a of finalizados) {
+      const cur = porSedeMap.get(a.sedeId) ?? {
+        ingresos: 0,
+        ingresoHab: 0,
+        alquileres: 0,
+      };
+      cur.ingresos += Number(a.total);
+      cur.ingresoHab += Number(a.precioHabitacion);
+      cur.alquileres += 1;
+      porSedeMap.set(a.sedeId, cur);
+    }
+    const porEdificio = esAgrupador
+      ? edificios.map((e) => {
+          const v = porSedeMap.get(e.id) ?? {
+            ingresos: 0,
+            ingresoHab: 0,
+            alquileres: 0,
+          };
+          return {
+            sedeId: e.id,
+            nombre: e.nombre,
+            ingresos: Number(v.ingresos.toFixed(2)),
+            ingresoHabitacion: Number(v.ingresoHab.toFixed(2)),
+            alquileres: v.alquileres,
+          };
+        })
+      : [];
+
     return {
+      esAgrupador,
+      edificios,
+      porEdificio,
       periodo: {
         desde: rango.gte.toISOString(),
         hasta: rango.lte.toISOString(),
@@ -499,12 +543,45 @@ export class ReportesService {
     return { gte, lte };
   }
 
-  private whereConRango(sedeId: number, dto: RangoDto, incluirAnulados: boolean) {
-    const where: any = { sedeId };
+  private whereConRango(
+    sedeIds: number[],
+    dto: RangoDto,
+    incluirAnulados: boolean,
+  ) {
+    const where: any = { sedeId: { in: sedeIds } };
     if (!incluirAnulados) where.estado = EstadoAlquiler.FINALIZADO;
     const rango = this.rangoFechas(dto);
     if (rango) where.creadoEn = rango;
     return where;
+  }
+
+  /**
+   * Resuelve el alcance de sedes para un reporte. Si la sede elegida es un
+   * AGRUPADOR (tiene edificios), devuelve el id del padre + todos sus
+   * edificios para consolidar; si es hoja, solo su propio id.
+   */
+  private async resolverSedeScope(
+    user: JwtPayload,
+    sedeIdQuery?: number,
+  ): Promise<{
+    sedeIds: number[];
+    esAgrupador: boolean;
+    edificios: Array<{ id: number; nombre: string }>;
+  }> {
+    const sedeId = resolveSedeId(user, sedeIdQuery);
+    const edificios = await this.prisma.sede.findMany({
+      where: { sedePadreId: sedeId },
+      select: { id: true, nombre: true },
+      orderBy: { id: 'asc' },
+    });
+    if (edificios.length > 0) {
+      return {
+        sedeIds: [sedeId, ...edificios.map((e) => e.id)],
+        esAgrupador: true,
+        edificios,
+      };
+    }
+    return { sedeIds: [sedeId], esAgrupador: false, edificios: [] };
   }
 
   private whereConRangoGlobal(dto: RangoDto) {

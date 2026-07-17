@@ -37,7 +37,7 @@ export default function Sedes() {
     telefono: '',
   });
   const [agregarEdificioA, setAgregarEdificioA] = useState<any | null>(null);
-  const [colapsados, setColapsados] = useState<Set<number>>(new Set());
+  const [expandidos, setExpandidos] = useState<Set<number>>(new Set());
   const [editar, setEditar] = useState<any | null>(null);
   const [sunatPara, setSunatPara] = useState<{
     id: number;
@@ -75,8 +75,8 @@ export default function Sedes() {
       edificiosPorPadre.set(s.sedePadreId, arr);
     }
   }
-  const toggleColapsar = (id: number) =>
-    setColapsados((prev) => {
+  const toggleExpandir = (id: number) =>
+    setExpandidos((prev) => {
       const next = new Set(prev);
       if (next.has(id)) next.delete(id);
       else next.add(id);
@@ -85,12 +85,12 @@ export default function Sedes() {
 
   const pag = usePagination(sedesTop, 10);
 
-  // Filas visibles: cada complejo (expandido por defecto) inserta sus edificios
-  // debajo; se pueden colapsar.
+  // Filas visibles: los complejos están COLAPSADOS por defecto; se expanden con
+  // el chevron para ver sus edificios.
   const filasVisibles: { s: any; esHijo: boolean }[] = [];
   for (const s of pag.paginated) {
     filasVisibles.push({ s, esHijo: false });
-    if (s.esAgrupador && !colapsados.has(s.id)) {
+    if (s.esAgrupador && expandidos.has(s.id)) {
       for (const e of edificiosPorPadre.get(s.id) || [])
         filasVisibles.push({ s: e, esHijo: true });
     }
@@ -263,18 +263,18 @@ export default function Sedes() {
                   >
                     {!esHijo && s.esAgrupador && (
                       <button
-                        onClick={() => toggleColapsar(s.id)}
+                        onClick={() => toggleExpandir(s.id)}
                         className="text-slate-400 hover:text-violet-600 -ml-1"
                         title={
-                          colapsados.has(s.id)
-                            ? 'Ver edificios'
-                            : 'Colapsar edificios'
+                          expandidos.has(s.id)
+                            ? 'Colapsar edificios'
+                            : 'Ver edificios'
                         }
                       >
-                        {colapsados.has(s.id) ? (
-                          <ChevronRight size={16} />
-                        ) : (
+                        {expandidos.has(s.id) ? (
                           <ChevronDown size={16} />
+                        ) : (
+                          <ChevronRight size={16} />
                         )}
                       </button>
                     )}
@@ -1099,6 +1099,8 @@ function AgregarEdificioModal({
   const [nombreNuevo, setNombreNuevo] = useState(
     yaEsComplejo ? '' : 'Edificio 2',
   );
+  const [direccion, setDireccion] = useState('');
+  const [telefono, setTelefono] = useState('');
   const [guardando, setGuardando] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -1110,6 +1112,8 @@ function AgregarEdificioModal({
       await api.post(`/sedes/${sede.id}/agregar-edificio`, {
         nombre: nombreNuevo.trim(),
         nombreActual: yaEsComplejo ? undefined : nombreActual.trim() || undefined,
+        direccion: direccion.trim() || undefined,
+        telefono: telefono.trim() || undefined,
       });
       onDone();
     } catch (err: any) {
@@ -1180,10 +1184,35 @@ function AgregarEdificioModal({
               placeholder="Ej: Edificio 2"
               value={nombreNuevo}
               onChange={(e) => setNombreNuevo(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') guardar();
-              }}
             />
+          </div>
+
+          <div className="grid grid-cols-1 gap-3">
+            <div>
+              <label className="text-[10px] font-semibold text-slate-500 uppercase tracking-widest">
+                Dirección del nuevo edificio (opcional)
+              </label>
+              <input
+                className="w-full border border-slate-200 dark:border-slate-700 dark:bg-slate-800 rounded-lg px-3 py-2 mt-1 text-sm"
+                placeholder="Ej: Av. Cultura Mz. H Lt. 11"
+                value={direccion}
+                onChange={(e) => setDireccion(e.target.value)}
+              />
+            </div>
+            <div>
+              <label className="text-[10px] font-semibold text-slate-500 uppercase tracking-widest">
+                Teléfono del nuevo edificio (opcional)
+              </label>
+              <input
+                className="w-full border border-slate-200 dark:border-slate-700 dark:bg-slate-800 rounded-lg px-3 py-2 mt-1 text-sm"
+                placeholder="Ej: 01-3634872"
+                value={telefono}
+                onChange={(e) => setTelefono(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') guardar();
+                }}
+              />
+            </div>
           </div>
 
           {error && (

@@ -136,7 +136,10 @@ export class SedesService {
     id: number,
     nombreNuevo: string,
     nombreActual?: string,
+    datos?: { direccion?: string | null; telefono?: string | null },
   ) {
+    const direccion = datos?.direccion?.trim() || null;
+    const telefono = datos?.telefono?.trim() || null;
     const sede = await this.prisma.sede.findUnique({
       where: { id },
       select: {
@@ -157,7 +160,7 @@ export class SedesService {
     // Ya es complejo: solo agregar un edificio más
     if ((sede._count.edificios ?? 0) > 0) {
       return this.prisma.sede.create({
-        data: { nombre: nombreNuevo.trim(), sedePadreId: id },
+        data: { nombre: nombreNuevo.trim(), sedePadreId: id, direccion, telefono },
       });
     }
 
@@ -178,7 +181,12 @@ export class SedesService {
         },
       });
       const nuevo = await tx.sede.create({
-        data: { nombre: nombreNuevo.trim(), sedePadreId: complejo.id },
+        data: {
+          nombre: nombreNuevo.trim(),
+          sedePadreId: complejo.id,
+          direccion,
+          telefono,
+        },
       });
       return { complejoId: complejo.id, edificioActualId: id, nuevoId: nuevo.id };
     });

@@ -58,9 +58,18 @@ export class SedesController {
   @Post(':id/agregar-edificio')
   agregarEdificio(
     @Param('id', ParseIntPipe) id: number,
-    @Body() body: { nombre: string; nombreActual?: string },
+    @Body()
+    body: {
+      nombre: string;
+      nombreActual?: string;
+      direccion?: string;
+      telefono?: string;
+    },
   ) {
-    return this.sedes.agregarEdificio(id, body?.nombre, body?.nombreActual);
+    return this.sedes.agregarEdificio(id, body?.nombre, body?.nombreActual, {
+      direccion: body?.direccion,
+      telefono: body?.telefono,
+    });
   }
 
   @Roles(Rol.SUPERADMIN)

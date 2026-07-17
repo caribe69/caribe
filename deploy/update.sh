@@ -57,9 +57,16 @@ log "Publicando nuevos archivos estáticos del sistema..."
 rsync -a --delete "${APP_DIR}/frontend/dist/" "${WEB_ROOT}/"
 chown -R www-data:www-data "${WEB_ROOT}"
 
-log "Publicando landing page pública..."
+log "Publicando landing page pública (web/ estática)..."
 mkdir -p "${LANDING_ROOT}"
-rsync -a --delete "${APP_DIR}/landing/" "${LANDING_ROOT}/"
+# Imágenes de diseño (logo, art, slider, etc.): se copian UNA vez desde el
+# antiguo proyecto Laravel y se preservan (no viven en git por su peso).
+if [ ! -d "${LANDING_ROOT}/assets/web" ] && [ -d /root/solcaribe/public/assets/web ]; then
+  mkdir -p "${LANDING_ROOT}/assets"
+  cp -r /root/solcaribe/public/assets/web "${LANDING_ROOT}/assets/web"
+fi
+# Publica la web nueva pero conserva assets/web (imágenes)
+rsync -a --delete --exclude 'assets/web' "${APP_DIR}/web/" "${LANDING_ROOT}/"
 chown -R www-data:www-data "${LANDING_ROOT}"
 
 # ---------- Refrescar config de Nginx (detecta SSL y lo preserva) ----------
@@ -77,18 +84,29 @@ fi
 # caribeperu.com: hace proxy al contenedor Docker del proyecto Laravel del otro
 # programador (escucha en 127.0.0.1:8081). Cualquier cambio que mantenga este
 # proxy → asegura que el sitio Docker siga sirviéndose tal cual.
-SNIPPET_LANDING_BODY='    client_max_body_size 25M;
+SNIPPET_LANDING_BODY='    root /var/www/landing;
+    index index.html;
+    client_max_body_size 25M;
 
-    location / {
-        proxy_pass http://127.0.0.1:8081;
+    # API pública del sistema (sedes/habitaciones) — mismo origen, sin CORS
+    location /api/ {
+        proxy_pass http://127.0.0.1:3001/api/;
         proxy_http_version 1.1;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
-        proxy_set_header Upgrade $http_upgrade;
-        proxy_set_header Connection "upgrade";
-        proxy_read_timeout 300s;
+    }
+
+    # Fotos de habitaciones servidas por el backend
+    location /uploads/ {
+        proxy_pass http://127.0.0.1:3001/uploads/;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+    }
+
+    location / {
+        try_files $uri $uri/ /index.html;
     }'
 
 SNIPPET_SISTEMA_BODY='    root /var/www/hotel;

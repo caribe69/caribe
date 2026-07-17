@@ -21,7 +21,8 @@
 
   // ── Tarjeta de habitación (misma estructura/diseño que room-card.blade) ──
   function roomCard(r) {
-    const foto = (r.fotos && r.fotos[0]) || PLACEHOLDER;
+    // Usa la foto real solo si existe; si no, tu placeholder.
+    const foto = (r.hasRealPhotos && r.fotos && r.fotos[0]) ? r.fotos[0] : PLACEHOLDER;
     const disp = r.disponible;
     const stars = 5;
     const consulta = waLink(`Hola, me interesa la ${r.name || 'habitación'} en ${r.sedeNombre || ''}.`);

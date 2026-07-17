@@ -24,6 +24,7 @@ import {
   Briefcase,
   Warehouse,
   BarChart3,
+  UserSearch,
   UserCog,
   Shield,
   IdCard,
@@ -110,6 +111,12 @@ const groups: Group[] = [
         to: '/reportes',
         label: 'KPIs & ranking',
         icon: TrendingUp,
+        roles: ['SUPERADMIN', 'ADMIN_SEDE'],
+      },
+      {
+        to: '/clientes',
+        label: 'Clientes',
+        icon: UserSearch,
         roles: ['SUPERADMIN', 'ADMIN_SEDE'],
       },
       {

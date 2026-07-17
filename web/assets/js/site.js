@@ -1,0 +1,152 @@
+/* ─────────────────────────────────────────────────────────────
+   Sol Caribe · landing estática conectada al sistema del hotel
+   Reemplaza los datos que antes venían de Laravel/MySQL por los
+   de /api/public/landing (sedes y habitaciones reales con fotos).
+   ───────────────────────────────────────────────────────────── */
+(function () {
+  // En caribeperu.com con /api proxeado al backend, deja API_BASE = ''.
+  const API_BASE = '';
+  const WA_PHONE = '51999999999'; // <-- número real de WhatsApp
+  const PLACEHOLDER = 'https://caribeperu.com/assets/web/images/placeholder.webp';
+
+  let SEDES = [];
+  let ROOMS = [];
+  let filtroSede = 'all';
+
+  const money = (n) => 'S/ ' + Number(n || 0).toFixed(2);
+  const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) =>
+    ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+  const waLink = (txt) => `https://wa.me/${WA_PHONE}?text=${encodeURIComponent(txt)}`;
+
+  // ── Tarjeta de habitación (misma estructura/diseño que room-card.blade) ──
+  function roomCard(r) {
+    const foto = (r.fotos && r.fotos[0]) || PLACEHOLDER;
+    const disp = r.disponible;
+    const stars = 5;
+    const consulta = waLink(`Hola, me interesa la ${r.name || 'habitación'} en ${r.sedeNombre || ''}.`);
+    return `
+    <a href="${consulta}" target="_blank" rel="noopener"
+      class="group relative flex flex-col bg-white opacity-100 shadow-sm hover:shadow-2xl border border-slate-100 overflow-hidden no-underline transition-all duration-500 radius-lg">
+      <div class="relative m-3 h-52 overflow-hidden radius-default">
+        <img src="${esc(foto)}" onerror="this.src='${PLACEHOLDER}'" alt="${esc(r.name)}"
+             class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700">
+        <div class="top-3 left-3 z-20 absolute flex flex-wrap items-center gap-2 pr-10">
+          ${disp
+            ? `<span class="flex items-center gap-1.5 bg-white/70 shadow-sm backdrop-blur-md px-3 py-1 border border-white/20 rounded-full font-bold text-[10px] text-slate-800">
+                 <span class="bg-emerald-500 rounded-full w-1.5 h-1.5 animate-pulse"></span> Disponible</span>`
+            : `<span class="flex items-center gap-1.5 bg-rose-600/80 shadow-sm backdrop-blur-md px-3 py-1 rounded-full font-bold text-[10px] text-white">
+                 <span class="bg-white rounded-full w-1.5 h-1.5"></span> Ocupada</span>`}
+        </div>
+      </div>
+      <div class="flex flex-col flex-grow spacing-card-p pt-0">
+        <div class="flex flex-col spacing-subtitle-mb">
+          <div class="flex justify-between items-start">
+            <h3 class="font-bold text-slate-800 group-hover:text-sol-red leading-tight tracking-tight transition-colors h4">${esc(r.name)}</h3>
+          </div>
+          <div class="flex items-center gap-3 mt-2">
+            <p class="flex items-center gap-1.5 font-bold text-[9px] text-slate-600 uppercase leading-none tracking-widest">
+              <svg class="size-3 text-slate-500" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M15 10.5a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
+                <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1 1 15 0Z" /></svg>
+              ${esc(r.sedeNombre || '')}
+            </p>
+            <div class="bg-slate-300 rounded-full w-1 h-1"></div>
+            <p class="flex items-center gap-1.5 font-bold text-[9px] text-slate-600 uppercase leading-none tracking-widest">Piso ${esc(r.piso ?? '—')} · N° ${esc(r.num ?? '')}</p>
+          </div>
+          ${(r.desc || r.descripcion) ? `<div class="mt-3"><p class="text-[11px] text-slate-600 line-clamp-2 leading-relaxed">${esc(r.desc || r.descripcion)}</p></div>` : ''}
+          <div class="group/price relative bg-slate-50 mt-6 p-4 border border-slate-100 overflow-hidden radius-default">
+            <div class="top-0 right-0 absolute bg-sol-red/5 -mt-8 -mr-8 rounded-full w-24 h-24"></div>
+            <div class="top-0 right-0 left-0 absolute bg-gradient-to-r from-sol-gold via-sol-gold/50 to-transparent h-0.5"></div>
+            <div class="z-10 relative flex flex-col gap-1">
+              <div class="flex items-end gap-2">
+                <span class="font-black text-slate-800 text-xl leading-none tracking-tight">${money(r.precioNoche)}</span>
+              </div>
+              ${r.precioHora ? `<div class="flex items-center gap-1.5 mt-1">
+                <div class="inline-flex items-center gap-1.5 bg-sol-gold/5 px-2 py-1 border border-sol-gold/10 rounded-md font-bold text-[9px] text-sol-gold uppercase tracking-widest">
+                  <span class="bg-sol-gold rounded-full w-1 h-1"></span> Por hora: ${money(r.precioHora)}</div></div>` : ''}
+            </div>
+            <p class="z-10 relative mt-2 font-bold text-[8px] text-slate-500 uppercase leading-none tracking-widest">Precio por noche / Incl. Impuestos</p>
+          </div>
+        </div>
+        <div class="flex justify-between items-center gap-4 mt-auto">
+          <div class="flex items-center gap-0.5">
+            ${Array.from({ length: 5 }).map((_, i) => `<svg class="size-3.5 ${i < stars ? 'text-sol-gold' : 'text-slate-200'}" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>`).join('')}
+          </div>
+          <div class="relative bg-slate-900 group-hover:bg-sol-red shadow-lg px-5 py-3 rounded-xl font-black text-[10px] text-white uppercase tracking-[0.1em] transition-all duration-300">Consultar</div>
+        </div>
+      </div>
+    </a>`;
+  }
+
+  function filtroBtn(label, value) {
+    const active = filtroSede === value;
+    return `<button type="button" data-sede="${esc(value)}"
+      class="flex-none btn btn-sm btn-pill ${active ? 'btn-primary' : 'btn-light'}">${esc(label)}</button>`;
+  }
+
+  function roomsGrid() {
+    // El grid de habitaciones es el que está en la misma sección que la
+    // barra de filtros por sede (.no-scrollbar). Fallback: primer grid.
+    const bar = document.querySelector('.no-scrollbar');
+    const sec = bar && bar.closest('section');
+    return (sec && sec.querySelector('.spacing-grid-gap')) ||
+           document.querySelector('.spacing-grid-gap');
+  }
+
+  function renderRooms() {
+    const grid = roomsGrid();
+    if (!grid) return;
+    const list = filtroSede === 'all' ? ROOMS : ROOMS.filter((r) => String(r.sedeId) === filtroSede);
+    grid.innerHTML = list.length
+      ? list.map(roomCard).join('')
+      : `<div class="col-span-full bg-white py-20 border border-slate-200 border-dashed text-center radius-lg">
+           <p class="font-medium text-slate-500">No hay habitaciones para este destino.</p></div>`;
+  }
+
+  function renderFiltros() {
+    // Reemplaza la barra de filtros por sede (los botones con data-sede o wire:click)
+    const cont = document.querySelector('.no-scrollbar');
+    if (!cont) return;
+    let html = filtroBtn('Todos', 'all');
+    SEDES.forEach((s) => { html += filtroBtn(s.nombre, String(s.id)); });
+    cont.innerHTML = html;
+    cont.querySelectorAll('button[data-sede]').forEach((b) =>
+      b.addEventListener('click', () => { filtroSede = b.dataset.sede; renderFiltros(); renderRooms(); }));
+  }
+
+  function wireBookingForm() {
+    const form = document.querySelector('form');
+    if (!form) return;
+    // Rellena el <select> de sede con las sedes reales
+    const selects = form.querySelectorAll('select');
+    if (selects[0]) {
+      selects[0].innerHTML = '<option value="">Destino</option>' +
+        SEDES.map((s) => `<option value="${esc(s.nombre)}">${esc(s.nombre)}</option>`).join('');
+    }
+    form.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const get = (sel) => (form.querySelector(sel) || {}).value || '';
+      const nombre = get('input[type="text"]');
+      const correo = get('input[type="email"]');
+      const cel = get('input[type="tel"]');
+      const sede = selects[0] ? selects[0].value : '';
+      const fecha = get('input[type="date"]');
+      const pax = selects[1] ? selects[1].value : '';
+      const txt = `Hola, quiero reservar en Hs Sol Caribe.\n` +
+        `Nombre: ${nombre}\nCorreo: ${correo}\nCelular: ${cel}\nSede: ${sede}\nLlegada: ${fecha}\nHuéspedes: ${pax}`;
+      window.open(waLink(txt), '_blank', 'noopener');
+    });
+  }
+
+  fetch(API_BASE + '/api/public/landing')
+    .then((r) => r.json())
+    .then((data) => {
+      SEDES = Array.isArray(data.sedes) ? data.sedes : [];
+      ROOMS = Array.isArray(data.rooms) ? data.rooms : [];
+      renderFiltros();
+      renderRooms();
+      wireBookingForm();
+    })
+    .catch((err) => console.warn('No se pudo cargar /api/public/landing', err));
+})();

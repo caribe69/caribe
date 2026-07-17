@@ -140,6 +140,61 @@
     });
   }
 
+  // ── Carrusel (hero) desde la API ──
+  function slideHTML(s) {
+    const img = s.imagen || PLACEHOLDER;
+    const benef = (s.beneficios || []).filter(Boolean);
+    return `
+    <div class="relative swiper-slide">
+      <div class="absolute inset-0">
+        <img src="${esc(img)}" class="w-full h-full object-cover" alt="${esc(s.titulo || 'Sol Caribe')}">
+        <div class="absolute inset-0 bg-gradient-to-b from-black/80 to-transparent"></div>
+      </div>
+      <div class="z-10 relative flex items-center mx-auto px-4 lg:px-8 h-full container">
+        <div class="items-center gap-12 grid lg:grid-cols-2 mx-auto pt-[100px] w-full max-w-[90%]">
+          <div class="z-10 relative w-full">
+            <div class="relative w-full backdrop-blur-lg bg-slate-950/45 border border-white/10 p-6 sm:p-8 rounded-sol-default shadow-[0_20px_50px_rgba(0,0,0,0.5)] max-w-xl">
+              ${s.precio ? `<div class="absolute -top-6 -right-6 z-20 flex items-center justify-center bg-gradient-to-br from-sol-red to-sol-orange text-white font-black text-center shadow-[0_8px_25px_rgba(185,28,28,0.4)] w-20 h-20 sm:w-24 sm:h-24 rounded-full border-4 border-white/10 ring-4 ring-sol-red/20 rotate-6">
+                <div class="flex flex-col items-center justify-center leading-none"><span class="text-[9px] uppercase tracking-widest">PROMO</span><span class="text-sm sm:text-base font-extrabold mt-0.5">OFERTA</span></div></div>` : ''}
+              ${s.subtitulo ? `<div class="inline-flex items-center gap-2 bg-sol-gold/10 backdrop-blur-md px-3 py-1.5 border border-sol-gold/20 rounded-full mb-4">
+                <span class="flex bg-sol-gold rounded-full w-1.5 h-1.5 animate-ping"></span>
+                <span class="font-bold text-sol-gold uppercase text-[9px] tracking-widest leading-none">${esc(s.subtitulo)}</span></div>` : ''}
+              ${s.titulo ? `<div class="mb-4"><h2 class="font-bold text-white text-2xl sm:text-3xl lg:text-4xl leading-tight tracking-tight">${esc(s.titulo)}</h2></div>` : ''}
+              ${s.descripcion ? `<div class="mb-5"><p class="text-slate-200 text-sm sm:text-base leading-relaxed font-light">${esc(s.descripcion)}</p></div>` : ''}
+              ${s.precio ? `<div class="flex items-center gap-2 bg-white/5 border border-white/10 px-4 py-2 rounded-sol-sm mb-5 w-fit">
+                <span class="text-[10px] text-slate-300 font-bold uppercase tracking-wider">Tarifa Especial:</span>
+                <span class="text-xl font-black text-sol-orange">${esc(s.precio)}</span></div>` : ''}
+              ${benef.length ? `<div class="mb-6 border-t border-white/10 pt-4"><ul class="grid grid-cols-1 sm:grid-cols-2 gap-2.5 text-slate-200 text-xs sm:text-sm font-medium">
+                ${benef.map((b) => `<li class="flex items-center gap-2"><svg class="w-4 h-4 text-emerald-500 shrink-0" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg><span>${esc(b)}</span></li>`).join('')}
+              </ul></div>` : ''}
+              ${s.botonTexto ? `<div class="flex"><a href="${esc(s.botonUrl || '#habitaciones')}" class="btn btn-sun btn-pill px-8 py-3 !font-extrabold flex items-center gap-2"><span>${esc(s.botonTexto)}</span>
+                <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M14 5l7 7m0 0l-7 7m7-7H3"/></svg></a></div>` : ''}
+            </div>
+          </div>
+          <div class="hidden lg:block"></div>
+        </div>
+      </div>
+    </div>`;
+  }
+
+  function renderSlides(slides) {
+    if (!Array.isArray(slides) || slides.length === 0) return; // conserva los de la web si no hay
+    const container = document.querySelector('.swiper'); // el primero es el hero
+    if (!container || !window.Swiper) return;
+    const wrapper = container.querySelector('.swiper-wrapper');
+    if (!wrapper) return;
+    wrapper.innerHTML = slides.map(slideHTML).join('');
+    try { container.swiper && container.swiper.destroy(true, true); } catch (e) {}
+    // eslint-disable-next-line no-new
+    new window.Swiper(container, {
+      effect: 'fade',
+      fadeEffect: { crossFade: true },
+      loop: slides.length > 1,
+      autoplay: { delay: 8000, disableOnInteraction: false },
+      pagination: { el: container.parentElement.querySelector('.swiper-pagination') || '.swiper-pagination', clickable: true },
+    });
+  }
+
   fetch(API_BASE + '/api/public/landing')
     .then((r) => r.json())
     .then((data) => {
@@ -148,6 +203,8 @@
       renderFiltros();
       renderRooms();
       wireBookingForm();
+      // Espera un momento para que Alpine/Swiper hayan montado el hero, y lo reemplaza
+      setTimeout(() => renderSlides(data.slides), 400);
     })
     .catch((err) => console.warn('No se pudo cargar /api/public/landing', err));
 })();

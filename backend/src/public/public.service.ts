@@ -11,7 +11,7 @@ export class PublicService {
    * Retorna sedes activas + habitaciones con sus fotos.
    */
   async landing() {
-    const [sedes, habitaciones] = await Promise.all([
+    const [sedes, habitaciones, slidesRaw] = await Promise.all([
       this.prisma.sede.findMany({
         where: { activa: true },
         orderBy: [{ esPrincipal: 'desc' }, { id: 'asc' }],
@@ -52,7 +52,26 @@ export class PublicService {
           },
         },
       }),
+      this.prisma.landingSlide.findMany({
+        where: { activo: true },
+        orderBy: [{ orden: 'asc' }, { id: 'asc' }],
+      }),
     ]);
+
+    const slides = slidesRaw.map((s) => ({
+      id: s.id,
+      titulo: s.titulo,
+      subtitulo: s.subtitulo,
+      descripcion: s.descripcion,
+      imagen: s.imagen,
+      precio: s.precio,
+      beneficios: (s.beneficios || '')
+        .split(',')
+        .map((b) => b.trim())
+        .filter(Boolean),
+      botonTexto: s.botonTexto,
+      botonUrl: s.botonUrl,
+    }));
 
     // Aplana la estructura para que el frontend la consuma fácil
     const SEDE_COVER_FALLBACK =
@@ -150,6 +169,7 @@ export class PublicService {
     return {
       sedes: sedesFmt,
       rooms: roomsFmt,
+      slides,
     };
   }
 }

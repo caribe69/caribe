@@ -23,6 +23,7 @@ import { ReportesModule } from './reportes/reportes.module';
 import { TransferenciasModule } from './transferencias/transferencias.module';
 import { ReservasGrupalesModule } from './reservas-grupales/reservas-grupales.module';
 import { PublicModule } from './public/public.module';
+import { LandingModule } from './landing/landing.module';
 import { AuditModule } from './audit/audit.module';
 import { DocumentosModule } from './documentos/documentos.module';
 import { PersonalModule } from './personal/personal.module';
@@ -63,6 +64,7 @@ import { CommonModule } from './common/common.module';
     TransferenciasModule,
     ReservasGrupalesModule,
     PublicModule,
+    LandingModule,
     AuditModule,
     DocumentosModule,
     PersonalModule,

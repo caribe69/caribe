@@ -19,6 +19,7 @@ const Caja = lazy(() => import('@/pages/Caja'));
 const CajaEstadisticas = lazy(() => import('@/pages/CajaEstadisticas'));
 const Sedes = lazy(() => import('@/pages/Sedes'));
 const Configuracion = lazy(() => import('@/pages/Configuracion'));
+const PaginaWeb = lazy(() => import('@/pages/PaginaWeb'));
 const Chat = lazy(() => import('@/pages/Chat'));
 const Reportes = lazy(() => import('@/pages/Reportes'));
 const Transferencias = lazy(() => import('@/pages/Transferencias'));
@@ -191,6 +192,14 @@ export default function App() {
           element={
             <Suspense fallback={<RouteFallback />}>
               <Configuracion />
+            </Suspense>
+          }
+        />
+        <Route
+          path="pagina-web"
+          element={
+            <Suspense fallback={<RouteFallback />}>
+              <PaginaWeb />
             </Suspense>
           }
         />

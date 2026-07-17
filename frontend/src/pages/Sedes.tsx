@@ -848,7 +848,7 @@ function EditarSedeModal({
         <div className="flex justify-between items-center p-5 border-b border-slate-100 dark:border-slate-800 sticky top-0 bg-white dark:bg-slate-900 z-10">
           <div>
             <h3 className="font-hotel text-lg font-bold text-slate-900 dark:text-slate-100">
-              Editar sede
+              {sede.sedePadreId ? 'Editar edificio' : 'Editar sede'}
             </h3>
             <div className="text-xs text-slate-500">
               Datos, ubicación y fotos

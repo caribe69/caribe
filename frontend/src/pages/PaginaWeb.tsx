@@ -419,7 +419,7 @@ function HabitacionesSedeModal({ sede, onClose }: { sede: SedeWeb; onClose: () =
 
   const { data, isLoading, isError, error } = useQuery({
     queryKey: ['landing-habitaciones', sede.id],
-    queryFn: async () => (await api.get<HabMaqueta[]>(`/landing-habitaciones?sedeId=${sede.id}`)).data,
+    queryFn: async () => (await api.get<HabMaqueta[]>('/landing-habitaciones', { params: { sedeId: sede.id } })).data,
     refetchOnMount: 'always',
     staleTime: 0,
   });

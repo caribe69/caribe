@@ -34,6 +34,11 @@ model Sede {
   activa      Boolean  @default(true)
   esPrincipal Boolean  @default(false)
 
+  /// ¿Se muestra esta sede (con sus habitaciones-maqueta) en la página web
+  /// pública caribeperu.com? El resto de datos de la sede salen tal cual del
+  /// sistema (no se editan para la web).
+  webVisible  Boolean  @default(true)
+
   /// Jerarquía de edificios (1 nivel). Si una sede tiene `edificios`, es un
   /// AGRUPADOR: no se opera en ella (sin stock/caja/habitaciones propios ni
   /// login) — se opera en cada edificio (hoja). Una sede sin edificios es una
@@ -69,6 +74,7 @@ model Sede {
   transferenciasPersonalDesde TransferenciaPersonal[] @relation("TPDesde")
   transferenciasPersonalHasta TransferenciaPersonal[] @relation("TPHasta")
   sunatSeries       SunatSerie[]
+  landingHabitaciones LandingHabitacion[]
 }
 
 // ============================================================
@@ -163,6 +169,43 @@ model LandingSlide {
   actualizadoEn DateTime @updatedAt
 
   @@index([activo, orden])
+}
+
+// ============================================================
+// HABITACIONES-MAQUETA DE LA PÁGINA WEB
+// Habitaciones "de muestra" que el admin crea a mano por sede para
+// la página pública (caribeperu.com). NO son las habitaciones reales
+// del sistema — son plantillas de venta con sus fotos y características.
+// ============================================================
+model LandingHabitacion {
+  id            Int      @id @default(autoincrement())
+  sedeId        Int
+  sede          Sede     @relation(fields: [sedeId], references: [id], onDelete: Cascade)
+  nombre        String   // ej. "Habitación Matrimonial Deluxe"
+  descripcion   String?
+  caracteristicas String? // separadas por coma: "Wi-Fi,TV cable,Jacuzzi"
+  precioNoche   String?  // texto libre, ej. "S/ 120" (opcional)
+  precioHora    String?  // ej. "S/ 30" (opcional)
+  capacidad     Int?     // huéspedes
+  camas         String?  // ej. "1 cama matrimonial"
+  orden         Int      @default(0)
+  activo        Boolean  @default(true)
+  creadoEn      DateTime @default(now())
+  actualizadoEn DateTime @updatedAt
+
+  fotos         LandingHabitacionFoto[]
+
+  @@index([sedeId, activo, orden])
+}
+
+model LandingHabitacionFoto {
+  id            Int      @id @default(autoincrement())
+  habitacionId  Int
+  habitacion    LandingHabitacion @relation(fields: [habitacionId], references: [id], onDelete: Cascade)
+  path          String   // /uploads/landing/xxx.webp
+  orden         Int      @default(0)
+
+  @@index([habitacionId, orden])
 }
 
 model UsuarioSede {

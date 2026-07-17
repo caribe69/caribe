@@ -24,64 +24,62 @@ export default function Login() {
   const [showPwd, setShowPwd] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  // Multisede: si el usuario tiene acceso a varias sedes, elige a cuál entrar
-  // antes de la contraseña.
+  // Flujo en 2 pasos: primero el usuario, luego (sede si aplica) + contraseña.
+  const [paso, setPaso] = useState<'usuario' | 'credenciales'>('usuario');
   const [sedes, setSedes] = useState<SedeOpcion[]>([]);
   const [sedeId, setSedeId] = useState<number | null>(null);
-  const [checando, setChecando] = useState(false);
-  const [ultimoCheck, setUltimoCheck] = useState('');
   const setAuth = useAuthStore((s) => s.setAuth);
   const navigate = useNavigate();
 
   const esMultisede = sedes.length >= 2;
 
-  // Consulta si el username es multisede. Devuelve el resultado además de
-  // actualizar el estado, para que submit lo use sin depender del re-render.
-  const checarUsuario = async (
-    u: string,
-  ): Promise<{ multisede: boolean; sedes: SedeOpcion[] }> => {
-    const user = u.trim();
-    if (!user) return { multisede: false, sedes: [] };
-    // Si ya consultamos este mismo usuario, reutiliza el estado actual
-    if (user === ultimoCheck) return { multisede: esMultisede, sedes };
-    setUltimoCheck(user);
-    setChecando(true);
+  // Sedes agrupadas para el selector: sueltas + edificios bajo su complejo.
+  const sedesSueltas = sedes.filter((s) => !s.grupo);
+  const gruposSede = new Map<string, SedeOpcion[]>();
+  for (const s of sedes) {
+    if (s.grupo) {
+      const arr = gruposSede.get(s.grupo) || [];
+      arr.push(s);
+      gruposSede.set(s.grupo, arr);
+    }
+  }
+
+  // Paso 1 → 2: consulta a qué sedes tiene acceso el usuario.
+  const continuar = async (e: FormEvent) => {
+    e.preventDefault();
+    setError(null);
+    if (!username.trim()) return setError('Escribe tu usuario.');
+    setLoading(true);
     try {
       const { data } = await api.post('/auth/login-options', {
-        username: user,
+        username: username.trim(),
       });
       if (data?.multisede && Array.isArray(data.sedes) && data.sedes.length) {
         setSedes(data.sedes);
-        setSedeId((prev) => prev ?? data.sedes[0].id);
-        return { multisede: true, sedes: data.sedes };
+        setSedeId(data.sedes[0].id);
+      } else {
+        setSedes([]);
+        setSedeId(null);
       }
-      setSedes([]);
-      setSedeId(null);
-      return { multisede: false, sedes: [] };
     } catch {
-      // Silencioso: si falla, simplemente no mostramos selector (login normal)
       setSedes([]);
       setSedeId(null);
-      return { multisede: false, sedes: [] };
     } finally {
-      setChecando(false);
+      setLoading(false);
+      setPaso('credenciales');
     }
   };
 
+  const volverAUsuario = () => {
+    setPaso('usuario');
+    setError(null);
+    setPassword('');
+  };
+
+  // Paso 2: login definitivo.
   const submit = async (e: FormEvent) => {
     e.preventDefault();
     setError(null);
-    // Si aún no consultamos este usuario (ej. envió con Enter sin salir del
-    // campo) y resulta multisede, muestra el selector y pide elegir.
-    if (username.trim() && username.trim() !== ultimoCheck) {
-      const res = await checarUsuario(username);
-      if (res.multisede) {
-        setError(
-          'Tu cuenta tiene acceso a varias sedes. Elige una y presiona Iniciar sesión.',
-        );
-        return;
-      }
-    }
     if (esMultisede && !sedeId) {
       setError('Elige la sede a la que quieres ingresar.');
       return;
@@ -220,100 +218,153 @@ export default function Login() {
               </p>
             </div>
 
-            <form onSubmit={submit} className="space-y-4">
-              <div>
-                <label className="text-[10px] font-semibold text-slate-600 uppercase tracking-widest">
-                  Usuario
-                </label>
-                <input
-                  value={username}
-                  onChange={(e) => {
-                    setUsername(e.target.value);
-                    // Al cambiar el usuario, resetea el selector de sede
-                    if (sedes.length) {
-                      setSedes([]);
-                      setSedeId(null);
-                    }
-                  }}
-                  onBlur={() => checarUsuario(username)}
-                  autoComplete="username"
-                  className="mt-1.5 w-full border border-slate-200 rounded-xl px-4 py-3 text-sm outline-none focus:ring-4 focus:ring-violet-100 focus:border-violet-500 transition bg-slate-50 focus:bg-white"
-                  required
-                />
-              </div>
-
-              {/* Selector de sede — solo para cuentas multisede */}
-              {esMultisede && (
-                <div className="animate-fade-in">
-                  <label className="text-[10px] font-semibold text-violet-700 uppercase tracking-widest flex items-center gap-1.5">
-                    <BedDouble size={12} /> Sede a la que ingresas
+            {/* PASO 1 · Usuario */}
+            {paso === 'usuario' && (
+              <form onSubmit={continuar} className="space-y-4">
+                <div>
+                  <label className="text-[10px] font-semibold text-slate-600 uppercase tracking-widest">
+                    Usuario
                   </label>
-                  <select
-                    value={sedeId ?? ''}
-                    onChange={(e) => setSedeId(Number(e.target.value))}
-                    className="mt-1.5 w-full border border-violet-300 rounded-xl px-4 py-3 text-sm outline-none focus:ring-4 focus:ring-violet-100 focus:border-violet-500 transition bg-violet-50/50"
-                  >
-                    {sedes.map((s) => (
-                      <option key={s.id} value={s.id}>
-                        {s.grupo ? `${s.grupo} · ${s.nombre}` : s.nombre}
-                      </option>
-                    ))}
-                  </select>
-                  <p className="text-[11px] text-slate-500 mt-1">
-                    Tu cuenta tiene acceso a varias sedes. Elige con cuál
-                    trabajar en esta sesión.
-                  </p>
-                </div>
-              )}
-
-              <div>
-                <label className="text-[10px] font-semibold text-slate-600 uppercase tracking-widest">
-                  Contraseña
-                </label>
-                <div className="relative mt-1.5">
                   <input
-                    type={showPwd ? 'text' : 'password'}
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    autoComplete="current-password"
-                    className="w-full border border-slate-200 rounded-xl px-4 py-3 pr-12 text-sm outline-none focus:ring-4 focus:ring-violet-100 focus:border-violet-500 transition bg-slate-50 focus:bg-white"
+                    autoFocus
+                    value={username}
+                    onChange={(e) => setUsername(e.target.value)}
+                    autoComplete="username"
+                    className="mt-1.5 w-full border border-slate-200 rounded-xl px-4 py-3 text-sm outline-none focus:ring-4 focus:ring-violet-100 focus:border-violet-500 transition bg-slate-50 focus:bg-white"
                     required
                   />
+                </div>
+
+                {error && (
+                  <div className="text-sm text-rose-700 bg-rose-50 border border-rose-200 rounded-xl p-3 animate-fade-in">
+                    {error}
+                  </div>
+                )}
+
+                <button
+                  type="submit"
+                  disabled={loading || !username.trim()}
+                  className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-violet-700 via-violet-600 to-violet-500 hover:shadow-violet-500/40 text-white py-3.5 rounded-xl font-semibold shadow-lg shadow-violet-600/30 transition-all disabled:opacity-60 active:scale-[0.98]"
+                >
+                  {loading ? (
+                    <>
+                      <Loader2 size={18} className="animate-spin" /> Verificando…
+                    </>
+                  ) : (
+                    <>
+                      Continuar <LogIn size={18} />
+                    </>
+                  )}
+                </button>
+              </form>
+            )}
+
+            {/* PASO 2 · Sede (si aplica) + contraseña */}
+            {paso === 'credenciales' && (
+              <form onSubmit={submit} className="space-y-4">
+                {/* Usuario elegido, con opción de cambiar */}
+                <div className="flex items-center justify-between bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5">
+                  <div className="min-w-0">
+                    <div className="text-[10px] uppercase tracking-widest text-slate-400">
+                      Usuario
+                    </div>
+                    <div className="text-sm font-semibold text-slate-800 truncate">
+                      {username}
+                    </div>
+                  </div>
                   <button
                     type="button"
-                    onClick={() => setShowPwd((v) => !v)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 p-1.5 text-slate-400 hover:text-violet-600 rounded-lg"
-                    tabIndex={-1}
+                    onClick={volverAUsuario}
+                    className="text-xs font-semibold text-violet-600 hover:text-violet-800 shrink-0"
                   >
-                    {showPwd ? <EyeOff size={16} /> : <Eye size={16} />}
+                    Cambiar
                   </button>
                 </div>
-              </div>
 
-              {error && (
-                <div className="text-sm text-rose-700 dark:text-rose-200 bg-rose-50 border border-rose-200 dark:border-rose-500/30 rounded-xl p-3 animate-fade-in">
-                  {error}
-                </div>
-              )}
-
-              <button
-                type="submit"
-                disabled={loading || checando}
-                className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-violet-700 via-violet-600 to-violet-500 hover:shadow-violet-500/40 text-white py-3.5 rounded-xl font-semibold shadow-lg shadow-violet-600/30 transition-all disabled:opacity-60 active:scale-[0.98]"
-              >
-                {loading ? (
-                  <>
-                    <Loader2 size={18} className="animate-spin" />
-                    Ingresando...
-                  </>
-                ) : (
-                  <>
-                    <LogIn size={18} />
-                    Iniciar sesión
-                  </>
+                {/* Selector de sede — solo cuentas multisede (edificios agrupados) */}
+                {esMultisede && (
+                  <div className="animate-fade-in">
+                    <label className="text-[10px] font-semibold text-violet-700 uppercase tracking-widest flex items-center gap-1.5">
+                      <BedDouble size={12} /> Sede a la que ingresas
+                    </label>
+                    <select
+                      autoFocus
+                      value={sedeId ?? ''}
+                      onChange={(e) => setSedeId(Number(e.target.value))}
+                      className="mt-1.5 w-full border border-violet-300 rounded-xl px-4 py-3 text-sm outline-none focus:ring-4 focus:ring-violet-100 focus:border-violet-500 transition bg-violet-50/50"
+                    >
+                      {sedesSueltas.map((s) => (
+                        <option key={s.id} value={s.id}>
+                          {s.nombre}
+                        </option>
+                      ))}
+                      {Array.from(gruposSede.entries()).map(([grupo, items]) => (
+                        <optgroup key={grupo} label={grupo}>
+                          {items.map((s) => (
+                            <option key={s.id} value={s.id}>
+                              {s.nombre}
+                            </option>
+                          ))}
+                        </optgroup>
+                      ))}
+                    </select>
+                    <p className="text-[11px] text-slate-500 mt-1">
+                      Tu cuenta tiene acceso a varias sedes. Elige con cuál
+                      trabajar en esta sesión.
+                    </p>
+                  </div>
                 )}
-              </button>
-            </form>
+
+                <div>
+                  <label className="text-[10px] font-semibold text-slate-600 uppercase tracking-widest">
+                    Contraseña
+                  </label>
+                  <div className="relative mt-1.5">
+                    <input
+                      autoFocus={!esMultisede}
+                      type={showPwd ? 'text' : 'password'}
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      autoComplete="current-password"
+                      className="w-full border border-slate-200 rounded-xl px-4 py-3 pr-12 text-sm outline-none focus:ring-4 focus:ring-violet-100 focus:border-violet-500 transition bg-slate-50 focus:bg-white"
+                      required
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPwd((v) => !v)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 p-1.5 text-slate-400 hover:text-violet-600 rounded-lg"
+                      tabIndex={-1}
+                    >
+                      {showPwd ? <EyeOff size={16} /> : <Eye size={16} />}
+                    </button>
+                  </div>
+                </div>
+
+                {error && (
+                  <div className="text-sm text-rose-700 dark:text-rose-200 bg-rose-50 border border-rose-200 dark:border-rose-500/30 rounded-xl p-3 animate-fade-in">
+                    {error}
+                  </div>
+                )}
+
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-violet-700 via-violet-600 to-violet-500 hover:shadow-violet-500/40 text-white py-3.5 rounded-xl font-semibold shadow-lg shadow-violet-600/30 transition-all disabled:opacity-60 active:scale-[0.98]"
+                >
+                  {loading ? (
+                    <>
+                      <Loader2 size={18} className="animate-spin" />
+                      Ingresando...
+                    </>
+                  ) : (
+                    <>
+                      <LogIn size={18} />
+                      Iniciar sesión
+                    </>
+                  )}
+                </button>
+              </form>
+            )}
 
             <div className="mt-7 pt-5 border-t border-slate-100">
               <div className="text-[10px] uppercase tracking-widest text-slate-400 text-center mb-3">

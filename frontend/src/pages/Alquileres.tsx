@@ -433,9 +433,13 @@ function MapaHabitaciones() {
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-7 gap-3 stagger-children">
         {habitacionesFiltradas.map((h) => {
           const s = ESTADO_STYLES[h.estado] || ESTADO_STYLES.FUERA_SERVICIO;
-          const clickable = h.estado === 'DISPONIBLE' || h.estado === 'OCUPADA';
           const alquilerRef = h.alquileres?.[0];
           const reserva = reservaPorHab.get(h.id);
+          // Si la reserva cubre este momento, la habitación está "apartada":
+          // no se puede hacer clic para alquilar a otra persona.
+          const clickable =
+            (h.estado === 'DISPONIBLE' || h.estado === 'OCUPADA') &&
+            !reserva?.cubreAhora;
           const hhmm = (x: string) =>
             new Date(x).toLocaleTimeString('es-PE', { hour: '2-digit', minute: '2-digit' });
 

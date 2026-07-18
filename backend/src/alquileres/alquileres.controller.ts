@@ -452,6 +452,15 @@ export class AlquileresController {
     return this.service.actualizarAmenities(id, dto, user);
   }
 
+  @Patch(':id/llegada')
+  llegada(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: { modoLlegada: string },
+    @CurrentUser() user: JwtPayload,
+  ) {
+    return this.service.actualizarLlegada(id, dto?.modoLlegada, user);
+  }
+
   @Roles(Rol.SUPERADMIN, Rol.ADMIN_SEDE, Rol.HOTELERO, Rol.CAJERO)
   @Patch(':id/anular')
   anular(

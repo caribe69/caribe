@@ -436,6 +436,8 @@ model Alquiler {
   amenitiesEntregados Boolean     @default(false) // chocolates/bienvenida
   amenitiesNotas      String?
   conCochera          Boolean     @default(false) // huésped trae auto y usa cochera
+  /// Cómo llegó el huésped: 'PIE' (a pie) o 'VEHICULO' (en auto/moto). Null = sin registrar.
+  modoLlegada         String?
 
   creadoPorId     Int
   creadoPor       Usuario         @relation("AlquilerCreadoPor", fields: [creadoPorId], references: [id])
@@ -514,6 +516,8 @@ model Reserva {
   total           Decimal       @db.Decimal(10, 2) @default(0)
   adelanto        Decimal       @db.Decimal(10, 2) @default(0)
   notas           String?
+  /// Cómo llegará el cliente: 'PIE' o 'VEHICULO'. Null = sin registrar.
+  modoLlegada     String?
 
   creadoPorId     Int
   creadoPor       Usuario       @relation("ReservaCreadaPor", fields: [creadoPorId], references: [id])

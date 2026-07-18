@@ -72,6 +72,7 @@ interface Alquiler {
   amenitiesEntregados?: boolean;
   amenitiesNotas?: string | null;
   conCochera?: boolean;
+  modoLlegada?: string | null;
   fechaIngreso: string;
   fechaSalida: string;
   total: string;
@@ -766,6 +767,13 @@ function AlquilerActivoModal({
       toast.show({ type: 'error', title: 'No se pudo emitir', description: err.response?.data?.message || err.message }),
   });
 
+  // Cómo llegó el huésped (a pie / vehículo) — editable durante el alquiler.
+  const llegada = useMutation({
+    mutationFn: async ({ id, modo }: { id: number; modo: string }) =>
+      (await api.patch(`/alquileres/${id}/llegada`, { modoLlegada: modo })).data,
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['alquileres'] }),
+  });
+
   const amenities = useMutation({
     mutationFn: async ({
       id,
@@ -925,6 +933,23 @@ function AlquilerActivoModal({
                     )}
                   </div>
                 )}
+
+                {/* Cómo llegó el huésped (editable) */}
+                <div className="border-t border-slate-100 dark:border-slate-700 px-4 py-2.5 flex items-center gap-2">
+                  <span className="text-[10px] font-semibold text-slate-500 uppercase tracking-widest">Llegó</span>
+                  <div className="flex gap-1.5 ml-auto">
+                    {([['PIE', '🚶 A pie'], ['VEHICULO', '🚗 Vehículo']] as const).map(([val, txt]) => (
+                      <button
+                        key={val}
+                        onClick={() => llegada.mutate({ id: alquiler.id, modo: val })}
+                        disabled={llegada.isPending}
+                        className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold border transition ${alquiler.modoLlegada === val ? 'border-violet-500 bg-violet-50 dark:bg-violet-900/30 text-violet-700 dark:text-violet-300' : 'border-slate-200 dark:border-slate-700 text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800'}`}
+                      >
+                        {txt}
+                      </button>
+                    ))}
+                  </div>
+                </div>
 
               </div>
             </div>
@@ -1294,6 +1319,7 @@ function NuevoAlquilerModal({
     pagado: true,
     amenitiesEntregados: false,
     conCochera: false,
+    modoLlegada: 'PIE' as 'PIE' | 'VEHICULO',
   });
   // RUC manual: cuando SUNAT externa no encuentra, el usuario puede tipear
   // razón social y dirección a mano. Se persiste en el alquiler y la próxima
@@ -1490,6 +1516,7 @@ function NuevoAlquilerModal({
         pagado: form.pagado,
         amenitiesEntregados: form.amenitiesEntregados,
         conCochera: form.conCochera,
+        modoLlegada: form.modoLlegada,
         deseaEmitirSunat: emitirSunat,
         cortesias: cortesias.length ? cortesias : undefined,
         implementos: implementos.length ? implementos : undefined,
@@ -1803,6 +1830,25 @@ function NuevoAlquilerModal({
                 (el huésped trae auto y ocupa un puesto)
               </span>
             </label>
+
+            {/* Cómo llegó el huésped */}
+            <div>
+              <div className="text-[10px] font-semibold text-slate-500 uppercase tracking-widest mb-1.5">
+                ¿Cómo llegó?
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                {([['PIE', '🚶 A pie'], ['VEHICULO', '🚗 En vehículo']] as const).map(([val, txt]) => (
+                  <button
+                    key={val}
+                    type="button"
+                    onClick={() => setForm({ ...form, modoLlegada: val })}
+                    className={`py-2 rounded-xl text-sm font-semibold border transition ${form.modoLlegada === val ? 'border-violet-500 bg-violet-50 dark:bg-violet-900/30 text-violet-700 dark:text-violet-300' : 'border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800'}`}
+                  >
+                    {txt}
+                  </button>
+                ))}
+              </div>
+            </div>
           </div>
 
           {/* Datos fiscales: BOLETA (default) ↔ FACTURA con RUC */}

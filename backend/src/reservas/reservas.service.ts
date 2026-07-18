@@ -20,6 +20,7 @@ export interface CrearReservaInput {
   tipo?: TipoReserva;
   total?: number;
   adelanto?: number;
+  modoLlegada?: string;
   notas?: string;
 }
 
@@ -107,6 +108,7 @@ export class ReservasService {
         tipo: dto.tipo ?? TipoReserva.POR_HORA,
         total: dto.total ?? 0,
         adelanto: dto.adelanto ?? 0,
+        modoLlegada: dto.modoLlegada === 'VEHICULO' ? 'VEHICULO' : dto.modoLlegada === 'PIE' ? 'PIE' : null,
         notas: dto.notas?.trim() || null,
         creadoPorId: user.sub,
       },

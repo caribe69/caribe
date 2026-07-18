@@ -45,6 +45,8 @@ export class CreateAlquilerDto {
   @IsOptional() @IsBoolean() pagado?: boolean;
   @IsOptional() @IsBoolean() amenitiesEntregados?: boolean;
   @IsOptional() @IsBoolean() conCochera?: boolean;
+  // Cómo llegó el huésped: 'PIE' o 'VEHICULO'.
+  @IsOptional() @IsString() modoLlegada?: string;
 
   // Datos fiscales opcionales al crear (si ya viene como factura)
   @IsOptional() @IsEnum({ BOLETA: 'BOLETA', FACTURA: 'FACTURA' } as const)

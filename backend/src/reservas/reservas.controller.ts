@@ -39,6 +39,7 @@ class CrearReservaDto {
   @IsOptional() @IsEnum(TipoReserva) tipo?: TipoReserva;
   @IsOptional() @Type(() => Number) @IsNumber() @Min(0) total?: number;
   @IsOptional() @Type(() => Number) @IsNumber() @Min(0) adelanto?: number;
+  @IsOptional() @IsString() @MaxLength(10) modoLlegada?: string;
   @IsOptional() @IsString() @MaxLength(300) notas?: string;
 }
 

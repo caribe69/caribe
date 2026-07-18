@@ -32,6 +32,7 @@ interface Reserva {
   estado: EstadoReserva;
   total: number | string;
   adelanto: number | string;
+  modoLlegada?: string | null;
   notas: string | null;
   habitacion: {
     id: number;
@@ -180,6 +181,7 @@ export default function Reservas() {
                 <Clock size={14} className="text-indigo-500 shrink-0" />
                 <span className="font-medium text-slate-700 dark:text-slate-200">{fmt(r.inicio)} → {fmt(r.fin)}</span>
                 <span className="ml-auto text-[10px] uppercase tracking-widest text-slate-400">{r.tipo === 'POR_HORA' ? 'por hora' : 'por día'}</span>
+                {r.modoLlegada && <span className="text-[11px]">{r.modoLlegada === 'VEHICULO' ? '🚗' : '🚶'}</span>}
               </div>
 
               {(Number(r.total) > 0 || Number(r.adelanto) > 0) && (
@@ -362,7 +364,7 @@ function NuevaReservaModal({ sedeId, onClose, onSaved }: { sedeId: number | null
   const [fin, setFin] = useState(toInput(new Date(ahora.getTime() + 3 * 60 * 60 * 1000)));
   const [tipo, setTipo] = useState<'POR_HORA' | 'POR_DIA'>('POR_HORA');
   const [habSel, setHabSel] = useState<Dispo | null>(null);
-  const [form, setForm] = useState({ clienteNombre: '', clienteDni: '', clienteTelefono: '', total: '', adelanto: '', notas: '' });
+  const [form, setForm] = useState({ clienteNombre: '', clienteDni: '', clienteTelefono: '', total: '', adelanto: '', notas: '', modoLlegada: 'PIE' as 'PIE' | 'VEHICULO' });
   const [guardando, setGuardando] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -413,6 +415,7 @@ function NuevaReservaModal({ sedeId, onClose, onSaved }: { sedeId: number | null
         tipo,
         total: totalEfectivo || 0,
         adelanto: adelantoNum || 0,
+        modoLlegada: form.modoLlegada,
         notas: form.notas.trim() || undefined,
       });
       toast({ type: 'success', title: 'Reserva creada' });
@@ -444,12 +447,22 @@ function NuevaReservaModal({ sedeId, onClose, onSaved }: { sedeId: number | null
             <Campo label="Desde (día y hora)"><input type="datetime-local" className={inp} value={inicio} onChange={(e) => { setInicio(e.target.value); setHabSel(null); }} /></Campo>
             <Campo label="Hasta (día y hora)"><input type="datetime-local" className={inp} value={fin} onChange={(e) => { setFin(e.target.value); setHabSel(null); }} /></Campo>
           </div>
-          <div className="flex gap-2">
-            {(['POR_HORA', 'POR_DIA'] as const).map((t) => (
-              <button key={t} onClick={() => setTipo(t)} className={`px-3 py-1.5 rounded-lg text-xs font-medium border ${tipo === t ? 'border-indigo-400 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300' : 'border-slate-200 dark:border-slate-700 text-slate-500'}`}>
-                {t === 'POR_HORA' ? 'Por hora' : 'Por día'}
-              </button>
-            ))}
+          <div className="flex flex-wrap items-center gap-4">
+            <div className="flex gap-2">
+              {(['POR_HORA', 'POR_DIA'] as const).map((t) => (
+                <button key={t} onClick={() => setTipo(t)} className={`px-3 py-1.5 rounded-lg text-xs font-medium border ${tipo === t ? 'border-indigo-400 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300' : 'border-slate-200 dark:border-slate-700 text-slate-500'}`}>
+                  {t === 'POR_HORA' ? 'Por hora' : 'Por día'}
+                </button>
+              ))}
+            </div>
+            <div className="flex gap-2">
+              <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest self-center">Llega</span>
+              {([['PIE', '🚶 A pie'], ['VEHICULO', '🚗 Vehículo']] as const).map(([val, txt]) => (
+                <button key={val} onClick={() => setForm({ ...form, modoLlegada: val })} className={`px-3 py-1.5 rounded-lg text-xs font-medium border ${form.modoLlegada === val ? 'border-indigo-400 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300' : 'border-slate-200 dark:border-slate-700 text-slate-500'}`}>
+                  {txt}
+                </button>
+              ))}
+            </div>
           </div>
 
           {/* Grilla de disponibilidad en esa franja */}
@@ -571,6 +584,7 @@ function CheckInModal({ reserva, onClose, onDone }: { reserva: Reserva; onClose:
         precioHabitacion: Number(precio),
         metodoPago,
         pagado,
+        modoLlegada: reserva.modoLlegada || undefined,
       });
       toast({ type: 'success', title: 'Check-in realizado', description: 'La habitación quedó ocupada.' });
       onDone();

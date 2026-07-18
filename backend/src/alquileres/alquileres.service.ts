@@ -539,6 +539,7 @@ export class AlquileresService {
           cobradoPorId: pagadoNow ? user.sub : null,
           amenitiesEntregados: dto.amenitiesEntregados ?? false,
           conCochera: dto.conCochera ?? false,
+          modoLlegada: dto.modoLlegada ?? null,
           tipoComprobante: dto.tipoComprobante || 'BOLETA',
           clienteRuc: dto.clienteRuc || null,
           clienteRazonSocial: dto.clienteRazonSocial || null,
@@ -1061,6 +1062,18 @@ export class AlquileresService {
         amenitiesEntregados: dto.entregados,
         amenitiesNotas: dto.notas ?? alquiler.amenitiesNotas,
       },
+    });
+  }
+
+  /** Actualiza cómo llegó el huésped (a pie / en vehículo). */
+  async actualizarLlegada(id: number, modoLlegada: string, user: JwtPayload) {
+    const alquiler = await this.findOne(id, user);
+    if (alquiler.estado === EstadoAlquiler.ANULADO)
+      throw new BadRequestException('Alquiler anulado');
+    const valor = modoLlegada === 'VEHICULO' ? 'VEHICULO' : modoLlegada === 'PIE' ? 'PIE' : null;
+    return this.prisma.alquiler.update({
+      where: { id: alquiler.id },
+      data: { modoLlegada: valor },
     });
   }
 

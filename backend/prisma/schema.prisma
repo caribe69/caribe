@@ -75,6 +75,7 @@ model Sede {
   transferenciasPersonalHasta TransferenciaPersonal[] @relation("TPHasta")
   sunatSeries       SunatSerie[]
   landingHabitaciones LandingHabitacion[]
+  reservas          Reserva[]
 }
 
 // ============================================================
@@ -137,6 +138,7 @@ model Usuario {
   transferenciasRecibidas TransferenciaSede[] @relation("TransferenciaRecibida")
   reservasGrupalesCreadas  ReservaGrupal[] @relation("ReservaGrupalCreadaPor")
   reservasGrupalesCobradas ReservaGrupal[] @relation("ReservaGrupalCobradaPor")
+  reservasCreadas          Reserva[]       @relation("ReservaCreadaPor")
   auditLogs                AuditLog[]
   personalRecord           Personal?
   transferenciasPersonalEjecutadas TransferenciaPersonal[] @relation("TPTransferidoPor")
@@ -263,6 +265,7 @@ model Habitacion {
   tareasLimpieza  TareaLimpieza[]
   fotos           FotoHabitacion[]
   implementoUnidades ImplementoUnidad[]
+  reservas        Reserva[]
 
   @@unique([sedeId, numero])
   @@index([sedeId, estado])
@@ -461,11 +464,68 @@ model Alquiler {
   sunatAnulada       Boolean   @default(false)
   sunatAnuladaEn     DateTime?
 
+  // Reserva que originó este alquiler (si vino de un check-in de reserva).
+  reserva         Reserva?
+
   @@index([sedeId, estado])
   @@index([habitacionId])
   @@index([turnoCajaId])
   @@index([reservaGrupalId])
   @@index([sunatSerie, sunatNumero])
+}
+
+// ============================================================
+// RESERVAS INDIVIDUALES (apartar habitación para una franja horaria)
+// La habitación sigue libre hasta la franja; la reserva "aparta" el rango
+// [inicio, fin] para que nadie más lo tome. Al llegar el cliente se convierte
+// en Alquiler (check-in). El estado libre/ocupada/reservada de la grilla se
+// CALCULA cruzando reservas + alquileres con el momento consultado.
+// ============================================================
+enum TipoReserva {
+  POR_HORA
+  POR_DIA
+}
+
+enum EstadoReserva {
+  PENDIENTE // apartada, esperando al cliente
+  CUMPLIDA  // el cliente llegó y se convirtió en alquiler
+  CANCELADA // anulada manualmente
+}
+
+model Reserva {
+  id              Int           @id @default(autoincrement())
+  sedeId          Int
+  sede            Sede          @relation(fields: [sedeId], references: [id])
+  habitacionId    Int
+  habitacion      Habitacion    @relation(fields: [habitacionId], references: [id])
+
+  clienteNombre   String
+  clienteDni      String?
+  clienteTelefono String?
+
+  inicio          DateTime      // desde cuándo queda apartada
+  fin             DateTime      // hasta cuándo
+  tipo            TipoReserva   @default(POR_HORA)
+  estado          EstadoReserva @default(PENDIENTE)
+
+  adelanto        Decimal       @db.Decimal(10, 2) @default(0)
+  notas           String?
+
+  creadoPorId     Int
+  creadoPor       Usuario       @relation("ReservaCreadaPor", fields: [creadoPorId], references: [id])
+
+  // Cuando se cumple (check-in) apunta al alquiler generado.
+  alquilerId      Int?          @unique
+  alquiler        Alquiler?     @relation(fields: [alquilerId], references: [id])
+
+  canceladoPorId  Int?
+  canceladoEn     DateTime?
+
+  creadoEn        DateTime      @default(now())
+  actualizadoEn   DateTime      @updatedAt
+
+  @@index([sedeId, estado])
+  @@index([habitacionId, inicio, fin])
 }
 
 model ReservaGrupal {

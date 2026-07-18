@@ -15,6 +15,7 @@ const Ventas = lazy(() => import('@/pages/Ventas'));
 const Alquileres = lazy(() => import('@/pages/Alquileres'));
 const Historial = lazy(() => import('@/pages/Historial'));
 const Clientes = lazy(() => import('@/pages/Clientes'));
+const Reservas = lazy(() => import('@/pages/Reservas'));
 const Limpieza = lazy(() => import('@/pages/Limpieza'));
 const Caja = lazy(() => import('@/pages/Caja'));
 const CajaEstadisticas = lazy(() => import('@/pages/CajaEstadisticas'));
@@ -129,6 +130,14 @@ export default function App() {
           element={
             <Suspense fallback={<RouteFallback />}>
               <Clientes />
+            </Suspense>
+          }
+        />
+        <Route
+          path="reservas"
+          element={
+            <Suspense fallback={<RouteFallback />}>
+              <Reservas />
             </Suspense>
           }
         />

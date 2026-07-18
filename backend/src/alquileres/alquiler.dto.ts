@@ -69,6 +69,10 @@ export class CreateAlquilerDto {
   /// Implementos prestados (toallas, controles, etc.) — vuelven al finalizar.
   @IsOptional() @IsArray() @ValidateNested({ each: true })
   @Type(() => ImplementoInput) implementos?: ImplementoInput[];
+
+  /// Si este alquiler es el check-in de una reserva, su id. Marca la reserva
+  /// como CUMPLIDA y registra su adelanto como pago parcial.
+  @IsOptional() @Type(() => Number) @IsInt() reservaId?: number;
 }
 
 export class AmenitiesDto {

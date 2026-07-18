@@ -459,6 +459,48 @@ export class AlquileresService {
         `Habitación no disponible (estado: ${hab.estado})`,
       );
 
+    // ── Reservas: la franja no puede chocar con una reserva PENDIENTE de
+    // otra persona. La reserva que estamos cumpliendo (reservaId) sí se permite.
+    const inicioReq = new Date(dto.fechaIngreso);
+    const finReq = new Date(dto.fechaSalida);
+    const reservaChoque = await this.prisma.reserva.findFirst({
+      where: {
+        habitacionId: hab.id,
+        estado: 'PENDIENTE',
+        ...(dto.reservaId ? { id: { not: dto.reservaId } } : {}),
+        inicio: { lt: finReq },
+        fin: { gt: inicioReq },
+      },
+      orderBy: { inicio: 'asc' },
+    });
+    if (reservaChoque) {
+      const f = (d: Date) =>
+        d.toLocaleString('es-PE', {
+          day: '2-digit',
+          month: '2-digit',
+          hour: '2-digit',
+          minute: '2-digit',
+        });
+      throw new ConflictException(
+        `La habitación está reservada de ${f(reservaChoque.inicio)} a ${f(reservaChoque.fin)} (${reservaChoque.clienteNombre}). Elige otra habitación u horario.`,
+      );
+    }
+
+    // Si es un check-in de reserva, validarla.
+    let reservaCumplir: { id: number; adelanto: any } | null = null;
+    if (dto.reservaId) {
+      const r = await this.prisma.reserva.findUnique({
+        where: { id: dto.reservaId },
+      });
+      if (!r || r.habitacionId !== hab.id || r.sedeId !== sedeId)
+        throw new BadRequestException('Reserva inválida para esta habitación');
+      if (r.estado !== 'PENDIENTE')
+        throw new BadRequestException(
+          `La reserva ya está ${r.estado.toLowerCase()}`,
+        );
+      reservaCumplir = { id: r.id, adelanto: r.adelanto };
+    }
+
     const turno = await this.prisma.turnoCaja.findFirst({
       where: {
         sedeId,
@@ -522,6 +564,40 @@ export class AlquileresService {
             metodoPago: dto.metodoPago,
           },
         });
+      }
+
+      // Check-in de reserva: marcarla CUMPLIDA y, si tenía adelanto y el
+      // alquiler quedó como deuda (pagado=false), registrarlo como pago parcial
+      // para que el saldo a cobrar ya lo descuente.
+      if (reservaCumplir) {
+        await tx.reserva.update({
+          where: { id: reservaCumplir.id },
+          data: { estado: 'CUMPLIDA', alquilerId: alquiler.id },
+        });
+        const adelanto = Number(reservaCumplir.adelanto || 0);
+        if (adelanto > 0 && !pagadoNow) {
+          const total = Number(alquiler.total);
+          const monto = Math.min(adelanto, total);
+          await tx.pagoAlquiler.create({
+            data: {
+              alquilerId: alquiler.id,
+              turnoCajaId: turno.id,
+              usuarioId: user.sub,
+              monto,
+              metodoPago: dto.metodoPago,
+            },
+          });
+          await tx.alquiler.update({
+            where: { id: alquiler.id },
+            data: {
+              montoPagado: monto,
+              pagado: monto >= total,
+              pagadoEn: monto >= total ? new Date() : null,
+              turnoPagoId: turno.id,
+              cobradoPorId: user.sub,
+            },
+          });
+        }
       }
 
       // Procesar CORTESÍAS (productos que se entregan gratis al alquiler)

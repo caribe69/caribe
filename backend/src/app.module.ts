@@ -25,6 +25,7 @@ import { ReservasGrupalesModule } from './reservas-grupales/reservas-grupales.mo
 import { PublicModule } from './public/public.module';
 import { LandingModule } from './landing/landing.module';
 import { ClientesModule } from './clientes/clientes.module';
+import { ReservasModule } from './reservas/reservas.module';
 import { AuditModule } from './audit/audit.module';
 import { DocumentosModule } from './documentos/documentos.module';
 import { PersonalModule } from './personal/personal.module';
@@ -67,6 +68,7 @@ import { CommonModule } from './common/common.module';
     PublicModule,
     LandingModule,
     ClientesModule,
+    ReservasModule,
     AuditModule,
     DocumentosModule,
     PersonalModule,

@@ -25,6 +25,7 @@ import {
   Warehouse,
   BarChart3,
   UserSearch,
+  CalendarClock,
   UserCog,
   Shield,
   IdCard,
@@ -68,6 +69,12 @@ const groups: Group[] = [
         to: '/alquileres',
         label: 'Alquileres',
         icon: ClipboardList,
+        roles: ['SUPERADMIN', 'ADMIN_SEDE', 'HOTELERO', 'CAJERO'],
+      },
+      {
+        to: '/reservas',
+        label: 'Reservas',
+        icon: CalendarClock,
         roles: ['SUPERADMIN', 'ADMIN_SEDE', 'HOTELERO', 'CAJERO'],
       },
       {

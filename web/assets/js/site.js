@@ -194,6 +194,49 @@
     </div>`;
   }
 
+  // ── Tarjetas de "Nuestras sedes" desde la API (con foto de portada) ──
+  function sedeCardHTML(s) {
+    const img = s.cover || s.img || PLACEHOLDER;
+    const estrellas = Number(s.estrellas || 3);
+    const stars = Array.from({ length: 5 }).map((_, i) =>
+      `<svg class="size-3 ${i < estrellas ? 'text-sol-gold' : 'text-slate-200'} fill-current" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>`).join('');
+    return `
+    <a href="#habitaciones" class="group block h-auto swiper-slide">
+      <div class="bg-white shadow-sm group-hover:shadow-xl ring-1 ring-black/5 overflow-hidden transition-all duration-500 radius-lg">
+        <div class="relative aspect-[2/3] overflow-hidden">
+          <div class="z-10 absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors duration-500"></div>
+          <img src="${esc(img)}" onerror="this.src='${PLACEHOLDER}'" alt="${esc(s.name || s.nombre)}" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500">
+        </div>
+      </div>
+      <div class="flex justify-between items-start gap-4 px-2 pt-4 pb-2">
+        <div class="flex-1 min-w-0">
+          <h3 class="mb-1 font-extrabold text-sol-red h5">${esc(s.name || s.nombre)}</h3>
+          <div class="flex items-center gap-0.5 mb-2">${stars}</div>
+        </div>
+        <div class="flex flex-shrink-0 justify-center items-center bg-slate-100 group-hover:bg-sol-red rounded-full w-12 h-12 transition-all duration-300">
+          <svg class="w-6 h-6 text-slate-900 group-hover:text-white transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5 duration-300 transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 17L17 7M17 7H7M17 7V17"></path></svg>
+        </div>
+      </div>
+    </a>`;
+  }
+
+  function renderSedesCards(sedes) {
+    if (!Array.isArray(sedes) || sedes.length === 0) return;
+    const cont = document.querySelector('[x-ref="localesSwiper"]');
+    if (!cont || !window.Swiper) return;
+    const wrapper = cont.querySelector('.swiper-wrapper');
+    if (!wrapper) return;
+    wrapper.innerHTML = sedes.map(sedeCardHTML).join('');
+    try { cont.swiper && cont.swiper.destroy(true, true); } catch (e) {}
+    // eslint-disable-next-line no-new
+    new window.Swiper(cont, {
+      slidesPerView: 1.2,
+      spaceBetween: 16,
+      breakpoints: { 640: { slidesPerView: 2 }, 1024: { slidesPerView: 3 } },
+      navigation: { prevEl: '.locales-prev', nextEl: '.locales-next' },
+    });
+  }
+
   // ── Datos de contacto (WhatsApp, correo, dirección) desde la API ──
   function renderContacto(c) {
     if (!c) return;
@@ -251,8 +294,8 @@
       renderFiltros();
       renderRooms();
       wireBookingForm();
-      // Espera un momento para que Alpine/Swiper hayan montado el hero, y lo reemplaza
-      setTimeout(() => renderSlides(data.slides), 400);
+      // Espera un momento para que Alpine/Swiper hayan montado, y reemplaza
+      setTimeout(() => { renderSlides(data.slides); renderSedesCards(SEDES); }, 400);
     })
     .catch((err) => console.warn('No se pudo cargar /api/public/landing', err));
 })();

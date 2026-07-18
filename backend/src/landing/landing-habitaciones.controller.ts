@@ -135,12 +135,15 @@ export class LandingHabitacionesController {
   }
 }
 
-// ── Sedes en la web (mostrar/ocultar) ──
+// ── Sedes en la web (mostrar/ocultar + foto de portada) ──
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Roles(Rol.SUPERADMIN, Rol.ADMIN_SEDE)
 @Controller('landing-sedes')
 export class LandingSedesController {
-  constructor(private readonly service: LandingService) {}
+  constructor(
+    private readonly service: LandingService,
+    private readonly imageProcessor: ImageProcessorService,
+  ) {}
 
   @Get()
   listar() {
@@ -153,5 +156,31 @@ export class LandingSedesController {
     @Body() body: { webVisible: boolean },
   ) {
     return this.service.toggleSedeWeb(id, !!body?.webVisible);
+  }
+
+  @Post(':id/portada')
+  @UseInterceptors(
+    FileInterceptor('foto', {
+      storage,
+      limits: { fileSize: 10 * 1024 * 1024 },
+      fileFilter: (_req, file, cb) => {
+        if (!/\.(png|jpe?g|webp)$/i.test(file.originalname))
+          return cb(new Error('Formato no admitido (PNG/JPG/WEBP)'), false);
+        cb(null, true);
+      },
+    }),
+  )
+  async subirPortada(
+    @Param('id', ParseIntPipe) id: number,
+    @UploadedFile() file?: Express.Multer.File,
+  ) {
+    if (!file) throw new BadRequestException('Sube una imagen');
+    await this.imageProcessor.processMany([file.path]).catch(() => {});
+    return this.service.setPortadaSede(id, `/uploads/landing/${file.filename}`);
+  }
+
+  @Delete(':id/portada')
+  quitarPortada(@Param('id', ParseIntPipe) id: number) {
+    return this.service.setPortadaSede(id, null);
   }
 }

@@ -118,6 +118,7 @@ export class LandingService {
         nombre: true,
         direccion: true,
         webVisible: true,
+        webPortada: true,
         esPrincipal: true,
         _count: { select: { landingHabitaciones: true } },
       },
@@ -127,6 +128,7 @@ export class LandingService {
       nombre: s.nombre,
       direccion: s.direccion,
       webVisible: s.webVisible,
+      webPortada: s.webPortada,
       esPrincipal: s.esPrincipal,
       maquetas: s._count.landingHabitaciones,
     }));
@@ -139,6 +141,16 @@ export class LandingService {
       where: { id: sedeId },
       data: { webVisible: visible },
       select: { id: true, webVisible: true },
+    });
+  }
+
+  async setPortadaSede(sedeId: number, path: string | null) {
+    const s = await this.prisma.sede.findUnique({ where: { id: sedeId } });
+    if (!s) throw new NotFoundException('Sede no encontrada');
+    return this.prisma.sede.update({
+      where: { id: sedeId },
+      data: { webPortada: path },
+      select: { id: true, webPortada: true },
     });
   }
 

@@ -312,6 +312,7 @@ interface SedeWeb {
   nombre: string;
   direccion?: string | null;
   webVisible: boolean;
+  webPortada?: string | null;
   esPrincipal: boolean;
   maquetas: number;
 }
@@ -335,18 +336,38 @@ function HabitacionesWebCard() {
   const qc = useQueryClient();
   const { show: toast } = useToast();
   const [sedeSel, setSedeSel] = useState<SedeWeb | null>(null);
+  const fileRef = useRef<HTMLInputElement>(null);
+  const [subiendo, setSubiendo] = useState<number | null>(null);
+  const [targetSede, setTargetSede] = useState<number | null>(null);
 
   const { data: sedes, isLoading } = useQuery({
     queryKey: ['landing-sedes'],
     queryFn: async () => (await api.get<SedeWeb[]>('/landing-sedes')).data,
   });
 
+  const invalidarSedes = () => qc.invalidateQueries({ queryKey: ['landing-sedes'] });
+
   const toggle = useMutation({
     mutationFn: async (s: SedeWeb) =>
       (await api.patch(`/landing-sedes/${s.id}`, { webVisible: !s.webVisible })).data,
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['landing-sedes'] }),
+    onSuccess: invalidarSedes,
     onError: (e: any) => toast({ type: 'error', title: 'No se pudo cambiar', description: e.response?.data?.message }),
   });
+
+  const subirPortada = async (sedeId: number, file: File) => {
+    setSubiendo(sedeId);
+    try {
+      const fd = new FormData();
+      fd.append('foto', file);
+      await api.post(`/landing-sedes/${sedeId}/portada`, fd, { headers: { 'Content-Type': 'multipart/form-data' } });
+      toast({ type: 'success', title: 'Foto de sede actualizada' });
+      invalidarSedes();
+    } catch (e: any) {
+      toast({ type: 'error', title: 'No se pudo subir', description: e.response?.data?.message });
+    } finally {
+      setSubiendo(null);
+    }
+  };
 
   const list = sedes || [];
 
@@ -361,7 +382,7 @@ function HabitacionesWebCard() {
             Habitaciones de la página web
           </div>
           <div className="text-[11px] text-slate-400 mt-1">
-            Crea habitaciones de muestra (maquetas) por sede con sus fotos y características. La web muestra solo estas, no las 100+ reales.
+            Sube la foto de cada sede (clic en el recuadro), muéstrala u ocúltala en la web, y crea sus habitaciones-maqueta con fotos.
           </div>
         </div>
       </div>
@@ -374,9 +395,22 @@ function HabitacionesWebCard() {
         <ul className="divide-y divide-slate-50 dark:divide-slate-800/60 rounded-2xl border border-slate-100 dark:border-slate-800 overflow-hidden">
           {list.map((s) => (
             <li key={s.id} className="flex items-center gap-3 p-3.5 hover:bg-sky-50/40 dark:hover:bg-sky-900/10 transition">
-              <div className="w-9 h-9 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-500 flex items-center justify-center shrink-0">
-                <Building2 size={17} />
-              </div>
+              <button
+                onClick={() => { setTargetSede(s.id); fileRef.current?.click(); }}
+                title="Subir/cambiar foto de portada de la sede"
+                className="w-12 h-12 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-400 flex items-center justify-center shrink-0 overflow-hidden relative group/foto border border-slate-200 dark:border-slate-700"
+              >
+                {s.webPortada ? (
+                  <img src={s.webPortada} alt="" className="w-full h-full object-cover" />
+                ) : (
+                  <Building2 size={17} />
+                )}
+                <span className="absolute inset-0 bg-black/0 group-hover/foto:bg-black/40 flex items-center justify-center transition">
+                  {subiendo === s.id
+                    ? <span className="text-[8px] text-white font-bold">…</span>
+                    : <Upload size={13} className="text-white opacity-0 group-hover/foto:opacity-100" />}
+                </span>
+              </button>
               <div className="min-w-0 flex-1">
                 <div className="font-semibold text-slate-800 dark:text-slate-200 truncate flex items-center gap-2">
                   {s.nombre}
@@ -404,6 +438,18 @@ function HabitacionesWebCard() {
           )}
         </ul>
       )}
+
+      <input
+        ref={fileRef}
+        type="file"
+        accept="image/png,image/jpeg,image/webp"
+        className="hidden"
+        onChange={(e) => {
+          const f = e.target.files?.[0];
+          if (f && targetSede != null) subirPortada(targetSede, f);
+          e.target.value = '';
+        }}
+      />
 
       {sedeSel && <HabitacionesSedeModal sede={sedeSel} onClose={() => { setSedeSel(null); qc.invalidateQueries({ queryKey: ['landing-sedes'] }); }} />}
     </div>

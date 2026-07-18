@@ -38,6 +38,8 @@ model Sede {
   /// pública caribeperu.com? El resto de datos de la sede salen tal cual del
   /// sistema (no se editan para la web).
   webVisible  Boolean  @default(true)
+  /// Foto de portada de la sede para la web (tarjeta de "Nuestras sedes").
+  webPortada  String?  // ruta /uploads/landing/xxx.webp
 
   /// Jerarquía de edificios (1 nivel). Si una sede tiene `edificios`, es un
   /// AGRUPADOR: no se opera en ella (sin stock/caja/habitaciones propios ni

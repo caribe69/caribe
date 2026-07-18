@@ -80,6 +80,11 @@ interface Alquiler {
   metodoPago: string;
   estado: string;
   motivoAnulacion?: string | null;
+  deseaEmitirSunat?: boolean;
+  sunatEmitido?: boolean;
+  sunatAceptada?: boolean | null;
+  sunatSerie?: string | null;
+  sunatNumero?: number | null;
   habitacion: {
     id: number;
     numero: string;
@@ -329,6 +334,7 @@ function MapaHabitaciones() {
     <div>
       {/* Buscador + Leyenda clickable (filtra por estado) */}
       <div className="flex flex-wrap gap-3 mb-5 items-center">
+        <Reloj />
         <div className="relative flex-1 min-w-[240px] max-w-md">
           <Search
             size={14}
@@ -610,6 +616,7 @@ function MapaHabitaciones() {
       {reservar && (
         <NuevoAlquilerModal
           habitacion={reservar}
+          reserva={reservaPorHab.get(reservar.id) || null}
           onClose={() => setReservar(null)}
         />
       )}
@@ -626,6 +633,26 @@ function MapaHabitaciones() {
 /* ============================================================
  * MODAL: alquiler activo en una habitación OCUPADA
  * ============================================================ */
+
+// Reloj en vivo (fecha + hora) para la cabecera de Alquileres.
+function Reloj() {
+  const [ahora, setAhora] = useState(new Date());
+  useEffect(() => {
+    const t = setInterval(() => setAhora(new Date()), 1000);
+    return () => clearInterval(t);
+  }, []);
+  const fecha = ahora.toLocaleDateString('es-PE', { weekday: 'short', day: '2-digit', month: 'short' });
+  const hora = ahora.toLocaleTimeString('es-PE', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  return (
+    <div className="inline-flex items-center gap-2 bg-slate-900 dark:bg-slate-800 text-white rounded-xl px-3.5 py-2 shadow-sm">
+      <Clock3 size={15} className="text-violet-300" />
+      <div className="leading-none">
+        <div className="text-[9px] uppercase tracking-widest text-slate-400 capitalize">{fecha}</div>
+        <div className="font-bold tabular-nums text-sm mt-0.5">{hora}</div>
+      </div>
+    </div>
+  );
+}
 
 function AlquilerActivoModal({
   habitacion,
@@ -711,6 +738,22 @@ function AlquilerActivoModal({
         title: 'Error',
         description: err.response?.data?.message || err.message,
       }),
+  });
+
+  // Emitir boleta/factura electrónica DESPUÉS (si no se emitió al crear).
+  const emitir = useMutation({
+    mutationFn: async (id: number) =>
+      (await api.post(`/nubefact/alquileres/${id}/emitir`, {})).data,
+    onSuccess: (data: any) => {
+      qc.invalidateQueries({ queryKey: ['alquileres'] });
+      if (data?.ok === false || data?.errors) {
+        toast.show({ type: 'error', title: 'No se pudo emitir', description: data?.errors || 'Revisa los datos' });
+      } else {
+        toast.show({ type: 'success', title: '✓ Comprobante emitido', description: `${data?.serie || ''}-${data?.numero || ''}` });
+      }
+    },
+    onError: (err: any) =>
+      toast.show({ type: 'error', title: 'No se pudo emitir', description: err.response?.data?.message || err.message }),
   });
 
   const amenities = useMutation({
@@ -1018,6 +1061,43 @@ function AlquilerActivoModal({
                 </button>
               )}
 
+              {/* Estado del comprobante SUNAT (detecta si ya se emitió) */}
+              <div className={`rounded-xl px-3.5 py-2.5 border flex items-center gap-2.5 ${alquiler.sunatEmitido ? 'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-800' : 'bg-slate-50 dark:bg-slate-800/60 border-slate-200 dark:border-slate-700'}`}>
+                <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${alquiler.sunatEmitido ? 'bg-emerald-500 text-white' : 'bg-slate-300 dark:bg-slate-700 text-slate-600 dark:text-slate-300'}`}>
+                  <ClipboardList size={16} />
+                </div>
+                <div className="min-w-0 flex-1">
+                  {alquiler.sunatEmitido ? (
+                    <>
+                      <div className="text-xs font-bold text-emerald-800 dark:text-emerald-200">
+                        {alquiler.tipoComprobante === 'FACTURA' ? 'Factura' : 'Boleta'} emitida ✓
+                      </div>
+                      <div className="text-[11px] text-emerald-700 dark:text-emerald-300">
+                        {alquiler.sunatSerie}-{String(alquiler.sunatNumero ?? '').padStart(6, '0')}
+                        {alquiler.sunatAceptada === false && <span className="text-amber-600"> · pendiente en SUNAT</span>}
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <div className="text-xs font-bold text-slate-700 dark:text-slate-200">Sin comprobante emitido</div>
+                      <div className="text-[11px] text-slate-400">Puedes emitir la {alquiler.tipoComprobante === 'FACTURA' ? 'factura' : 'boleta'} ahora.</div>
+                    </>
+                  )}
+                </div>
+                {!alquiler.sunatEmitido && esAdmin && (
+                  <button
+                    onClick={() => emitir.mutate(alquiler.id)}
+                    disabled={emitir.isPending}
+                    className="shrink-0 inline-flex items-center gap-1.5 bg-violet-600 hover:bg-violet-700 text-white text-xs font-semibold px-3 py-2 rounded-lg disabled:opacity-50"
+                  >
+                    {emitir.isPending ? <Loader2 size={13} className="animate-spin" /> : <Printer size={13} />} Emitir
+                  </button>
+                )}
+                {!alquiler.sunatEmitido && !esAdmin && (
+                  <span className="shrink-0 text-[10px] text-slate-400">Lo emite un admin</span>
+                )}
+              </div>
+
               {/* Acciones secundarias en grid 2x */}
               <div className="grid grid-cols-2 gap-2">
                 <button
@@ -1173,9 +1253,11 @@ function AlquilerActivoModal({
 
 function NuevoAlquilerModal({
   habitacion,
+  reserva,
   onClose,
 }: {
   habitacion: Habitacion;
+  reserva?: { clienteNombre: string; inicio: string; fin: string; cubreAhora: boolean } | null;
   onClose: () => void;
 }) {
   const qc = useQueryClient();
@@ -1467,6 +1549,25 @@ function NuevoAlquilerModal({
         </div>
 
         <div className="flex-1 overflow-y-auto scroll-premium px-6 py-5 space-y-3">
+          {/* Aviso: esta habitación tiene una reserva pendiente */}
+          {reserva && (
+            <div className={`rounded-xl px-3.5 py-2.5 border flex items-start gap-2.5 ${reserva.cubreAhora ? 'bg-amber-500 text-white border-amber-500' : 'bg-amber-50 dark:bg-amber-900/30 text-amber-800 dark:text-amber-200 border-amber-300 dark:border-amber-800'}`}>
+              <CalendarClock size={18} className="shrink-0 mt-0.5" />
+              <div className="text-xs leading-snug">
+                <b>
+                  {reserva.cubreAhora
+                    ? '¡Ojo! Esta habitación está reservada en este momento'
+                    : 'Esta habitación tiene una reserva pendiente'}
+                </b>
+                <div className="mt-0.5">
+                  De <b>{new Date(reserva.inicio).toLocaleString('es-PE', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}</b> a{' '}
+                  <b>{new Date(reserva.fin).toLocaleTimeString('es-PE', { hour: '2-digit', minute: '2-digit' })}</b> · {reserva.clienteNombre}.
+                  Si el alquiler se cruza con ese horario, el sistema no lo permitirá.
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* DNI primero con búsqueda automática */}
           <div>
             <label className="text-[10px] font-semibold text-slate-500 uppercase tracking-widest">

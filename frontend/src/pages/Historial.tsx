@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Calendar, Download, FileSpreadsheet, Search, Printer } from 'lucide-react';
+import { Calendar, Download, FileSpreadsheet, Search, Printer, FileText } from 'lucide-react';
 import { api } from '@/lib/api';
 import { useAuthStore } from '@/store/auth';
 import { usePagination } from '@/hooks/usePagination';
@@ -27,6 +27,11 @@ interface AlquilerHist {
   clienteRuc?: string | null;
   clienteRazonSocial?: string | null;
   clienteDireccionFiscal?: string | null;
+  sunatEmitido?: boolean;
+  sunatSerie?: string | null;
+  sunatNumero?: number | null;
+  sunatEnlace?: string | null;
+  sunatEnlacePdf?: string | null;
   habitacion: { numero: string; piso: { numero: number } };
   sede?: { nombre: string };
   consumos: Array<{
@@ -296,16 +301,29 @@ export default function Historial() {
                       <EstadoBadge estado={a.estado} />
                     </Td>
                     <Td className="text-right">
-                      {a.estado !== 'ANULADO' && (
-                        <button
-                          onClick={() => setBoleta(a)}
-                          className="inline-flex items-center gap-1 text-xs bg-violet-100 hover:bg-violet-200 text-violet-700 dark:text-violet-300 px-2.5 py-1.5 rounded-lg font-medium btn-press"
-                          title="Ver e imprimir boleta"
-                        >
-                          <Printer size={12} />
-                          Boleta
-                        </button>
-                      )}
+                      <div className="inline-flex items-center gap-1.5 justify-end">
+                        {a.sunatEmitido && (a.sunatEnlacePdf || a.sunatEnlace) && (
+                          <a
+                            href={a.sunatEnlacePdf || a.sunatEnlace || '#'}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1 text-xs bg-emerald-100 hover:bg-emerald-200 text-emerald-700 dark:text-emerald-300 px-2.5 py-1.5 rounded-lg font-medium btn-press no-underline"
+                            title={`Comprobante SUNAT ${a.sunatSerie}-${a.sunatNumero}`}
+                          >
+                            <FileText size={12} /> SUNAT
+                          </a>
+                        )}
+                        {a.estado !== 'ANULADO' && (
+                          <button
+                            onClick={() => setBoleta(a)}
+                            className="inline-flex items-center gap-1 text-xs bg-violet-100 hover:bg-violet-200 text-violet-700 dark:text-violet-300 px-2.5 py-1.5 rounded-lg font-medium btn-press"
+                            title="Ver e imprimir boleta interna"
+                          >
+                            <Printer size={12} />
+                            Boleta
+                          </button>
+                        )}
+                      </div>
                     </Td>
                   </tr>
                 );

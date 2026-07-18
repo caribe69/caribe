@@ -55,6 +55,7 @@ export class NubeFactController {
   }
 
   /** Emitir comprobante a partir de un alquiler existente. */
+  @Roles(Rol.SUPERADMIN, Rol.ADMIN_SEDE, Rol.HOTELERO, Rol.CAJERO)
   @Post('alquileres/:id/emitir')
   emitirAlquiler(
     @Param('id', ParseIntPipe) id: number,
@@ -67,6 +68,7 @@ export class NubeFactController {
   }
 
   /** Emitir boleta a partir de una venta directa. */
+  @Roles(Rol.SUPERADMIN, Rol.ADMIN_SEDE, Rol.HOTELERO, Rol.CAJERO)
   @Post('ventas/:id/emitir')
   emitirVenta(@Param('id', ParseIntPipe) id: number, @Body() dto: EmitirDto) {
     return this.service.emitirDesdeVenta(id, {

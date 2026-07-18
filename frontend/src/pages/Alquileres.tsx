@@ -85,6 +85,9 @@ interface Alquiler {
   sunatAceptada?: boolean | null;
   sunatSerie?: string | null;
   sunatNumero?: number | null;
+  sunatEnlace?: string | null;
+  sunatEnlacePdf?: string | null;
+  sunatEnlaceXml?: string | null;
   habitacion: {
     id: number;
     numero: string;
@@ -1084,7 +1087,20 @@ function AlquilerActivoModal({
                     </>
                   )}
                 </div>
-                {!alquiler.sunatEmitido && esAdmin && (
+                {alquiler.sunatEmitido ? (
+                  (alquiler.sunatEnlacePdf || alquiler.sunatEnlace) ? (
+                    <a
+                      href={alquiler.sunatEnlacePdf || alquiler.sunatEnlace || '#'}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="shrink-0 inline-flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold px-3 py-2 rounded-lg no-underline"
+                    >
+                      <Printer size={13} /> Ver / descargar
+                    </a>
+                  ) : (
+                    <span className="shrink-0 text-[10px] text-emerald-600">Emitida (sin enlace)</span>
+                  )
+                ) : (
                   <button
                     onClick={() => emitir.mutate(alquiler.id)}
                     disabled={emitir.isPending}
@@ -1092,9 +1108,6 @@ function AlquilerActivoModal({
                   >
                     {emitir.isPending ? <Loader2 size={13} className="animate-spin" /> : <Printer size={13} />} Emitir
                   </button>
-                )}
-                {!alquiler.sunatEmitido && !esAdmin && (
-                  <span className="shrink-0 text-[10px] text-slate-400">Lo emite un admin</span>
                 )}
               </div>
 

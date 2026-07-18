@@ -435,11 +435,11 @@ function MapaHabitaciones() {
           const s = ESTADO_STYLES[h.estado] || ESTADO_STYLES.FUERA_SERVICIO;
           const alquilerRef = h.alquileres?.[0];
           const reserva = reservaPorHab.get(h.id);
-          // Si la reserva cubre este momento, la habitación está "apartada":
-          // no se puede hacer clic para alquilar a otra persona.
+          // Si tiene una reserva (vigente o próxima), la habitación está
+          // "apartada": no se abre el modal de alquilar. Para atenderla se usa
+          // Reservas → Check-in.
           const clickable =
-            (h.estado === 'DISPONIBLE' || h.estado === 'OCUPADA') &&
-            !reserva?.cubreAhora;
+            (h.estado === 'DISPONIBLE' || h.estado === 'OCUPADA') && !reserva;
           const hhmm = (x: string) =>
             new Date(x).toLocaleTimeString('es-PE', { hour: '2-digit', minute: '2-digit' });
 
@@ -474,6 +474,9 @@ function MapaHabitaciones() {
             tooltip = tiempoBase
               ? `En limpieza desde: ${tiempoBase.toLocaleString('es-PE')}\nHace ${formatDuracion(minutosEn)}\nTolerancia: ${formatDuracion(umbralAlistando)} (${countAlistando} hab. en cola × 30 min)${alistandoAtrasada ? '\n⚠ ATRASADO' : ''}`
               : 'En limpieza';
+          }
+          if (reserva && h.estado === 'DISPONIBLE') {
+            tooltip = `Reservada ${hhmm(reserva.inicio)}–${hhmm(reserva.fin)} · ${reserva.clienteNombre}\nUsa Reservas → Check-in para atenderla.`;
           }
 
           return (

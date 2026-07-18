@@ -144,11 +144,17 @@ export class ReservasService {
   async estadoHabitaciones(user: JwtPayload, sedeIdQuery?: number) {
     const sedeId = resolveSedeId(user, sedeIdQuery);
     const ahora = new Date();
+    // Una reserva PENDIENTE aparta la habitación hasta que:
+    //  - la cancelen (pasa a CANCELADA, deja de aparecer), o
+    //  - venza: pase su hora de fin (fin < ahora) → se desbloquea sola.
+    // Se consideran las que empiezan dentro de las próximas 24h.
+    const limite = new Date(ahora.getTime() + 24 * 60 * 60 * 1000);
     const reservas = await this.prisma.reserva.findMany({
       where: {
         sedeId,
         estado: EstadoReserva.PENDIENTE,
         fin: { gte: ahora },
+        inicio: { lte: limite },
       },
       orderBy: { inicio: 'asc' },
       select: {

@@ -18,6 +18,7 @@ export interface CrearReservaInput {
   inicio: string;
   fin: string;
   tipo?: TipoReserva;
+  total?: number;
   adelanto?: number;
   notas?: string;
 }
@@ -104,6 +105,7 @@ export class ReservasService {
         inicio,
         fin,
         tipo: dto.tipo ?? TipoReserva.POR_HORA,
+        total: dto.total ?? 0,
         adelanto: dto.adelanto ?? 0,
         notas: dto.notas?.trim() || null,
         creadoPorId: user.sub,
@@ -247,6 +249,78 @@ export class ReservasService {
         detalle,
       };
     });
+  }
+
+  /**
+   * Timeline (tape chart) de un día: habitaciones × 24h con bloques de
+   * reservas y alquileres, para verlo tipo PMS de hotel.
+   */
+  async timeline(user: JwtPayload, fechaStr: string, sedeIdQuery?: number) {
+    const sedeId = resolveSedeId(user, sedeIdQuery);
+    const base = fechaStr ? new Date(fechaStr) : new Date();
+    const inicioDia = new Date(base);
+    inicioDia.setHours(0, 0, 0, 0);
+    const finDia = new Date(inicioDia);
+    finDia.setDate(finDia.getDate() + 1);
+
+    const [habitaciones, reservas, alquileres] = await Promise.all([
+      this.prisma.habitacion.findMany({
+        where: { sedeId, activa: true },
+        orderBy: [{ pisoId: 'asc' }, { numero: 'asc' }],
+        select: { id: true, numero: true, piso: { select: { numero: true } } },
+      }),
+      this.prisma.reserva.findMany({
+        where: {
+          sedeId,
+          estado: { in: [EstadoReserva.PENDIENTE, EstadoReserva.CUMPLIDA] },
+          inicio: { lt: finDia },
+          fin: { gt: inicioDia },
+        },
+        select: { id: true, habitacionId: true, clienteNombre: true, inicio: true, fin: true, estado: true },
+      }),
+      this.prisma.alquiler.findMany({
+        where: {
+          sedeId,
+          estado: { in: [EstadoAlquiler.ACTIVO, EstadoAlquiler.FINALIZADO] },
+          fechaIngreso: { lt: finDia },
+          OR: [{ fechaSalidaReal: { gt: inicioDia } }, { fechaSalida: { gt: inicioDia } }],
+        },
+        select: {
+          id: true,
+          habitacionId: true,
+          clienteNombre: true,
+          fechaIngreso: true,
+          fechaSalida: true,
+          fechaSalidaReal: true,
+          estado: true,
+        },
+      }),
+    ]);
+
+    const bloques = [
+      ...reservas.map((r) => ({
+        tipo: 'reserva' as const,
+        habitacionId: r.habitacionId,
+        inicio: r.inicio,
+        fin: r.fin,
+        label: r.clienteNombre,
+        estado: r.estado,
+      })),
+      ...alquileres.map((a) => ({
+        tipo: 'alquiler' as const,
+        habitacionId: a.habitacionId,
+        inicio: a.fechaIngreso,
+        fin: a.fechaSalidaReal || a.fechaSalida,
+        label: a.clienteNombre,
+        estado: a.estado,
+      })),
+    ];
+
+    return {
+      fecha: inicioDia.toISOString(),
+      habitaciones: habitaciones.map((h) => ({ id: h.id, numero: h.numero, piso: h.piso.numero })),
+      bloques,
+    };
   }
 
   async cancelar(user: JwtPayload, id: number) {

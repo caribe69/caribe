@@ -15,6 +15,7 @@ import {
   Printer,
   Clock3,
   CalendarPlus,
+  CalendarClock,
   Briefcase,
   Package,
 } from 'lucide-react';
@@ -251,6 +252,26 @@ function MapaHabitaciones() {
       (await api.get<Habitacion[]>('/habitaciones')).data,
   });
 
+  // Reservas PENDIENTES (para pintar "Reservada" en la grilla). Se refresca
+  // cada minuto para que "cubre ahora" se actualice.
+  const { data: reservasEstado } = useQuery<
+    Array<{ id: number; habitacionId: number; clienteNombre: string; inicio: string; fin: string; cubreAhora: boolean }>
+  >({
+    queryKey: ['reservas-estado-hab'],
+    queryFn: async () => (await api.get('/reservas/estado-habitaciones')).data,
+    refetchInterval: 60000,
+  });
+
+  const reservaPorHab = useMemo(() => {
+    const m = new Map<number, { clienteNombre: string; inicio: string; fin: string; cubreAhora: boolean }>();
+    (reservasEstado || []).forEach((r) => {
+      const prev = m.get(r.habitacionId);
+      // Prioriza la que cubre ahora; si no, la más próxima (ya vienen ordenadas)
+      if (!prev || (r.cubreAhora && !prev.cubreAhora)) m.set(r.habitacionId, r);
+    });
+    return m;
+  }, [reservasEstado]);
+
   const porEstado = useMemo(() => {
     const r: Record<string, number> = {};
     data?.forEach((h) => (r[h.estado] = (r[h.estado] || 0) + 1));
@@ -405,6 +426,9 @@ function MapaHabitaciones() {
           const s = ESTADO_STYLES[h.estado] || ESTADO_STYLES.FUERA_SERVICIO;
           const clickable = h.estado === 'DISPONIBLE' || h.estado === 'OCUPADA';
           const alquilerRef = h.alquileres?.[0];
+          const reserva = reservaPorHab.get(h.id);
+          const hhmm = (x: string) =>
+            new Date(x).toLocaleTimeString('es-PE', { hour: '2-digit', minute: '2-digit' });
 
           // Tiempo transcurrido (OCUPADA: desde creadoEn; ALISTANDO: desde fechaSalidaReal)
           const tiempoBase =
@@ -507,6 +531,25 @@ function MapaHabitaciones() {
               <div className="mt-1.5 text-[11px] text-slate-600 dark:text-slate-300 font-medium line-clamp-1">
                 {h.descripcion || 'Habitación estándar'}
               </div>
+
+              {/* Reserva pendiente (aunque esté disponible ahora) */}
+              {reserva && (
+                <div
+                  className={`mt-2 rounded-lg px-2 py-1.5 border ${
+                    reserva.cubreAhora
+                      ? 'bg-amber-500 text-white border-amber-500'
+                      : 'bg-amber-50 dark:bg-amber-900/30 text-amber-800 dark:text-amber-200 border-amber-200 dark:border-amber-900/50'
+                  }`}
+                >
+                  <div className="flex items-center gap-1 text-[9px] font-bold uppercase tracking-widest">
+                    <CalendarClock size={10} />
+                    {reserva.cubreAhora ? 'Reservada ahora' : 'Reservada'}
+                  </div>
+                  <div className="text-[10px] font-semibold mt-0.5 leading-tight">
+                    {hhmm(reserva.inicio)}–{hhmm(reserva.fin)} · {reserva.clienteNombre}
+                  </div>
+                </div>
+              )}
 
               {/* Info del huésped (solo OCUPADA) — compacto */}
               {h.estado === 'OCUPADA' && alquilerRef && (

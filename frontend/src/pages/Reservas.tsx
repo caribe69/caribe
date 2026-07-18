@@ -30,6 +30,7 @@ interface Reserva {
   fin: string;
   tipo: 'POR_HORA' | 'POR_DIA';
   estado: EstadoReserva;
+  total: number | string;
   adelanto: number | string;
   notas: string | null;
   habitacion: {
@@ -71,6 +72,7 @@ export default function Reservas() {
   const [filtro, setFiltro] = useState<EstadoReserva | 'TODAS'>('PENDIENTE');
   const [nueva, setNueva] = useState(false);
   const [checkin, setCheckin] = useState<Reserva | null>(null);
+  const [vista, setVista] = useState<'lista' | 'timeline'>('lista');
 
   const { data, isLoading } = useQuery({
     queryKey: ['reservas', activeSedeId, filtro],
@@ -121,6 +123,10 @@ export default function Reservas() {
         </div>
         <div className="ml-auto flex items-center gap-2">
           <div className="flex bg-slate-100 dark:bg-slate-800 rounded-xl p-1">
+            <button onClick={() => setVista('lista')} className={`px-3 py-1.5 rounded-lg text-xs font-medium transition ${vista === 'lista' ? 'bg-white dark:bg-slate-900 shadow-sm text-indigo-700 dark:text-indigo-300' : 'text-slate-500'}`}>Lista</button>
+            <button onClick={() => setVista('timeline')} className={`px-3 py-1.5 rounded-lg text-xs font-medium transition ${vista === 'timeline' ? 'bg-white dark:bg-slate-900 shadow-sm text-indigo-700 dark:text-indigo-300' : 'text-slate-500'}`}>Timeline</button>
+          </div>
+          {vista === 'lista' && <div className="flex bg-slate-100 dark:bg-slate-800 rounded-xl p-1">
             {(['PENDIENTE', 'CUMPLIDA', 'CANCELADA', 'TODAS'] as const).map((f) => (
               <button
                 key={f}
@@ -130,7 +136,7 @@ export default function Reservas() {
                 {f.toLowerCase()}
               </button>
             ))}
-          </div>
+          </div>}
           <button
             onClick={() => setNueva(true)}
             className="inline-flex items-center gap-2 bg-gradient-to-r from-indigo-600 to-indigo-500 hover:from-indigo-700 hover:to-indigo-600 text-white px-4 py-2 rounded-xl text-sm font-medium shadow-md shadow-indigo-500/30 btn-press"
@@ -140,16 +146,18 @@ export default function Reservas() {
         </div>
       </div>
 
-      {isLoading && (
+      {vista === 'timeline' && <TimelineDia sedeId={activeSedeId} />}
+
+      {vista === 'lista' && isLoading && (
         <div className="space-y-2">{Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-24 w-full" />)}</div>
       )}
-      {!isLoading && list.length === 0 && (
+      {vista === 'lista' && !isLoading && list.length === 0 && (
         <div className="bg-white dark:bg-slate-900 rounded-3xl shadow-sm">
           <EmptyState icon={<CalendarClock size={28} />} title="Sin reservas" description='Crea una con "Nueva reserva". Aparta la habitación para la hora que el cliente pidió.' />
         </div>
       )}
 
-      <div className="grid md:grid-cols-2 gap-3">
+      <div className={`grid md:grid-cols-2 gap-3 ${vista === 'lista' ? '' : 'hidden'}`}>
         {list.map((r) => {
           const vencida = r.estado === 'PENDIENTE' && new Date(r.fin).getTime() < ahora;
           return (
@@ -174,9 +182,18 @@ export default function Reservas() {
                 <span className="ml-auto text-[10px] uppercase tracking-widest text-slate-400">{r.tipo === 'POR_HORA' ? 'por hora' : 'por día'}</span>
               </div>
 
-              {Number(r.adelanto) > 0 && (
-                <div className="mt-2 flex items-center gap-1.5 text-xs text-emerald-700 dark:text-emerald-300">
-                  <Wallet size={13} /> Adelanto: <b>{money(r.adelanto)}</b>
+              {(Number(r.total) > 0 || Number(r.adelanto) > 0) && (
+                <div className="mt-2 flex items-center gap-1.5 text-xs bg-slate-50 dark:bg-slate-800/60 rounded-lg px-3 py-1.5">
+                  <Wallet size={13} className="text-slate-400" />
+                  {Number(r.total) > 0 && <span className="text-slate-600 dark:text-slate-300">Total <b>{money(r.total)}</b></span>}
+                  {Number(r.adelanto) > 0 ? (
+                    <span className="text-emerald-700 dark:text-emerald-300">· Adelanto <b>{money(r.adelanto)}</b></span>
+                  ) : (
+                    <span className="text-slate-400">· Sin adelanto</span>
+                  )}
+                  {Number(r.total) > 0 && (
+                    <span className="ml-auto font-semibold text-slate-700 dark:text-slate-200">Saldo {money(Math.max(0, Number(r.total) - Number(r.adelanto)))}</span>
+                  )}
                 </div>
               )}
               {r.notas && <div className="mt-2 text-[11px] text-slate-500 italic">“{r.notas}”</div>}
@@ -220,6 +237,111 @@ export default function Reservas() {
   );
 }
 
+// ── Vista Timeline (tape chart tipo PMS): habitaciones × 24h ──
+interface TimelineData {
+  fecha: string;
+  habitaciones: Array<{ id: number; numero: string; piso: number }>;
+  bloques: Array<{ tipo: 'reserva' | 'alquiler'; habitacionId: number; inicio: string; fin: string; label: string; estado: string }>;
+}
+function TimelineDia({ sedeId }: { sedeId: number | null }) {
+  const [fecha, setFecha] = useState(() => {
+    const d = new Date();
+    return `${d.getFullYear()}-${p2(d.getMonth() + 1)}-${p2(d.getDate())}`;
+  });
+
+  const { data, isLoading } = useQuery({
+    queryKey: ['reservas-timeline', sedeId, fecha],
+    queryFn: async () => (await api.get<TimelineData>('/reservas/timeline', { params: { sedeId, fecha } })).data,
+  });
+
+  const dayStart = new Date(fecha + 'T00:00').getTime();
+  const DAY = 86400000;
+  const pos = (iso: string) => Math.max(0, Math.min(100, ((new Date(iso).getTime() - dayStart) / DAY) * 100));
+  const ahora = Date.now();
+  const nowPct = ahora >= dayStart && ahora <= dayStart + DAY ? ((ahora - dayStart) / DAY) * 100 : null;
+
+  const moverDia = (delta: number) => {
+    const d = new Date(fecha + 'T12:00');
+    d.setDate(d.getDate() + delta);
+    setFecha(`${d.getFullYear()}-${p2(d.getMonth() + 1)}-${p2(d.getDate())}`);
+  };
+
+  const horas = Array.from({ length: 25 }, (_, i) => i);
+  const bloquesPorHab = (habId: number) => (data?.bloques || []).filter((b) => b.habitacionId === habId);
+
+  return (
+    <div className="bg-white dark:bg-slate-900 dark:ring-1 dark:ring-slate-800 rounded-3xl p-4 shadow-sm">
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center gap-2">
+          <button onClick={() => moverDia(-1)} className="w-8 h-8 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 flex items-center justify-center">‹</button>
+          <input type="date" value={fecha} onChange={(e) => setFecha(e.target.value)} className="border border-slate-200 dark:border-slate-700 dark:bg-slate-800 rounded-lg px-3 py-1.5 text-sm" />
+          <button onClick={() => moverDia(1)} className="w-8 h-8 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 flex items-center justify-center">›</button>
+        </div>
+        <div className="flex items-center gap-3 text-[11px] text-slate-500">
+          <span className="flex items-center gap-1"><span className="w-3 h-2.5 rounded bg-amber-400" /> Reserva</span>
+          <span className="flex items-center gap-1"><span className="w-3 h-2.5 rounded bg-emerald-500" /> Alquiler</span>
+        </div>
+      </div>
+
+      {isLoading ? (
+        <div className="space-y-1.5">{Array.from({ length: 8 }).map((_, i) => <Skeleton key={i} className="h-9 w-full" />)}</div>
+      ) : (
+        <div className="overflow-x-auto">
+          <div className="min-w-[820px]">
+            {/* Cabecera de horas */}
+            <div className="flex items-end pl-14 mb-1">
+              <div className="relative flex-1 h-4">
+                {horas.filter((h) => h % 2 === 0).map((h) => (
+                  <span key={h} className="absolute -translate-x-1/2 text-[9px] text-slate-400 tabular-nums" style={{ left: `${(h / 24) * 100}%` }}>{p2(h)}</span>
+                ))}
+              </div>
+            </div>
+            {/* Filas por habitación */}
+            <div className="space-y-1">
+              {(data?.habitaciones || []).map((h) => (
+                <div key={h.id} className="flex items-center gap-2">
+                  <div className="w-12 shrink-0 text-right">
+                    <div className="font-bold text-sm text-slate-700 dark:text-slate-200 leading-none">{h.numero}</div>
+                    <div className="text-[8px] text-slate-400">P{h.piso}</div>
+                  </div>
+                  <div className="relative flex-1 h-8 bg-slate-50 dark:bg-slate-800/50 rounded-md overflow-hidden">
+                    {/* Líneas de hora */}
+                    {horas.filter((x) => x % 2 === 0).map((x) => (
+                      <span key={x} className="absolute top-0 bottom-0 w-px bg-slate-200/70 dark:bg-slate-700/40" style={{ left: `${(x / 24) * 100}%` }} />
+                    ))}
+                    {/* Línea de "ahora" */}
+                    {nowPct != null && <span className="absolute top-0 bottom-0 w-0.5 bg-rose-500 z-20" style={{ left: `${nowPct}%` }} />}
+                    {/* Bloques */}
+                    {bloquesPorHab(h.id).map((b, i) => {
+                      const left = pos(b.inicio);
+                      const width = Math.max(1.5, pos(b.fin) - left);
+                      const esReserva = b.tipo === 'reserva';
+                      const color = esReserva
+                        ? (b.estado === 'CUMPLIDA' ? 'bg-amber-300/80 text-amber-900' : 'bg-amber-400 text-white')
+                        : (b.estado === 'ACTIVO' ? 'bg-emerald-500 text-white' : 'bg-slate-400 text-white');
+                      return (
+                        <div
+                          key={i}
+                          title={`${esReserva ? 'Reserva' : 'Alquiler'}: ${b.label} · ${fmt(b.inicio)}–${fmt(b.fin)}`}
+                          className={`absolute top-1 bottom-1 rounded px-1.5 flex items-center text-[10px] font-semibold overflow-hidden whitespace-nowrap shadow-sm ${color}`}
+                          style={{ left: `${left}%`, width: `${width}%` }}
+                        >
+                          {width > 8 ? b.label : ''}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
+              {(data?.habitaciones?.length ?? 0) === 0 && <div className="text-sm text-slate-400 py-6 text-center">Sin habitaciones.</div>}
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function EstadoBadge({ estado, vencida }: { estado: EstadoReserva; vencida: boolean }) {
   if (vencida)
     return <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-widest bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300"><AlertTriangle size={10} /> No llegó</span>;
@@ -240,11 +362,28 @@ function NuevaReservaModal({ sedeId, onClose, onSaved }: { sedeId: number | null
   const [fin, setFin] = useState(toInput(new Date(ahora.getTime() + 3 * 60 * 60 * 1000)));
   const [tipo, setTipo] = useState<'POR_HORA' | 'POR_DIA'>('POR_HORA');
   const [habSel, setHabSel] = useState<Dispo | null>(null);
-  const [form, setForm] = useState({ clienteNombre: '', clienteDni: '', clienteTelefono: '', adelanto: '', notas: '' });
+  const [form, setForm] = useState({ clienteNombre: '', clienteDni: '', clienteTelefono: '', total: '', adelanto: '', notas: '' });
   const [guardando, setGuardando] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const franjaValida = !!inicio && !!fin && new Date(fin) > new Date(inicio);
+
+  // Total sugerido según la habitación elegida y la duración de la franja.
+  const totalSugerido = useMemo(() => {
+    if (!habSel || !franjaValida) return 0;
+    const ms = new Date(fin).getTime() - new Date(inicio).getTime();
+    if (tipo === 'POR_HORA') {
+      const horas = Math.max(1, Math.ceil(ms / 3600000));
+      return horas * habSel.precioHora;
+    }
+    const dias = Math.max(1, Math.ceil(ms / 86400000));
+    return dias * habSel.precioNoche;
+  }, [habSel, franjaValida, inicio, fin, tipo]);
+
+  // Si el usuario no tocó el total, usa el sugerido.
+  const totalEfectivo = form.total !== '' ? Number(form.total) : totalSugerido;
+  const adelantoNum = Number(form.adelanto || 0);
+  const saldo = Math.max(0, totalEfectivo - adelantoNum);
 
   const dispo = useQuery({
     queryKey: ['reservas-dispo', sedeId, inicio, fin],
@@ -272,7 +411,8 @@ function NuevaReservaModal({ sedeId, onClose, onSaved }: { sedeId: number | null
         inicio: new Date(inicio).toISOString(),
         fin: new Date(fin).toISOString(),
         tipo,
-        adelanto: form.adelanto ? Number(form.adelanto) : 0,
+        total: totalEfectivo || 0,
+        adelanto: adelantoNum || 0,
         notas: form.notas.trim() || undefined,
       });
       toast({ type: 'success', title: 'Reserva creada' });
@@ -356,9 +496,28 @@ function NuevaReservaModal({ sedeId, onClose, onSaved }: { sedeId: number | null
             <Campo label="Nombre del cliente *"><input className={inp} value={form.clienteNombre} onChange={(e) => setForm({ ...form, clienteNombre: e.target.value })} placeholder="Juan Pérez" /></Campo>
             <Campo label="DNI *"><input className={inp} inputMode="numeric" value={form.clienteDni} onChange={(e) => setForm({ ...form, clienteDni: e.target.value })} placeholder="12345678" /></Campo>
             <Campo label="Teléfono (opcional)"><input className={inp} value={form.clienteTelefono} onChange={(e) => setForm({ ...form, clienteTelefono: e.target.value })} placeholder="999 888 777" /></Campo>
-            <Campo label="Adelanto / seña (opcional)"><input type="number" min={0} step="0.01" className={inp} value={form.adelanto} onChange={(e) => setForm({ ...form, adelanto: e.target.value })} placeholder="0.00" /></Campo>
+            <Campo label="Notas (opcional)"><input className={inp} value={form.notas} onChange={(e) => setForm({ ...form, notas: e.target.value })} placeholder="Llega 8pm, pidió cama extra…" /></Campo>
           </div>
-          <Campo label="Notas (opcional)"><input className={inp} value={form.notas} onChange={(e) => setForm({ ...form, notas: e.target.value })} placeholder="Llega tipo 8pm, pidió cama extra…" /></Campo>
+
+          {/* Dinero: total, adelanto y saldo */}
+          <div className="bg-slate-50 dark:bg-slate-800/60 rounded-xl p-3 space-y-3">
+            <div className="grid grid-cols-2 gap-3">
+              <Campo label={`Total ${form.total === '' && totalSugerido > 0 ? '(sugerido)' : ''}`}>
+                <input type="number" min={0} step="0.01" className={inp} value={form.total} onChange={(e) => setForm({ ...form, total: e.target.value })} placeholder={totalSugerido ? totalSugerido.toFixed(2) : '0.00'} />
+              </Campo>
+              <Campo label="Adelanto / seña">
+                <input type="number" min={0} step="0.01" className={inp} value={form.adelanto} onChange={(e) => setForm({ ...form, adelanto: e.target.value })} placeholder="0.00" />
+              </Campo>
+            </div>
+            <div className="flex items-center justify-between text-sm px-1">
+              <span className="text-slate-500">
+                {adelantoNum > 0
+                  ? <span className="text-emerald-700 dark:text-emerald-300 font-semibold">✓ Dio adelanto de {money(adelantoNum)}</span>
+                  : <span className="text-slate-400">Sin adelanto</span>}
+              </span>
+              <span className="font-semibold text-slate-700 dark:text-slate-200">Saldo: {money(saldo)}</span>
+            </div>
+          </div>
 
           {error && <div className="text-sm text-rose-700 bg-rose-50 border border-rose-200 rounded-lg p-2.5">{error}</div>}
         </div>
@@ -377,7 +536,9 @@ function NuevaReservaModal({ sedeId, onClose, onSaved }: { sedeId: number | null
 function CheckInModal({ reserva, onClose, onDone }: { reserva: Reserva; onClose: () => void; onDone: () => void }) {
   const { show: toast } = useToast();
   const activeSedeId = useAuthStore((s) => s.activeSedeId);
-  const precioDefault = reserva.tipo === 'POR_HORA' ? Number(reserva.habitacion.precioHora) : Number(reserva.habitacion.precioNoche);
+  const precioDefault = Number(reserva.total) > 0
+    ? Number(reserva.total)
+    : reserva.tipo === 'POR_HORA' ? Number(reserva.habitacion.precioHora) : Number(reserva.habitacion.precioNoche);
   const [precio, setPrecio] = useState(String(precioDefault));
   const [metodoPago, setMetodoPago] = useState('EFECTIVO');
   const [cobrarAhora, setCobrarAhora] = useState(true);

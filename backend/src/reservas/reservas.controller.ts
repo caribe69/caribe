@@ -37,6 +37,7 @@ class CrearReservaDto {
   @IsString() inicio: string;
   @IsString() fin: string;
   @IsOptional() @IsEnum(TipoReserva) tipo?: TipoReserva;
+  @IsOptional() @Type(() => Number) @IsNumber() @Min(0) total?: number;
   @IsOptional() @Type(() => Number) @IsNumber() @Min(0) adelanto?: number;
   @IsOptional() @IsString() @MaxLength(300) notas?: string;
 }
@@ -72,6 +73,15 @@ export class ReservasController {
       user,
       sedeId ? Number(sedeId) : undefined,
     );
+  }
+
+  @Get('timeline')
+  timeline(
+    @CurrentUser() user: JwtPayload,
+    @Query('fecha') fecha: string,
+    @Query('sedeId') sedeId?: string,
+  ) {
+    return this.service.timeline(user, fecha, sedeId ? Number(sedeId) : undefined);
   }
 
   @Get('disponibilidad')

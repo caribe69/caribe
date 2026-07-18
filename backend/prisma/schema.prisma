@@ -510,6 +510,8 @@ model Reserva {
   tipo            TipoReserva   @default(POR_HORA)
   estado          EstadoReserva @default(PENDIENTE)
 
+  // Total estimado de la estadía y adelanto/seña que dio el cliente.
+  total           Decimal       @db.Decimal(10, 2) @default(0)
   adelanto        Decimal       @db.Decimal(10, 2) @default(0)
   notas           String?
 

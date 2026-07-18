@@ -13,7 +13,7 @@ export interface CrearReservaInput {
   sedeId?: number;
   habitacionId: number;
   clienteNombre: string;
-  clienteDni?: string;
+  clienteDni: string;
   clienteTelefono?: string;
   inicio: string;
   fin: string;
@@ -72,6 +72,8 @@ export class ReservasService {
     const sedeId = resolveSedeId(user, dto.sedeId);
     if (!dto.clienteNombre?.trim())
       throw new BadRequestException('El nombre del cliente es obligatorio');
+    if (!dto.clienteDni?.trim() || dto.clienteDni.trim().length < 6)
+      throw new BadRequestException('El DNI del cliente es obligatorio');
 
     const inicio = new Date(dto.inicio);
     const fin = new Date(dto.fin);
@@ -97,7 +99,7 @@ export class ReservasService {
         sedeId,
         habitacionId: dto.habitacionId,
         clienteNombre: dto.clienteNombre.trim(),
-        clienteDni: dto.clienteDni?.trim() || null,
+        clienteDni: dto.clienteDni.trim(),
         clienteTelefono: dto.clienteTelefono?.trim() || null,
         inicio,
         fin,

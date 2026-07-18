@@ -260,13 +260,14 @@ function NuevaReservaModal({ sedeId, onClose, onSaved }: { sedeId: number | null
   const guardar = async () => {
     if (!habSel) { setError('Elige una habitación libre'); return; }
     if (!form.clienteNombre.trim()) { setError('Escribe el nombre del cliente'); return; }
+    if (form.clienteDni.trim().length < 6) { setError('El DNI del cliente es obligatorio'); return; }
     setGuardando(true); setError(null);
     try {
       await api.post('/reservas', {
         sedeId,
         habitacionId: habSel.id,
         clienteNombre: form.clienteNombre.trim(),
-        clienteDni: form.clienteDni.trim() || undefined,
+        clienteDni: form.clienteDni.trim(),
         clienteTelefono: form.clienteTelefono.trim() || undefined,
         inicio: new Date(inicio).toISOString(),
         fin: new Date(fin).toISOString(),
@@ -352,9 +353,9 @@ function NuevaReservaModal({ sedeId, onClose, onSaved }: { sedeId: number | null
 
           {/* Datos del cliente */}
           <div className="grid grid-cols-2 gap-3">
-            <Campo label="Nombre del cliente"><input className={inp} value={form.clienteNombre} onChange={(e) => setForm({ ...form, clienteNombre: e.target.value })} placeholder="Juan Pérez" /></Campo>
+            <Campo label="Nombre del cliente *"><input className={inp} value={form.clienteNombre} onChange={(e) => setForm({ ...form, clienteNombre: e.target.value })} placeholder="Juan Pérez" /></Campo>
+            <Campo label="DNI *"><input className={inp} inputMode="numeric" value={form.clienteDni} onChange={(e) => setForm({ ...form, clienteDni: e.target.value })} placeholder="12345678" /></Campo>
             <Campo label="Teléfono (opcional)"><input className={inp} value={form.clienteTelefono} onChange={(e) => setForm({ ...form, clienteTelefono: e.target.value })} placeholder="999 888 777" /></Campo>
-            <Campo label="DNI (opcional)"><input className={inp} value={form.clienteDni} onChange={(e) => setForm({ ...form, clienteDni: e.target.value })} placeholder="12345678" /></Campo>
             <Campo label="Adelanto / seña (opcional)"><input type="number" min={0} step="0.01" className={inp} value={form.adelanto} onChange={(e) => setForm({ ...form, adelanto: e.target.value })} placeholder="0.00" /></Campo>
           </div>
           <Campo label="Notas (opcional)"><input className={inp} value={form.notas} onChange={(e) => setForm({ ...form, notas: e.target.value })} placeholder="Llega tipo 8pm, pidió cama extra…" /></Campo>

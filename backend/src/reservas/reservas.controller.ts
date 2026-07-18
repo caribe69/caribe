@@ -32,7 +32,7 @@ class CrearReservaDto {
   @IsOptional() @Type(() => Number) @IsInt() sedeId?: number;
   @Type(() => Number) @IsInt() habitacionId: number;
   @IsString() @MinLength(2) @MaxLength(120) clienteNombre: string;
-  @IsOptional() @IsString() @MaxLength(15) clienteDni?: string;
+  @IsString() @MinLength(6) @MaxLength(15) clienteDni: string;
   @IsOptional() @IsString() @MaxLength(20) clienteTelefono?: string;
   @IsString() inicio: string;
   @IsString() fin: string;

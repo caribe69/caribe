@@ -576,49 +576,50 @@ function ModalDetalle({
 // El MISMO HTML se usa para previsualizar (dentro del modal) y para imprimir
 // (ventana nueva), así se ven idénticos y calcados a la hojita de papel.
 const B2_STYLES = `
-*{box-sizing:border-box;margin:0;font-family:'Courier New',monospace}
-.b2{width:340px;margin:0 auto;border:2px solid #000;color:#000;font-size:12px}
-.b2 .row{display:flex;border-bottom:2px solid #000}
+*{box-sizing:border-box;margin:0;font-family:'Segoe UI',Arial,Helvetica,sans-serif;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+.b2{width:360px;margin:0 auto;color:#111;font-size:12px;border:1.5px solid #111;font-variant-numeric:tabular-nums}
+.b2 .hd{background:#111;color:#fff;text-align:center;padding:10px 8px}
+.b2 .co{font-size:14px;font-weight:700;letter-spacing:.4px}
+.b2 .ti{font-size:9px;letter-spacing:2.5px;text-transform:uppercase;opacity:.82;margin-top:3px}
+.b2 .meta{display:flex;gap:6px;padding:7px 9px;border-bottom:1.5px solid #111;font-size:11px}
+.b2 .meta>div{flex:1}
+.b2 .meta>div:nth-child(2){text-align:center}
+.b2 .meta>div:last-child{text-align:right}
+.b2 .meta b{display:block;font-size:8px;color:#777;letter-spacing:1px;text-transform:uppercase;font-weight:600;margin-bottom:1px}
+.b2 .row{display:flex;border-bottom:1.5px solid #111}
 .b2 .row:last-child{border-bottom:none}
-.b2 .cL{flex:1;padding:5px;border-right:2px solid #000}
-.b2 .cM{padding:5px;border-right:2px solid #000;font-weight:bold;align-self:center}
-.b2 .cR{flex:1.5;padding:5px;font-size:11px;line-height:1.4}
-.b2 .noche{background:#fbbf24;padding:0 4px;font-size:10px;font-weight:bold}
-.b2 .dia{font-weight:bold;font-size:14px;display:block;margin-top:2px}
-.b2 .mL{flex:1;padding:6px;border-right:2px solid #000}
-.b2 .mR{flex:1;padding:6px}
-.b2 .mrow{display:flex;justify-content:space-between;gap:6px}
-.b2 .mrow.big{font-weight:bold;font-size:15px}
-.b2 .ln{border-top:1px solid #000;margin:3px 0}
-.b2 .visa{font-weight:bold;font-size:15px}
-.b2 .dig{font-size:10px;color:#444;margin-top:8px;line-height:1.7}
-.b2 .ing{align-items:stretch;font-weight:bold}
-.b2 .ingL{flex:1;display:flex;align-items:stretch;border-right:2px solid #000}
-.b2 .ingR{flex:1;display:flex;align-items:stretch}
-.b2 .ing .ib{padding:5px;background:#eee;border-right:1px solid #000;font-size:10px;align-self:center}
-.b2 .ing .iv{padding:5px;border-right:1px solid #000;min-width:26px;text-align:center;align-self:center}
-.b2 .ingL .iv.tot{font-size:15px;background:#fff7cc;border-right:none;flex:1}
-.b2 .ingR .nombre{flex:1;padding:5px;font-size:10px;align-self:center;border-right:1px solid #000;text-align:left}
-.b2 .ingR .iv.end{border-right:none;min-width:34px}
-.b2 .pcol{flex:1;padding:5px}
-.b2 .pL{border-right:2px solid #000}
-.b2 .ptitle{font-weight:bold;font-size:10px;text-transform:uppercase;color:#666;margin-bottom:3px}
-.b2 .pr{display:grid;grid-template-columns:38px 24px 1fr;gap:3px;align-items:center;border-bottom:1px dotted #aaa;padding:2px 0;min-height:18px}
-.b2 .pr.z{color:#bbb}
-.b2 .pc{font-weight:bold}
+.b2 .col{flex:1;padding:8px 10px}
+.b2 .col + .col{border-left:1.5px solid #111}
+.b2 .slbl{font-size:8px;letter-spacing:1.5px;text-transform:uppercase;color:#777;font-weight:700;margin-bottom:6px;padding-bottom:3px;border-bottom:1px solid #eee}
+.b2 .kv{display:flex;justify-content:space-between;gap:8px;padding:2px 0;font-size:12px}
+.b2 .kv.tot{border-top:1px solid #111;margin-top:5px;padding-top:5px;font-weight:700}
+.b2 .kv.big span:last-child{font-size:15px}
+.b2 .ing .half{flex:1;display:flex;align-items:center;padding:8px 6px}
+.b2 .ing .half + .half{border-left:1.5px solid #111}
+.b2 .stat{flex:1;text-align:center}
+.b2 .stat .n{font-size:17px;font-weight:700;line-height:1}
+.b2 .stat .l{font-size:8px;color:#777;text-transform:uppercase;letter-spacing:.5px;margin-top:3px}
+.b2 .stat.nm{flex:2;text-align:left;padding-left:6px}
+.b2 .stat.nm .nmv{font-size:12px;font-weight:600;margin-top:2px}
+.b2 .pr{display:grid;grid-template-columns:46px 24px 1fr;gap:4px;padding:2px 0;border-bottom:1px solid #f1f1f1;font-size:11px}
+.b2 .pr.z{color:#c4c4c4}
+.b2 .pc{font-weight:600}
 .b2 .pq{text-align:center}
 .b2 .pv{text-align:right}
-.b2 .psum{display:flex;justify-content:space-between;font-weight:bold;border-top:2px solid #000;margin-top:4px;padding-top:3px}
+.b2 .psum{display:flex;justify-content:space-between;border-top:1.5px solid #111;margin-top:6px;padding-top:5px;font-weight:700;font-size:12px}
+.b2 .foot{padding:28px 40px 12px}
+.b2 .sgn{border-top:1px solid #111;padding-top:4px;text-align:center;font-size:9px;color:#777;text-transform:uppercase;letter-spacing:1px}
 `;
 
 function buildBoleta2Html(d: any): string {
   const dias = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
-  const money = (n: number) => Number(n || 0).toFixed(2);
+  const money = (n: number) => `S/ ${Number(n || 0).toFixed(2)}`;
   const esc = (s: string) =>
     String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]!));
   const fdate = new Date(d.turno.abiertoEn);
+  const kv = (k: string, v: string, cls = '') =>
+    `<div class="kv ${cls}"><span>${k}</span><span>${v}</span></div>`;
 
-  // Renglones de una columna de productos (códigos fijos + extras del turno)
   const colProductos = (col: any) => {
     const fijos = col.filas
       .map((f: any) => {
@@ -627,7 +628,7 @@ function buildBoleta2Html(d: any): string {
       })
       .join('');
     const extras = (col.extras || [])
-      .map((e: any) => `<div class="pr"><span class="pc" title="${esc(e.nombre)}">${esc(e.nombre).slice(0, 5).toUpperCase()}</span><span class="pq">${e.cantidad}</span><span class="pv">${money(e.total)}</span></div>`)
+      .map((e: any) => `<div class="pr"><span class="pc" title="${esc(e.nombre)}">${esc(e.nombre).slice(0, 6)}</span><span class="pq">${e.cantidad}</span><span class="pv">${money(e.total)}</span></div>`)
       .join('');
     return fijos + extras;
   };
@@ -637,40 +638,39 @@ function buildBoleta2Html(d: any): string {
 
   return (
     `<div class="b2">` +
-    // Cabecera
+    // Cabecera corporativa
+    `<div class="hd"><div class="co">${esc(d.turno.sede?.nombre || 'Sol Caribe')}</div><div class="ti">Reporte de cierre de turno</div></div>` +
+    `<div class="meta"><div><b>Turno</b>#${String(d.turno.id).padStart(3, '0')}</div><div><b>Fecha</b>${dias[fdate.getDay()]} ${fdate.toLocaleDateString('es-PE')}</div><div><b>Responsable</b>${esc(d.turno.usuario?.username || d.turno.usuario?.nombre || '')}</div></div>` +
+    // Resumen económico + pagos digitales
     `<div class="row">` +
-    `<div class="cL"><span class="noche">NOCHE</span><span class="dia">${dias[fdate.getDay()]}</span></div>` +
-    `<div class="cM">SOL</div>` +
-    `<div class="cR"><b>FECHA</b> ${fdate.toLocaleDateString('es-PE')}<br><b>${esc(d.turno.usuario?.username || d.turno.usuario?.nombre || '')}</b><br><span style="color:#888">${esc(d.turno.sede?.nombre || '')}</span></div>` +
+    `<div class="col"><div class="slbl">Resumen económico</div>` +
+    kv('Habitaciones (H)', money(d.desglose.H)) +
+    kv('Bebidas (B)', money(d.desglose.B)) +
+    kv('Otros (O)', money(d.desglose.O)) +
+    kv('Total (G)', money(d.desglose.G), 'tot') +
+    kv('(−) Digital', money(d.desglose.digital)) +
+    kv('(=) Efectivo', money(d.desglose.efectivo), 'tot big') +
     `</div>` +
-    // Dinero
-    `<div class="row">` +
-    `<div class="mL">` +
-    `<div class="mrow"><span>H</span><span>${money(d.desglose.H)}</span></div>` +
-    `<div class="mrow"><span>B</span><span>${money(d.desglose.B)}</span></div>` +
-    `<div class="mrow"><span>O</span><span>${money(d.desglose.O)}</span></div>` +
-    `<div class="ln"></div>` +
-    `<div class="mrow"><span>G</span><span>${money(d.desglose.G)}</span></div>` +
-    `<div class="mrow"><span></span><span>− ${money(d.desglose.digital)}</span></div>` +
-    `<div class="ln"></div>` +
-    `<div class="mrow big"><span></span><span>${money(d.desglose.efectivo)}</span></div>` +
-    `</div>` +
-    `<div class="mR"><div class="visa">Visa ⇒ ${money(d.desglose.digital)}</div>` +
-    `<div class="dig">Visa ${money(d.porMetodo.VISA)} · Master ${money(d.porMetodo.MASTERCARD)}<br>Yape ${money(d.porMetodo.YAPE)} · Plin ${money(d.porMetodo.PLIN)}<br>Otro ${money(d.porMetodo.OTRO)}</div></div>` +
-    `</div>` +
-    // Ingresos (mitad izq: P1·P2·total) + limpieza (mitad der: usuario · N°)
+    `<div class="col"><div class="slbl">Pagos digitales</div>` +
+    kv('Visa', money(d.porMetodo.VISA)) +
+    kv('Mastercard', money(d.porMetodo.MASTERCARD)) +
+    kv('Yape', money(d.porMetodo.YAPE)) +
+    kv('Plin', money(d.porMetodo.PLIN)) +
+    kv('Otro', money(d.porMetodo.OTRO)) +
+    kv('Total digital', money(d.desglose.digital), 'tot') +
+    `</div></div>` +
+    // Ingresos (mitad izq) + limpieza (mitad der)
     `<div class="row ing">` +
-    `<div class="ingL"><span class="ib">P1</span><span class="iv">${d.ingresos.aPie}</span>` +
-    `<span class="ib">P2</span><span class="iv">${d.ingresos.enVehiculo}</span>` +
-    `<span class="iv tot">${d.ingresos.total}</span></div>` +
-    `<div class="ingR"><span class="ib">LIMPIÓ</span><span class="nombre">${limpiadores}</span>` +
-    `<span class="ib">N°</span><span class="iv end">${roomsLimpiadas}</span></div>` +
+    `<div class="half"><div class="stat"><div class="n">${d.ingresos.aPie}</div><div class="l">P1 · A pie</div></div><div class="stat"><div class="n">${d.ingresos.enVehiculo}</div><div class="l">P2 · Vehículo</div></div><div class="stat"><div class="n">${d.ingresos.total}</div><div class="l">Ingresos</div></div></div>` +
+    `<div class="half"><div class="stat nm"><div class="l">Limpieza · responsable</div><div class="nmv">${limpiadores}</div></div><div class="stat"><div class="n">${roomsLimpiadas}</div><div class="l">N° Hab.</div></div></div>` +
     `</div>` +
-    // Productos
+    // Detalle de productos
     `<div class="row">` +
-    `<div class="pcol pL"><div class="ptitle">Bebidas</div>${colProductos(d.plantilla.bebidas)}<div class="psum"><span>Σ B</span><span>${money(d.desglose.B)}</span></div></div>` +
-    `<div class="pcol"><div class="ptitle">Otros</div>${colProductos(d.plantilla.otros)}<div class="psum"><span>Σ O</span><span>${money(d.desglose.O)}</span></div></div>` +
+    `<div class="col"><div class="slbl">Bebidas</div>${colProductos(d.plantilla.bebidas)}<div class="psum"><span>Total bebidas</span><span>${money(d.desglose.B)}</span></div></div>` +
+    `<div class="col"><div class="slbl">Otros</div>${colProductos(d.plantilla.otros)}<div class="psum"><span>Total otros</span><span>${money(d.desglose.O)}</span></div></div>` +
     `</div>` +
+    // Firma
+    `<div class="foot"><div class="sgn">Firma del responsable</div></div>` +
     `</div>`
   );
 }
@@ -699,14 +699,14 @@ function Boleta2Modal({ turnoId, onClose }: { turnoId: number; onClose: () => vo
   return (
     <div className="fixed inset-0 z-[60] bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-3 sm:p-6" onClick={onClose}>
       <div className="bg-white dark:bg-slate-900 rounded-2xl w-full max-w-lg max-h-[92vh] overflow-hidden shadow-2xl flex flex-col animate-scale-in" onClick={(e) => e.stopPropagation()}>
-        <div className="px-4 py-3 flex items-center justify-between bg-gradient-to-r from-amber-400 to-amber-300">
+        <div className="px-4 py-3 flex items-center justify-between bg-slate-900 text-white">
           <div>
-            <div className="text-[10px] uppercase tracking-[0.2em] font-bold text-amber-900/80">Reporte por turno</div>
-            <span className="text-base font-hotel font-bold text-slate-900">🧾 Cierre · Versión 2</span>
+            <div className="text-[10px] uppercase tracking-[0.2em] font-semibold text-slate-400">Reporte de cierre de turno</div>
+            <span className="text-base font-hotel font-bold">Versión 2</span>
           </div>
           <div className="flex items-center gap-2">
-            <button onClick={imprimir} disabled={!data} className="inline-flex items-center gap-1.5 bg-slate-900 hover:bg-slate-800 text-white px-3 py-2 rounded-lg text-xs font-semibold btn-press disabled:opacity-40"><Printer size={13} /> Imprimir</button>
-            <button onClick={onClose} className="w-8 h-8 rounded-lg hover:bg-black/10 flex items-center justify-center"><X size={16} className="text-slate-800" /></button>
+            <button onClick={imprimir} disabled={!data} className="inline-flex items-center gap-1.5 bg-white text-slate-900 hover:bg-slate-100 px-3 py-2 rounded-lg text-xs font-semibold btn-press disabled:opacity-40"><Printer size={13} /> Imprimir</button>
+            <button onClick={onClose} className="w-8 h-8 rounded-lg hover:bg-white/10 flex items-center justify-center"><X size={16} className="text-slate-300" /></button>
           </div>
         </div>
         <div className="flex-1 overflow-y-auto p-4 bg-slate-50 dark:bg-slate-950">
@@ -783,12 +783,12 @@ function Boleta2Preview({ data: d }: { data: any }) {
       {/* Efectivo vs digital */}
       <div className="grid grid-cols-2 gap-2">
         <div className="rounded-2xl bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 p-3">
-          <div className="text-[10px] font-bold uppercase tracking-widest text-emerald-700 dark:text-emerald-300">💵 Efectivo</div>
+          <div className="text-[10px] font-bold uppercase tracking-widest text-emerald-700 dark:text-emerald-300">Efectivo</div>
           <div className="text-2xl font-hotel font-bold text-emerald-700 dark:text-emerald-200">{money(d.desglose.efectivo)}</div>
           <div className="text-[10px] text-emerald-600/70">G − digital</div>
         </div>
         <div className="rounded-2xl bg-slate-100 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 p-3">
-          <div className="text-[10px] font-bold uppercase tracking-widest text-slate-500">💳 Digital (Visa)</div>
+          <div className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Digital (Visa)</div>
           <div className="text-2xl font-hotel font-bold text-slate-800 dark:text-slate-100">{money(d.desglose.digital)}</div>
           <div className="text-[10px] text-slate-400 leading-tight mt-0.5">
             Visa {money(d.porMetodo.VISA)} · Yape {money(d.porMetodo.YAPE)} · Plin {money(d.porMetodo.PLIN)} · Master {money(d.porMetodo.MASTERCARD)} · Otro {money(d.porMetodo.OTRO)}
@@ -801,13 +801,13 @@ function Boleta2Preview({ data: d }: { data: any }) {
         <div className="rounded-2xl bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 p-3">
           <div className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-2">Ingresos</div>
           <div className="flex items-center gap-2 text-center">
-            <div className="flex-1"><div className="text-lg font-bold text-slate-800 dark:text-slate-100">{d.ingresos.aPie}</div><div className="text-[9px] text-slate-400">🚶 P1 a pie</div></div>
-            <div className="flex-1"><div className="text-lg font-bold text-slate-800 dark:text-slate-100">{d.ingresos.enVehiculo}</div><div className="text-[9px] text-slate-400">🚗 P2 vehíc.</div></div>
+            <div className="flex-1"><div className="text-lg font-bold text-slate-800 dark:text-slate-100">{d.ingresos.aPie}</div><div className="text-[9px] text-slate-400">P1 · A pie</div></div>
+            <div className="flex-1"><div className="text-lg font-bold text-slate-800 dark:text-slate-100">{d.ingresos.enVehiculo}</div><div className="text-[9px] text-slate-400">P2 · Vehículo</div></div>
             <div className="flex-1 bg-amber-50 dark:bg-amber-900/20 rounded-lg py-0.5"><div className="text-lg font-bold text-amber-700 dark:text-amber-300">{d.ingresos.total}</div><div className="text-[9px] text-amber-600">total</div></div>
           </div>
         </div>
         <div className="rounded-2xl bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 p-3">
-          <div className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-2">🧹 Limpieza</div>
+          <div className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-2">Limpieza</div>
           {(d.limpieza || []).length === 0 ? (
             <div className="text-sm text-slate-400">Sin limpieza registrada</div>
           ) : (

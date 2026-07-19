@@ -59,6 +59,14 @@ export class CajaController {
     return this.service.reporte(id, user);
   }
 
+  @Get(':id/reporte-boleta2')
+  reporteBoleta2(
+    @Param('id', ParseIntPipe) id: number,
+    @CurrentUser() user: JwtPayload,
+  ) {
+    return this.service.reporteBoleta2(id, user);
+  }
+
   // Cualquier rol autenticado: ADMIN ve todos de la sede, resto solo los suyos
   @Get('turnos')
   listar(

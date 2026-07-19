@@ -320,6 +320,154 @@ export class CajaService {
     };
   }
 
+  /**
+   * REPORTE "BOLETA 2" — reproduce la hojita de cierre por turno:
+   * H (habitaciones) · B (bebidas) · O (otros) · G (total) · digital · efectivo,
+   * ingresos por modo de llegada (a pie / vehículo), limpieza por persona, y el
+   * detalle de productos separado en bebidas y otros. Solo lectura (no emite nada).
+   */
+  async reporteBoleta2(id: number, user: JwtPayload) {
+    const turno = await this.prisma.turnoCaja.findUnique({
+      where: { id },
+      include: {
+        usuario: { select: { id: true, nombre: true, username: true } },
+        sede: { select: { id: true, nombre: true } },
+        ventas: {
+          include: {
+            items: { include: { producto: { include: { categoria: true } } } },
+          },
+        },
+      },
+    });
+    if (!turno) throw new NotFoundException('Turno no encontrado');
+    enforceSede(user, turno.sedeId);
+
+    const pagosTurno = await this.prisma.pagoAlquiler.findMany({
+      where: { turnoCajaId: id },
+      include: {
+        alquiler: {
+          include: {
+            consumos: {
+              include: { producto: { include: { categoria: true } } },
+            },
+          },
+        },
+      },
+    });
+
+    const esBebida = (nombreCat?: string | null) =>
+      !!nombreCat && /bebid/i.test(nombreCat);
+
+    type Tally = { nombre: string; cantidad: number; total: number };
+    const bebidasMap = new Map<number, Tally>();
+    const otrosMap = new Map<number, Tally>();
+    const acumular = (prod: any, cantidad: number, subtotal: number) => {
+      const bucket = esBebida(prod.categoria?.nombre) ? bebidasMap : otrosMap;
+      const cur = bucket.get(prod.id) ?? {
+        nombre: prod.nombre,
+        cantidad: 0,
+        total: 0,
+      };
+      cur.cantidad += cantidad;
+      cur.total += subtotal;
+      bucket.set(prod.id, cur);
+    };
+
+    // Consumos dentro de alquileres cobrados (alquiler único por pago)
+    const alquileresMap = new Map<number, any>();
+    for (const p of pagosTurno) alquileresMap.set(p.alquiler.id, p.alquiler);
+    for (const a of alquileresMap.values())
+      for (const c of a.consumos)
+        acumular(c.producto, c.cantidad, Number(c.subtotal));
+
+    // Ventas directas del turno (no anuladas)
+    const ventasValidas = turno.ventas.filter(
+      (v) => v.estado !== EstadoVenta.ANULADA,
+    );
+    for (const v of ventasValidas)
+      for (const it of v.items)
+        acumular(it.producto, it.cantidad, Number(it.subtotal));
+
+    const bebidas = Array.from(bebidasMap.values()).sort((a, b) =>
+      a.nombre.localeCompare(b.nombre),
+    );
+    const otros = Array.from(otrosMap.values()).sort((a, b) =>
+      a.nombre.localeCompare(b.nombre),
+    );
+    const B = bebidas.reduce((s, x) => s + x.total, 0);
+    const O = otros.reduce((s, x) => s + x.total, 0);
+
+    // H (habitaciones) proporcional a cada pago + métodos de pago
+    let H = 0;
+    const porMetodo: Record<string, number> = {
+      EFECTIVO: 0, VISA: 0, MASTERCARD: 0, YAPE: 0, PLIN: 0, OTRO: 0,
+    };
+    for (const p of pagosTurno) {
+      const a = p.alquiler;
+      const aTotal = Number(a.total);
+      const aHab = Number(a.precioHabitacion);
+      const monto = Number(p.monto);
+      if (aTotal > 0) H += monto * (aHab / aTotal);
+      porMetodo[p.metodoPago] += monto;
+    }
+    for (const v of ventasValidas) porMetodo[v.metodoPago] += Number(v.total);
+
+    const G = H + B + O;
+    const digital =
+      porMetodo.VISA + porMetodo.MASTERCARD + porMetodo.YAPE + porMetodo.PLIN + porMetodo.OTRO;
+    const efectivo = G - digital;
+
+    // Ingresos por modo de llegada (alquileres creados en este turno)
+    const alqTurno = await this.prisma.alquiler.groupBy({
+      by: ['modoLlegada'],
+      where: { turnoCajaId: id, estado: { not: EstadoAlquiler.ANULADO } },
+      _count: { _all: true },
+    });
+    let aPie = 0;
+    let enVehiculo = 0;
+    for (const g of alqTurno) {
+      if (g.modoLlegada === 'VEHICULO') enVehiculo += g._count._all;
+      else aPie += g._count._all; // PIE o sin registrar
+    }
+
+    // Limpieza durante el turno (tareas completadas en su ventana)
+    const hasta = turno.cerradoEn ?? new Date();
+    const tareas = await this.prisma.tareaLimpieza.findMany({
+      where: {
+        sedeId: turno.sedeId,
+        estado: 'COMPLETADA',
+        completadaEn: { gte: turno.abiertoEn, lte: hasta },
+      },
+      include: { asignadaA: { select: { id: true, nombre: true } } },
+    });
+    const limpMap = new Map<number, { nombre: string; habitaciones: number }>();
+    for (const t of tareas) {
+      const key = t.asignadaAId ?? 0;
+      const cur = limpMap.get(key) ?? {
+        nombre: t.asignadaA?.nombre ?? 'Sin asignar',
+        habitaciones: 0,
+      };
+      cur.habitaciones += 1;
+      limpMap.set(key, cur);
+    }
+
+    return {
+      turno: {
+        id: turno.id,
+        abiertoEn: turno.abiertoEn,
+        cerradoEn: turno.cerradoEn,
+        estado: turno.estado,
+        usuario: turno.usuario,
+        sede: turno.sede,
+      },
+      desglose: { H, B, O, G, digital, efectivo },
+      porMetodo,
+      ingresos: { aPie, enVehiculo, total: aPie + enVehiculo },
+      limpieza: Array.from(limpMap.values()),
+      productos: { bebidas, otros },
+    };
+  }
+
   async listarTurnos(user: JwtPayload, sedeIdQuery?: number) {
     const sedeId = resolveSedeId(user, sedeIdQuery);
     const where: any = { sedeId };

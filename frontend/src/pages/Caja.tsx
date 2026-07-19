@@ -694,23 +694,143 @@ function Boleta2Modal({ turnoId, onClose }: { turnoId: number; onClose: () => vo
 
   return (
     <div className="fixed inset-0 z-[60] bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-3 sm:p-6" onClick={onClose}>
-      <div className="bg-white rounded-2xl w-full max-w-md max-h-[92vh] overflow-hidden shadow-2xl flex flex-col animate-scale-in" onClick={(e) => e.stopPropagation()}>
-        <div className="px-4 py-3 border-b border-slate-200 flex items-center justify-between bg-amber-400">
-          <span className="text-sm font-bold text-slate-900">🧾 Reporte por turno · Versión 2</span>
+      <div className="bg-white dark:bg-slate-900 rounded-2xl w-full max-w-lg max-h-[92vh] overflow-hidden shadow-2xl flex flex-col animate-scale-in" onClick={(e) => e.stopPropagation()}>
+        <div className="px-4 py-3 flex items-center justify-between bg-gradient-to-r from-amber-400 to-amber-300">
+          <div>
+            <div className="text-[10px] uppercase tracking-[0.2em] font-bold text-amber-900/80">Reporte por turno</div>
+            <span className="text-base font-hotel font-bold text-slate-900">🧾 Cierre · Versión 2</span>
+          </div>
           <div className="flex items-center gap-2">
-            <button onClick={imprimir} disabled={!data} className="inline-flex items-center gap-1.5 bg-slate-900 text-white px-3 py-1.5 rounded-lg text-xs btn-press disabled:opacity-40"><Printer size={12} /> Imprimir</button>
-            <button onClick={onClose} className="w-8 h-8 rounded-lg hover:bg-black/10 flex items-center justify-center"><X size={16} className="text-slate-700" /></button>
+            <button onClick={imprimir} disabled={!data} className="inline-flex items-center gap-1.5 bg-slate-900 hover:bg-slate-800 text-white px-3 py-2 rounded-lg text-xs font-semibold btn-press disabled:opacity-40"><Printer size={13} /> Imprimir</button>
+            <button onClick={onClose} className="w-8 h-8 rounded-lg hover:bg-black/10 flex items-center justify-center"><X size={16} className="text-slate-800" /></button>
           </div>
         </div>
-        <div className="flex-1 overflow-y-auto p-4 bg-slate-100">
-          <style>{B2_STYLES}</style>
+        <div className="flex-1 overflow-y-auto p-4 bg-slate-50 dark:bg-slate-950">
           {isLoading || !data ? (
             <div className="py-16 text-center text-slate-400 text-sm">Cargando…</div>
           ) : (
-            <div dangerouslySetInnerHTML={{ __html: html }} />
+            <Boleta2Preview data={data} />
           )}
         </div>
       </div>
+    </div>
+  );
+}
+
+// Vista previa BONITA para pantalla (el ticket monospace es solo para imprimir).
+function Boleta2Preview({ data: d }: { data: any }) {
+  const dias = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
+  const money = (n: number) => `S/ ${Number(n || 0).toFixed(2)}`;
+  const fdate = new Date(d.turno.abiertoEn);
+  const roomsLimp = (d.limpieza || []).reduce((s: number, l: any) => s + l.habitaciones, 0);
+
+  const ColProductos = ({ col, titulo, color }: { col: any; titulo: string; color: string }) => {
+    const conValor = col.filas.filter((f: any) => f.cantidad > 0);
+    const extras = col.extras || [];
+    return (
+      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 p-3">
+        <div className={`text-[10px] font-bold uppercase tracking-widest mb-2 ${color}`}>{titulo}</div>
+        {conValor.length === 0 && extras.length === 0 && (
+          <div className="text-xs text-slate-400 py-2">Sin ventas</div>
+        )}
+        <div className="space-y-1">
+          {conValor.map((f: any) => (
+            <div key={f.codigo} className="flex items-center justify-between text-xs">
+              <span className="font-semibold text-slate-700 dark:text-slate-200">{f.codigo}</span>
+              <span className="text-slate-400">×{f.cantidad}</span>
+              <span className="font-medium tabular-nums text-slate-700 dark:text-slate-200">{money(f.total)}</span>
+            </div>
+          ))}
+          {extras.map((e: any, i: number) => (
+            <div key={i} className="flex items-center justify-between text-xs">
+              <span className="font-semibold text-slate-500 truncate max-w-[90px]" title={e.nombre}>{e.nombre}</span>
+              <span className="text-slate-400">×{e.cantidad}</span>
+              <span className="font-medium tabular-nums text-slate-600">{money(e.total)}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  };
+
+  return (
+    <div className="space-y-3">
+      {/* Cabecera */}
+      <div className="rounded-2xl bg-gradient-to-r from-slate-800 to-slate-700 text-white p-4 flex items-start justify-between">
+        <div>
+          <span className="bg-amber-400 text-slate-900 text-[9px] font-bold px-1.5 py-0.5 rounded uppercase tracking-widest">Noche</span>
+          <div className="font-hotel text-2xl font-bold leading-none mt-1">{dias[fdate.getDay()]}</div>
+        </div>
+        <div className="text-right text-[11px] leading-relaxed">
+          <div className="opacity-70">{fdate.toLocaleDateString('es-PE', { day: '2-digit', month: 'long', year: 'numeric' })}</div>
+          <div className="font-semibold">{d.turno.usuario?.username || d.turno.usuario?.nombre}</div>
+          <div className="opacity-60">{d.turno.sede?.nombre}</div>
+        </div>
+      </div>
+
+      {/* KPIs de dinero */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+        <Kpi label="Total (G)" value={money(d.desglose.G)} color="from-violet-500 to-violet-600" />
+        <Kpi label="Habitaciones (H)" value={money(d.desglose.H)} color="from-emerald-500 to-emerald-600" />
+        <Kpi label="Bebidas (B)" value={money(d.desglose.B)} color="from-amber-500 to-orange-500" />
+        <Kpi label="Otros (O)" value={money(d.desglose.O)} color="from-sky-500 to-blue-600" />
+      </div>
+
+      {/* Efectivo vs digital */}
+      <div className="grid grid-cols-2 gap-2">
+        <div className="rounded-2xl bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 p-3">
+          <div className="text-[10px] font-bold uppercase tracking-widest text-emerald-700 dark:text-emerald-300">💵 Efectivo</div>
+          <div className="text-2xl font-hotel font-bold text-emerald-700 dark:text-emerald-200">{money(d.desglose.efectivo)}</div>
+          <div className="text-[10px] text-emerald-600/70">G − digital</div>
+        </div>
+        <div className="rounded-2xl bg-slate-100 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 p-3">
+          <div className="text-[10px] font-bold uppercase tracking-widest text-slate-500">💳 Digital (Visa)</div>
+          <div className="text-2xl font-hotel font-bold text-slate-800 dark:text-slate-100">{money(d.desglose.digital)}</div>
+          <div className="text-[10px] text-slate-400 leading-tight mt-0.5">
+            Visa {money(d.porMetodo.VISA)} · Yape {money(d.porMetodo.YAPE)} · Plin {money(d.porMetodo.PLIN)} · Master {money(d.porMetodo.MASTERCARD)} · Otro {money(d.porMetodo.OTRO)}
+          </div>
+        </div>
+      </div>
+
+      {/* Ingresos + limpieza */}
+      <div className="grid grid-cols-2 gap-2">
+        <div className="rounded-2xl bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 p-3">
+          <div className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-2">Ingresos</div>
+          <div className="flex items-center gap-2 text-center">
+            <div className="flex-1"><div className="text-lg font-bold text-slate-800 dark:text-slate-100">{d.ingresos.aPie}</div><div className="text-[9px] text-slate-400">🚶 P1 a pie</div></div>
+            <div className="flex-1"><div className="text-lg font-bold text-slate-800 dark:text-slate-100">{d.ingresos.enVehiculo}</div><div className="text-[9px] text-slate-400">🚗 P2 vehíc.</div></div>
+            <div className="flex-1 bg-amber-50 dark:bg-amber-900/20 rounded-lg py-0.5"><div className="text-lg font-bold text-amber-700 dark:text-amber-300">{d.ingresos.total}</div><div className="text-[9px] text-amber-600">total</div></div>
+          </div>
+        </div>
+        <div className="rounded-2xl bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 p-3">
+          <div className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-2">🧹 Limpieza</div>
+          <div className="text-lg font-bold text-slate-800 dark:text-slate-100">{roomsLimp} <span className="text-xs font-normal text-slate-400">habitaciones</span></div>
+          <div className="text-[11px] text-slate-500 truncate">{(d.limpieza || []).map((l: any) => l.nombre).join(', ') || '—'}</div>
+        </div>
+      </div>
+
+      {/* Productos */}
+      <div className="grid grid-cols-2 gap-2">
+        <div>
+          <ColProductos col={d.plantilla.bebidas} titulo="Bebidas" color="text-amber-600" />
+          <div className="flex justify-between text-xs font-bold px-3 pt-1"><span className="text-slate-400">Σ Bebidas</span><span className="text-amber-700 dark:text-amber-300">{money(d.desglose.B)}</span></div>
+        </div>
+        <div>
+          <ColProductos col={d.plantilla.otros} titulo="Otros" color="text-sky-600" />
+          <div className="flex justify-between text-xs font-bold px-3 pt-1"><span className="text-slate-400">Σ Otros</span><span className="text-sky-700 dark:text-sky-300">{money(d.desglose.O)}</span></div>
+        </div>
+      </div>
+
+      <div className="text-center text-[10px] text-slate-400 pt-1">Vista de pantalla · Para el ticket como el papel usa <b>Imprimir</b></div>
+    </div>
+  );
+}
+
+function Kpi({ label, value, color }: { label: string; value: string; color: string }) {
+  return (
+    <div className={`rounded-2xl p-3 text-white bg-gradient-to-br ${color} shadow-sm`}>
+      <div className="text-[9px] uppercase tracking-widest font-semibold opacity-90">{label}</div>
+      <div className="text-lg font-hotel font-bold leading-tight mt-0.5">{value}</div>
     </div>
   );
 }

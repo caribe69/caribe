@@ -593,10 +593,13 @@ const B2_STYLES = `
 .b2 .visa{font-weight:bold;font-size:15px}
 .b2 .dig{font-size:10px;color:#444;margin-top:8px;line-height:1.7}
 .b2 .ing{align-items:stretch;font-weight:bold}
+.b2 .ingL{flex:1;display:flex;align-items:stretch;border-right:2px solid #000}
+.b2 .ingR{flex:1;display:flex;align-items:stretch}
 .b2 .ing .ib{padding:5px;background:#eee;border-right:1px solid #000;font-size:10px;align-self:center}
-.b2 .ing .iv{padding:5px;border-right:2px solid #000;min-width:28px;text-align:center;align-self:center}
-.b2 .ing .iv.tot{font-size:15px;background:#fff7cc}
-.b2 .ing .last{border-right:none;flex:1}
+.b2 .ing .iv{padding:5px;border-right:1px solid #000;min-width:26px;text-align:center;align-self:center}
+.b2 .ingL .iv.tot{font-size:15px;background:#fff7cc;border-right:none;flex:1}
+.b2 .ingR .nombre{flex:1;padding:5px;font-size:10px;align-self:center;border-right:1px solid #000;text-align:left}
+.b2 .ingR .iv.end{border-right:none;min-width:34px}
 .b2 .pcol{flex:1;padding:5px}
 .b2 .pL{border-right:2px solid #000}
 .b2 .ptitle{font-weight:bold;font-size:10px;text-transform:uppercase;color:#666;margin-bottom:3px}
@@ -655,12 +658,13 @@ function buildBoleta2Html(d: any): string {
     `<div class="mR"><div class="visa">Visa ⇒ ${money(d.desglose.digital)}</div>` +
     `<div class="dig">Visa ${money(d.porMetodo.VISA)} · Master ${money(d.porMetodo.MASTERCARD)}<br>Yape ${money(d.porMetodo.YAPE)} · Plin ${money(d.porMetodo.PLIN)}<br>Otro ${money(d.porMetodo.OTRO)}</div></div>` +
     `</div>` +
-    // Ingresos + limpieza
+    // Ingresos (mitad izq: P1·P2·total) + limpieza (mitad der: usuario · N°)
     `<div class="row ing">` +
-    `<span class="ib">P1</span><span class="iv">${d.ingresos.aPie}</span>` +
+    `<div class="ingL"><span class="ib">P1</span><span class="iv">${d.ingresos.aPie}</span>` +
     `<span class="ib">P2</span><span class="iv">${d.ingresos.enVehiculo}</span>` +
-    `<span class="iv tot">${d.ingresos.total}</span>` +
-    `<span class="ib">LIMPIEZA N°</span><span class="iv last" style="text-align:left;padding-left:6px">${roomsLimpiadas} · ${limpiadores}</span>` +
+    `<span class="iv tot">${d.ingresos.total}</span></div>` +
+    `<div class="ingR"><span class="ib">LIMPIÓ</span><span class="nombre">${limpiadores}</span>` +
+    `<span class="ib">N°</span><span class="iv end">${roomsLimpiadas}</span></div>` +
     `</div>` +
     // Productos
     `<div class="row">` +
@@ -804,8 +808,19 @@ function Boleta2Preview({ data: d }: { data: any }) {
         </div>
         <div className="rounded-2xl bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 p-3">
           <div className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-2">🧹 Limpieza</div>
-          <div className="text-lg font-bold text-slate-800 dark:text-slate-100">{roomsLimp} <span className="text-xs font-normal text-slate-400">habitaciones</span></div>
-          <div className="text-[11px] text-slate-500 truncate">{(d.limpieza || []).map((l: any) => l.nombre).join(', ') || '—'}</div>
+          {(d.limpieza || []).length === 0 ? (
+            <div className="text-sm text-slate-400">Sin limpieza registrada</div>
+          ) : (
+            <div className="space-y-1">
+              {(d.limpieza || []).map((l: any, i: number) => (
+                <div key={i} className="flex items-center justify-between text-sm">
+                  <span className="font-semibold text-slate-700 dark:text-slate-200 truncate">{l.nombre}</span>
+                  <span className="shrink-0 text-slate-500">{l.habitaciones} <span className="text-[10px] text-slate-400">hab.</span></span>
+                </div>
+              ))}
+              <div className="flex items-center justify-between text-[11px] pt-1 border-t border-slate-100 dark:border-slate-800 text-slate-400"><span>Total</span><span className="font-bold">{roomsLimp} hab.</span></div>
+            </div>
+          )}
         </div>
       </div>
 

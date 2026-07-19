@@ -397,6 +397,41 @@ export class CajaService {
     const B = bebidas.reduce((s, x) => s + x.total, 0);
     const O = otros.reduce((s, x) => s + x.total, 0);
 
+    // ── PLANTILLA FIJA (igual a la hojita de papel) ──
+    // Columna izquierda = bebidas; derecha = otros. Cada renglón es un código
+    // fijo. Se llena buscando productos cuyo nombre EMPIECE por ese código.
+    const CODIGOS_BEBIDAS = ['CB', 'CN', 'CT', 'IM', 'CM', 'SM', 'GAT', 'FRU', 'VIN', 'PISC', 'WIS', 'GUA', 'EVE'];
+    const CODIGOS_OTROS = ['TH', 'SH', 'PIEL', 'CEPI', 'KOLY', 'JABO', 'SHIK', 'PEIN', 'GALL', 'HALL', 'CHIC', 'PIQU'];
+    const norm = (s: string) =>
+      s.toUpperCase().normalize('NFD').replace(/[^A-Z0-9]/g, '');
+    const armarPlantilla = (items: Tally[], codigos: string[]) => {
+      // Códigos más largos primero para que "PISC" gane a "PI", etc.
+      const orden = [...codigos].sort((a, b) => b.length - a.length);
+      const acum: Record<string, { cantidad: number; total: number }> = {};
+      const extras: Tally[] = [];
+      for (const it of items) {
+        const n = norm(it.nombre);
+        const code = orden.find((c) => n.startsWith(c));
+        if (code) {
+          acum[code] = acum[code] || { cantidad: 0, total: 0 };
+          acum[code].cantidad += it.cantidad;
+          acum[code].total += it.total;
+        } else {
+          extras.push(it);
+        }
+      }
+      const filas = codigos.map((c) => ({
+        codigo: c,
+        cantidad: acum[c]?.cantidad ?? 0,
+        total: acum[c]?.total ?? 0,
+      }));
+      return { filas, extras };
+    };
+    const plantilla = {
+      bebidas: armarPlantilla(bebidas, CODIGOS_BEBIDAS),
+      otros: armarPlantilla(otros, CODIGOS_OTROS),
+    };
+
     // H (habitaciones) proporcional a cada pago + métodos de pago
     let H = 0;
     const porMetodo: Record<string, number> = {
@@ -465,6 +500,7 @@ export class CajaService {
       ingresos: { aPie, enVehiculo, total: aPie + enVehiculo },
       limpieza: Array.from(limpMap.values()),
       productos: { bebidas, otros },
+      plantilla,
     };
   }
 

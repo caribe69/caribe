@@ -573,63 +573,124 @@ function ModalDetalle({
 }
 
 // ── Reporte "Boleta 2": hojita de cierre por turno (solo lectura) ──
+// El MISMO HTML se usa para previsualizar (dentro del modal) y para imprimir
+// (ventana nueva), así se ven idénticos y calcados a la hojita de papel.
+const B2_STYLES = `
+*{box-sizing:border-box;margin:0;font-family:'Courier New',monospace}
+.b2{width:340px;margin:0 auto;border:2px solid #000;color:#000;font-size:12px}
+.b2 .row{display:flex;border-bottom:2px solid #000}
+.b2 .row:last-child{border-bottom:none}
+.b2 .cL{flex:1;padding:5px;border-right:2px solid #000}
+.b2 .cM{padding:5px;border-right:2px solid #000;font-weight:bold;align-self:center}
+.b2 .cR{flex:1.5;padding:5px;font-size:11px;line-height:1.4}
+.b2 .noche{background:#fbbf24;padding:0 4px;font-size:10px;font-weight:bold}
+.b2 .dia{font-weight:bold;font-size:14px;display:block;margin-top:2px}
+.b2 .mL{flex:1;padding:6px;border-right:2px solid #000}
+.b2 .mR{flex:1;padding:6px}
+.b2 .mrow{display:flex;justify-content:space-between;gap:6px}
+.b2 .mrow.big{font-weight:bold;font-size:15px}
+.b2 .ln{border-top:1px solid #000;margin:3px 0}
+.b2 .visa{font-weight:bold;font-size:15px}
+.b2 .dig{font-size:10px;color:#444;margin-top:8px;line-height:1.7}
+.b2 .ing{align-items:stretch;font-weight:bold}
+.b2 .ing .ib{padding:5px;background:#eee;border-right:1px solid #000;font-size:10px;align-self:center}
+.b2 .ing .iv{padding:5px;border-right:2px solid #000;min-width:28px;text-align:center;align-self:center}
+.b2 .ing .iv.tot{font-size:15px;background:#fff7cc}
+.b2 .ing .last{border-right:none;flex:1}
+.b2 .pcol{flex:1;padding:5px}
+.b2 .pL{border-right:2px solid #000}
+.b2 .ptitle{font-weight:bold;font-size:10px;text-transform:uppercase;color:#666;margin-bottom:3px}
+.b2 .pr{display:grid;grid-template-columns:38px 24px 1fr;gap:3px;align-items:center;border-bottom:1px dotted #aaa;padding:2px 0;min-height:18px}
+.b2 .pr.z{color:#bbb}
+.b2 .pc{font-weight:bold}
+.b2 .pq{text-align:center}
+.b2 .pv{text-align:right}
+.b2 .psum{display:flex;justify-content:space-between;font-weight:bold;border-top:2px solid #000;margin-top:4px;padding-top:3px}
+`;
+
+function buildBoleta2Html(d: any): string {
+  const dias = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
+  const money = (n: number) => Number(n || 0).toFixed(2);
+  const esc = (s: string) =>
+    String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]!));
+  const fdate = new Date(d.turno.abiertoEn);
+
+  // Renglones de una columna de productos (códigos fijos + extras del turno)
+  const colProductos = (col: any) => {
+    const fijos = col.filas
+      .map((f: any) => {
+        const z = f.cantidad === 0;
+        return `<div class="pr${z ? ' z' : ''}"><span class="pc">${esc(f.codigo)}</span><span class="pq">${z ? '' : f.cantidad}</span><span class="pv">${z ? '' : money(f.total)}</span></div>`;
+      })
+      .join('');
+    const extras = (col.extras || [])
+      .map((e: any) => `<div class="pr"><span class="pc" title="${esc(e.nombre)}">${esc(e.nombre).slice(0, 5).toUpperCase()}</span><span class="pq">${e.cantidad}</span><span class="pv">${money(e.total)}</span></div>`)
+      .join('');
+    return fijos + extras;
+  };
+
+  const roomsLimpiadas = (d.limpieza || []).reduce((s: number, l: any) => s + l.habitaciones, 0);
+  const limpiadores = (d.limpieza || []).map((l: any) => esc(l.nombre)).join(', ') || '—';
+
+  return (
+    `<div class="b2">` +
+    // Cabecera
+    `<div class="row">` +
+    `<div class="cL"><span class="noche">NOCHE</span><span class="dia">${dias[fdate.getDay()]}</span></div>` +
+    `<div class="cM">SOL</div>` +
+    `<div class="cR"><b>FECHA</b> ${fdate.toLocaleDateString('es-PE')}<br><b>${esc(d.turno.usuario?.username || d.turno.usuario?.nombre || '')}</b><br><span style="color:#888">${esc(d.turno.sede?.nombre || '')}</span></div>` +
+    `</div>` +
+    // Dinero
+    `<div class="row">` +
+    `<div class="mL">` +
+    `<div class="mrow"><span>H</span><span>${money(d.desglose.H)}</span></div>` +
+    `<div class="mrow"><span>B</span><span>${money(d.desglose.B)}</span></div>` +
+    `<div class="mrow"><span>O</span><span>${money(d.desglose.O)}</span></div>` +
+    `<div class="ln"></div>` +
+    `<div class="mrow"><span>G</span><span>${money(d.desglose.G)}</span></div>` +
+    `<div class="mrow"><span></span><span>− ${money(d.desglose.digital)}</span></div>` +
+    `<div class="ln"></div>` +
+    `<div class="mrow big"><span></span><span>${money(d.desglose.efectivo)}</span></div>` +
+    `</div>` +
+    `<div class="mR"><div class="visa">Visa ⇒ ${money(d.desglose.digital)}</div>` +
+    `<div class="dig">Visa ${money(d.porMetodo.VISA)} · Master ${money(d.porMetodo.MASTERCARD)}<br>Yape ${money(d.porMetodo.YAPE)} · Plin ${money(d.porMetodo.PLIN)}<br>Otro ${money(d.porMetodo.OTRO)}</div></div>` +
+    `</div>` +
+    // Ingresos + limpieza
+    `<div class="row ing">` +
+    `<span class="ib">P1</span><span class="iv">${d.ingresos.aPie}</span>` +
+    `<span class="ib">P2</span><span class="iv">${d.ingresos.enVehiculo}</span>` +
+    `<span class="iv tot">${d.ingresos.total}</span>` +
+    `<span class="ib">LIMPIEZA N°</span><span class="iv last" style="text-align:left;padding-left:6px">${roomsLimpiadas} · ${limpiadores}</span>` +
+    `</div>` +
+    // Productos
+    `<div class="row">` +
+    `<div class="pcol pL"><div class="ptitle">Bebidas</div>${colProductos(d.plantilla.bebidas)}<div class="psum"><span>Σ B</span><span>${money(d.desglose.B)}</span></div></div>` +
+    `<div class="pcol"><div class="ptitle">Otros</div>${colProductos(d.plantilla.otros)}<div class="psum"><span>Σ O</span><span>${money(d.desglose.O)}</span></div></div>` +
+    `</div>` +
+    `</div>`
+  );
+}
+
 function Boleta2Modal({ turnoId, onClose }: { turnoId: number; onClose: () => void }) {
   const { data, isLoading } = useQuery<any>({
     queryKey: ['caja', 'boleta2', turnoId],
     queryFn: async () => (await api.get(`/caja/${turnoId}/reporte-boleta2`)).data,
   });
-  const money = (n: number) => Number(n || 0).toFixed(2);
-  const dias = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
+
+  const html = data ? buildBoleta2Html(data) : '';
 
   const imprimir = () => {
-    const el = document.getElementById('boleta2-print');
-    if (!el) return;
-    const w = window.open('', '_blank', 'width=420,height=760');
+    if (!html) return;
+    const w = window.open('', '_blank', 'width=440,height=820');
     if (!w) return;
     w.document.write(
       `<html><head><title>Reporte turno #${turnoId}</title><meta charset="utf-8">` +
-        `<style>*{font-family:'Courier New',monospace;box-sizing:border-box;margin:0}` +
-        `body{padding:10px;color:#000}` +
-        `.b2{max-width:360px;margin:0 auto;border:2px solid #000}` +
-        `.g2{display:grid;grid-template-columns:1fr 1fr}` +
-        `.bd{border-bottom:2px solid #000}.br{border-right:2px solid #000}` +
-        `.cell{padding:6px;font-size:12px}` +
-        `.fila{display:flex;justify-content:space-between;gap:6px}` +
-        `.b{font-weight:bold}.tt{border-top:1px solid #888;margin-top:4px;padding-top:4px}` +
-        `.hd{background:#fbbf24;display:inline-block;padding:0 4px;font-size:10px;font-weight:bold}` +
-        `.mut{color:#888}.sm{font-size:11px}</style></head><body>` +
-        el.getAttribute('data-print-html') +
-        `</body></html>`,
+        `<style>${B2_STYLES} body{padding:10px}</style></head><body>${html}</body></html>`,
     );
     w.document.close();
     w.focus();
     setTimeout(() => w.print(), 300);
   };
-
-  // HTML plano (con clases simples) para la ventana de impresión.
-  const printHtml = data
-    ? (() => {
-        const d = data;
-        const filas = (arr: [string, string, boolean?][]) =>
-          arr.map(([k, v, b]) => `<div class="fila${b ? ' b' : ''}"><span>${k}</span><span>${v}</span></div>`).join('');
-        const prods = (arr: any[]) => arr.length
-          ? arr.map((p) => `<div class="fila sm"><span>${p.nombre} ×${p.cantidad}</span><span>${money(p.total)}</span></div>`).join('')
-          : '<div class="mut sm">—</div>';
-        const limp = d.limpieza.length
-          ? d.limpieza.map((l: any) => `<div class="fila sm"><span>${l.nombre}</span><span>${l.habitaciones} hab.</span></div>`).join('')
-          : '<div class="mut sm">—</div>';
-        return `<div class="b2">` +
-          `<div class="g2 bd"><div class="cell br"><span class="hd">NOCHE</span><div class="b">${dias[new Date(d.turno.abiertoEn).getDay()]}</div></div>` +
-          `<div class="cell sm"><div><b>FECHA:</b> ${new Date(d.turno.abiertoEn).toLocaleDateString('es-PE')}</div><div><b>Usuario:</b> ${d.turno.usuario?.username || d.turno.usuario?.nombre}</div><div class="mut">${d.turno.sede?.nombre}</div></div></div>` +
-          `<div class="g2 bd"><div class="cell br">${filas([['H · Habitaciones', money(d.desglose.H)],['B · Bebidas', money(d.desglose.B)],['O · Otros', money(d.desglose.O)]])}<div class="tt">${filas([['G · TOTAL', money(d.desglose.G), true],['− Digital', money(d.desglose.digital)],['= EFECTIVO', money(d.desglose.efectivo), true]])}</div></div>` +
-          `<div class="cell"><div class="b">Pagos digitales</div>${filas([['Visa', money(d.porMetodo.VISA)],['Master', money(d.porMetodo.MASTERCARD)],['Yape', money(d.porMetodo.YAPE)],['Plin', money(d.porMetodo.PLIN)],['Otro', money(d.porMetodo.OTRO)]])}<div class="tt">${filas([['Total', money(d.desglose.digital), true]])}</div></div></div>` +
-          `<div class="g2 bd"><div class="cell br"><div class="b">Ingresos</div>${filas([['P1 · A pie', String(d.ingresos.aPie)],['P2 · Vehículo', String(d.ingresos.enVehiculo)],['Total personas', String(d.ingresos.total), true]])}</div>` +
-          `<div class="cell"><div class="b">Limpieza</div>${limp}</div></div>` +
-          `<div class="g2"><div class="cell br"><div class="b">Bebidas</div>${prods(d.productos.bebidas)}<div class="tt fila b"><span>Σ B</span><span>${money(d.desglose.B)}</span></div></div>` +
-          `<div class="cell"><div class="b">Otros</div>${prods(d.productos.otros)}<div class="tt fila b"><span>Σ O</span><span>${money(d.desglose.O)}</span></div></div></div>` +
-          `</div>`;
-      })()
-    : '';
 
   return (
     <div className="fixed inset-0 z-[60] bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-3 sm:p-6" onClick={onClose}>
@@ -637,100 +698,19 @@ function Boleta2Modal({ turnoId, onClose }: { turnoId: number; onClose: () => vo
         <div className="px-4 py-3 border-b border-slate-200 flex items-center justify-between bg-amber-400">
           <span className="text-sm font-bold text-slate-900">🧾 Reporte por turno · Versión 2</span>
           <div className="flex items-center gap-2">
-            <button onClick={imprimir} className="inline-flex items-center gap-1.5 bg-slate-900 text-white px-3 py-1.5 rounded-lg text-xs btn-press"><Printer size={12} /> Imprimir</button>
+            <button onClick={imprimir} disabled={!data} className="inline-flex items-center gap-1.5 bg-slate-900 text-white px-3 py-1.5 rounded-lg text-xs btn-press disabled:opacity-40"><Printer size={12} /> Imprimir</button>
             <button onClick={onClose} className="w-8 h-8 rounded-lg hover:bg-black/10 flex items-center justify-center"><X size={16} className="text-slate-700" /></button>
           </div>
         </div>
-        <div className="flex-1 overflow-y-auto p-4">
+        <div className="flex-1 overflow-y-auto p-4 bg-slate-100">
+          <style>{B2_STYLES}</style>
           {isLoading || !data ? (
             <div className="py-16 text-center text-slate-400 text-sm">Cargando…</div>
           ) : (
-            <div id="boleta2-print" data-print-html={printHtml} className="mx-auto max-w-[360px] border-2 border-slate-900 text-slate-900 text-sm font-mono">
-              {/* Cabecera */}
-              <div className="grid grid-cols-2 border-b-2 border-slate-900">
-                <div className="p-2 border-r-2 border-slate-900">
-                  <div className="bg-amber-400 inline-block px-1 text-[10px] font-bold">NOCHE</div>
-                  <div className="font-bold">{dias[new Date(data.turno.abiertoEn).getDay()]}</div>
-                </div>
-                <div className="p-2 text-[11px]">
-                  <div><b>FECHA:</b> {new Date(data.turno.abiertoEn).toLocaleDateString('es-PE')}</div>
-                  <div><b>Usuario:</b> {data.turno.usuario?.username || data.turno.usuario?.nombre}</div>
-                  <div className="text-slate-500">{data.turno.sede?.nombre}</div>
-                </div>
-              </div>
-
-              {/* Dinero H/B/O/G + Visa + Efectivo */}
-              <div className="grid grid-cols-2 border-b-2 border-slate-900">
-                <div className="p-2 border-r-2 border-slate-900 space-y-0.5">
-                  <Fila k="H · Habitaciones" v={money(data.desglose.H)} />
-                  <Fila k="B · Bebidas" v={money(data.desglose.B)} />
-                  <Fila k="O · Otros" v={money(data.desglose.O)} />
-                  <div className="border-t border-slate-400 mt-1 pt-1">
-                    <Fila k="G · TOTAL" v={money(data.desglose.G)} bold />
-                    <Fila k="− Digital" v={money(data.desglose.digital)} />
-                    <Fila k="= EFECTIVO" v={money(data.desglose.efectivo)} bold />
-                  </div>
-                </div>
-                <div className="p-2 text-[12px]">
-                  <div className="font-bold mb-1">Pagos digitales</div>
-                  <Fila k="Visa" v={money(data.porMetodo.VISA)} />
-                  <Fila k="Master" v={money(data.porMetodo.MASTERCARD)} />
-                  <Fila k="Yape" v={money(data.porMetodo.YAPE)} />
-                  <Fila k="Plin" v={money(data.porMetodo.PLIN)} />
-                  <Fila k="Otro" v={money(data.porMetodo.OTRO)} />
-                  <div className="border-t border-slate-400 mt-1 pt-1"><Fila k="Total" v={money(data.desglose.digital)} bold /></div>
-                </div>
-              </div>
-
-              {/* Ingresos por puerta + limpieza */}
-              <div className="grid grid-cols-2 border-b-2 border-slate-900">
-                <div className="p-2 border-r-2 border-slate-900 text-[12px]">
-                  <div className="font-bold mb-1">Ingresos</div>
-                  <Fila k="P1 · A pie" v={String(data.ingresos.aPie)} />
-                  <Fila k="P2 · Vehículo" v={String(data.ingresos.enVehiculo)} />
-                  <Fila k="Total personas" v={String(data.ingresos.total)} bold />
-                </div>
-                <div className="p-2 text-[12px]">
-                  <div className="font-bold mb-1">Limpieza</div>
-                  {data.limpieza.length === 0 && <div className="text-slate-400">—</div>}
-                  {data.limpieza.map((l: any, i: number) => (
-                    <Fila key={i} k={l.nombre} v={`${l.habitaciones} hab.`} />
-                  ))}
-                </div>
-              </div>
-
-              {/* Productos: bebidas | otros */}
-              <div className="grid grid-cols-2">
-                <div className="p-2 border-r-2 border-slate-900 text-[11px]">
-                  <div className="font-bold mb-1">Bebidas</div>
-                  {data.productos.bebidas.length === 0 && <div className="text-slate-400">—</div>}
-                  {data.productos.bebidas.map((p: any, i: number) => (
-                    <div key={i} className="flex justify-between gap-1"><span className="truncate">{p.nombre} ×{p.cantidad}</span><span>{money(p.total)}</span></div>
-                  ))}
-                  <div className="border-t border-slate-400 mt-1 pt-1 flex justify-between font-bold"><span>Σ B</span><span>{money(data.desglose.B)}</span></div>
-                </div>
-                <div className="p-2 text-[11px]">
-                  <div className="font-bold mb-1">Otros</div>
-                  {data.productos.otros.length === 0 && <div className="text-slate-400">—</div>}
-                  {data.productos.otros.map((p: any, i: number) => (
-                    <div key={i} className="flex justify-between gap-1"><span className="truncate">{p.nombre} ×{p.cantidad}</span><span>{money(p.total)}</span></div>
-                  ))}
-                  <div className="border-t border-slate-400 mt-1 pt-1 flex justify-between font-bold"><span>Σ O</span><span>{money(data.desglose.O)}</span></div>
-                </div>
-              </div>
-            </div>
+            <div dangerouslySetInnerHTML={{ __html: html }} />
           )}
         </div>
       </div>
-    </div>
-  );
-}
-
-function Fila({ k, v, bold }: { k: string; v: string; bold?: boolean }) {
-  return (
-    <div className={`flex justify-between gap-2 ${bold ? 'font-bold' : ''}`}>
-      <span className="truncate">{k}</span>
-      <span className="tabular-nums">{v}</span>
     </div>
   );
 }

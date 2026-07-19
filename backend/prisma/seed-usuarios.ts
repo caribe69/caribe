@@ -54,16 +54,22 @@ async function main() {
   let saltados = 0;
 
   for (const p of PERSONAL) {
-    const yaPersonal = await prisma.personal.findUnique({ where: { dni: p.dni } });
     const yaUser = await prisma.usuario.findUnique({ where: { username: p.username } });
-    if (yaPersonal || yaUser) {
-      console.log(`↷  ${p.username} (DNI ${p.dni}) ya existe — saltado`);
+    if (yaUser) {
+      console.log(`↷  ${p.username} — usuario ya existe, saltado`);
+      saltados++;
+      continue;
+    }
+    const personalExist = await prisma.personal.findUnique({ where: { dni: p.dni } });
+    if (personalExist?.usuarioId) {
+      console.log(`↷  DNI ${p.dni} — el personal ya tiene usuario, saltado`);
       saltados++;
       continue;
     }
 
     const esMultisede = p.sede === 'MULTISEDE';
-    const sedeId = esMultisede ? sedeBaseMultisede : byNombre.get(p.sede.toLowerCase());
+    const sedeMapeada = esMultisede ? sedeBaseMultisede : byNombre.get(p.sede.toLowerCase());
+    const sedeId = personalExist?.sedeId ?? sedeMapeada;
     if (!sedeId) {
       console.log(`⚠  No encontré la sede "${p.sede}" para ${p.username} — saltado`);
       saltados++;
@@ -85,19 +91,36 @@ async function main() {
           activo: true,
         },
       });
-      await tx.personal.create({
-        data: {
-          dni: p.dni,
-          nombre: p.nombre,
-          apellidoPaterno: p.apellidoP,
-          apellidoMaterno: p.apellidoM,
-          telefono: p.telefono,
-          cargo: p.cargo,
-          sedeId,
-          activo: true,
-          usuarioId: usuario.id,
-        },
-      });
+      if (personalExist) {
+        // Personal ya existía (creado antes): completar datos y vincular usuario.
+        await tx.personal.update({
+          where: { id: personalExist.id },
+          data: {
+            nombre: p.nombre,
+            apellidoPaterno: p.apellidoP,
+            apellidoMaterno: p.apellidoM,
+            telefono: personalExist.telefono ?? p.telefono,
+            cargo: personalExist.cargo ?? p.cargo,
+            sedeId,
+            activo: true,
+            usuarioId: usuario.id,
+          },
+        });
+      } else {
+        await tx.personal.create({
+          data: {
+            dni: p.dni,
+            nombre: p.nombre,
+            apellidoPaterno: p.apellidoP,
+            apellidoMaterno: p.apellidoM,
+            telefono: p.telefono,
+            cargo: p.cargo,
+            sedeId,
+            activo: true,
+            usuarioId: usuario.id,
+          },
+        });
+      }
       if (esMultisede) {
         await tx.usuarioSede.createMany({
           data: idsHotel.map((sid) => ({ usuarioId: usuario.id, sedeId: sid })),
@@ -105,7 +128,7 @@ async function main() {
         });
       }
     });
-    console.log(`✔  ${p.username.padEnd(18)} · ${p.rol.padEnd(10)} · ${esMultisede ? 'MULTISEDE' : p.sede}`);
+    console.log(`✔  ${p.username.padEnd(18)} · ${p.rol.padEnd(10)} · ${esMultisede ? 'MULTISEDE' : p.sede}${personalExist ? ' (vinculado a personal existente)' : ''}`);
     creados++;
   }
 

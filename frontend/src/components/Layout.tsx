@@ -218,7 +218,7 @@ const groups: Group[] = [
         to: '/documentos',
         label: 'Documentos',
         icon: FileBarChart,
-        roles: ['SUPERADMIN', 'ADMIN_SEDE', 'HOTELERO'],
+        roles: ['SUPERADMIN', 'ADMIN_SEDE'],
       },
       {
         to: '/pagina-web',

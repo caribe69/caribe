@@ -52,6 +52,7 @@ class UpdateDocumentoDto {
 }
 
 @UseGuards(JwtAuthGuard, RolesGuard)
+@Roles(Rol.SUPERADMIN, Rol.ADMIN_SEDE)
 @Controller('documentos')
 export class DocumentosController {
   constructor(

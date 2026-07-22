@@ -1337,7 +1337,6 @@ function NuevoAlquilerModal({
   // La hora de INGRESO debe ser la del REGISTRO (cuando se guarda), no la de
   // cuando se abrió el modal. Si la recepcionista la edita a mano, se respeta.
   const [ingresoEditado, setIngresoEditado] = useState(false);
-  const [salidaEditada, setSalidaEditada] = useState(false);
   // RUC manual: cuando SUNAT externa no encuentra, el usuario puede tipear
   // razón social y dirección a mano. Se persiste en el alquiler y la próxima
   // búsqueda lo encuentra en el historial local automáticamente.
@@ -1517,17 +1516,13 @@ function NuevoAlquilerModal({
 
   const crear = useMutation({
     mutationFn: async () => {
-      // Hora de INGRESO = momento del REGISTRO. Si no la editó a mano, se usa
-      // "ahora" (no la hora en que se abrió el modal) y la salida se corre
-      // igual para conservar la duración elegida.
-      let ingresoDate = new Date(form.fechaIngreso);
-      let salidaDate = new Date(form.fechaSalida);
-      if (!ingresoEditado) {
-        const ahora = new Date();
-        const delta = ahora.getTime() - ingresoDate.getTime();
-        ingresoDate = ahora;
-        if (!salidaEditada) salidaDate = new Date(salidaDate.getTime() + delta);
-      }
+      // Hora de INGRESO = momento del REGISTRO (no la de cuando se abrió el
+      // modal). Si la editó a mano, se respeta. La SALIDA queda tal cual está
+      // en el campo — no se mueve.
+      const ingresoDate = ingresoEditado
+        ? new Date(form.fechaIngreso)
+        : new Date();
+      const salidaDate = new Date(form.fechaSalida);
 
       const payload: any = {
         habitacionId: habitacion.id,
@@ -1765,10 +1760,9 @@ function NuevoAlquilerModal({
                 type="datetime-local"
                 className="w-full border rounded-lg px-3 py-2 mt-1"
                 value={form.fechaSalida}
-                onChange={(e) => {
-                  setSalidaEditada(true);
-                  setForm({ ...form, fechaSalida: e.target.value });
-                }}
+                onChange={(e) =>
+                  setForm({ ...form, fechaSalida: e.target.value })
+                }
               />
             </label>
           </div>

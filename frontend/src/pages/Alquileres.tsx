@@ -444,10 +444,12 @@ function MapaHabitaciones() {
           const hhmm = (x: string) =>
             new Date(x).toLocaleTimeString('es-PE', { hour: '2-digit', minute: '2-digit' });
 
-          // Tiempo transcurrido (OCUPADA: desde creadoEn; ALISTANDO: desde fechaSalidaReal)
+          // Tiempo transcurrido (OCUPADA: desde la hora de INGRESO real del
+          // huésped; ALISTANDO: desde fechaSalidaReal). Antes usaba creadoEn,
+          // que es cuando se registró en el sistema y no siempre coincide.
           const tiempoBase =
             h.estado === 'OCUPADA' && alquilerRef?.estado === 'ACTIVO'
-              ? new Date(alquilerRef.creadoEn)
+              ? new Date(alquilerRef.fechaIngreso ?? alquilerRef.creadoEn)
               : h.estado === 'ALISTANDO' && alquilerRef?.fechaSalidaReal
                 ? new Date(alquilerRef.fechaSalidaReal)
                 : null;
@@ -470,7 +472,7 @@ function MapaHabitaciones() {
             const edadTxt = alquilerRef.clienteFechaNacimiento
               ? ` · ${calcularEdad(alquilerRef.clienteFechaNacimiento)} años`
               : '';
-            tooltip = `${alquilerRef.clienteNombre} · DNI ${alquilerRef.clienteDni}${edadTxt}\nIngreso: ${new Date(alquilerRef.creadoEn).toLocaleString('es-PE')}\nSalida prevista: ${new Date(alquilerRef.fechaSalida).toLocaleString('es-PE')}\nLleva: ${formatDuracion(minutosEn)}`;
+            tooltip = `${alquilerRef.clienteNombre} · DNI ${alquilerRef.clienteDni}${edadTxt}\nIngreso: ${new Date(alquilerRef.fechaIngreso ?? alquilerRef.creadoEn).toLocaleString('es-PE')}\nSalida prevista: ${new Date(alquilerRef.fechaSalida).toLocaleString('es-PE')}\nLleva: ${formatDuracion(minutosEn)}`;
           } else if (h.estado === 'ALISTANDO') {
             tooltip = tiempoBase
               ? `En limpieza desde: ${tiempoBase.toLocaleString('es-PE')}\nHace ${formatDuracion(minutosEn)}\nTolerancia: ${formatDuracion(umbralAlistando)} (${countAlistando} hab. en cola × 30 min)${alistandoAtrasada ? '\n⚠ ATRASADO' : ''}`

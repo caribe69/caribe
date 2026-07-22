@@ -43,11 +43,14 @@ export default function ReservaGrupalModal({
   const [contactoTelefono, setContactoTelefono] = useState('');
 
   const ahora = new Date();
-  const [fechaIngreso, setFechaIngreso] = useState(
-    new Date(ahora.getTime()).toISOString().slice(0, 16),
-  );
+  // Hora LOCAL (toISOString daría UTC: en Perú mostraba 5 horas de más).
+  const toInputLocal = (d: Date) => {
+    const p = (n: number) => String(n).padStart(2, '0');
+    return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`;
+  };
+  const [fechaIngreso, setFechaIngreso] = useState(toInputLocal(ahora));
   const [fechaSalida, setFechaSalida] = useState(
-    new Date(ahora.getTime() + 24 * 60 * 60 * 1000).toISOString().slice(0, 16),
+    toInputLocal(new Date(ahora.getTime() + 24 * 60 * 60 * 1000)),
   );
   const [precioPorHabitacion, setPrecio] = useState<string>('');
   const [metodoPago, setMetodoPago] = useState<string>('EFECTIVO');

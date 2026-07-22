@@ -1296,6 +1296,16 @@ function AlquilerActivoModal({
  * MODAL: nuevo alquiler (con habitación preseleccionada)
  * ============================================================ */
 
+/**
+ * Fecha/hora LOCAL con el formato que espera <input type="datetime-local">.
+ * OJO: toISOString() devuelve UTC — en Perú (UTC-5) eso mostraba 5 horas de
+ * más (ej. 18:23 cuando eran las 13:23) y se guardaba adelantado.
+ */
+function toInputLocal(d: Date) {
+  const p = (n: number) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`;
+}
+
 function NuevoAlquilerModal({
   habitacion,
   reserva,
@@ -1311,8 +1321,9 @@ function NuevoAlquilerModal({
     clienteDni: '',
     clienteTelefono: '',
     clienteFechaNacimiento: '' as string | '',
-    fechaIngreso: new Date().toISOString().slice(0, 16),
-    fechaSalida: new Date(Date.now() + 3600 * 1000).toISOString().slice(0, 16),
+    // Hora ACTUAL local por defecto (editable a mano si hace falta)
+    fechaIngreso: toInputLocal(new Date()),
+    fechaSalida: toInputLocal(new Date(Date.now() + 3600 * 1000)),
     precioHabitacion: habitacion.precioHora,
     metodoPago: 'EFECTIVO',
     notas: '',

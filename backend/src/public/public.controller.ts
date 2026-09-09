@@ -10,4 +10,10 @@ export class PublicController {
   landing() {
     return this.service.landing();
   }
+
+  /** Lista de sedes operativas para el selector del login (sin token). */
+  @Get('sedes')
+  sedes() {
+    return this.service.sedesLogin();
+  }
 }

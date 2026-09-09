@@ -101,33 +101,72 @@ export class AuthService {
       throw new UnauthorizedException('Credenciales inválidas');
     }
 
-    // SUPERADMIN sin sede asignada: usar la primera sede activa como sede por defecto
+    // ── Resolver la sede a la que entra según la elegida en el login ──
+    // El login lista TODAS las sedes; aquí se valida que el usuario pueda
+    // entrar a la que eligió. Si no le pertenece, simplemente no lo deja.
     let sedeEfectiva = user.sede;
     let sedeIdEfectivo = user.sedeId;
-    if (user.rol === 'SUPERADMIN' && !sedeIdEfectivo) {
-      const primera = await this.prisma.sede.findFirst({
-        // Solo una sede operativa (hoja), nunca un agrupador de edificios.
-        where: { activa: true, edificios: { none: {} } },
-        orderBy: { id: 'asc' },
-        include: { sedePadre: true },
-      });
-      if (primera) {
-        sedeIdEfectivo = primera.id;
-        sedeEfectiva = primera;
-      }
-    }
 
-    // Cuenta multisede (≥2 sedes de acceso): debe elegir a cuál sede entra,
-    // y esa sede tiene que estar entre las suyas.
-    if (user.rol !== 'SUPERADMIN' && user.sedesAcceso.length >= 2) {
-      const permitida = user.sedesAcceso.find((a) => a.sedeId === dto.sedeId);
-      if (!dto.sedeId || !permitida) {
-        throw new UnauthorizedException(
-          'Debes elegir una sede válida para iniciar sesión',
-        );
+    if (user.rol === 'SUPERADMIN') {
+      // SUPERADMIN puede entrar a cualquier sede operativa (activa, hoja).
+      if (dto.sedeId) {
+        const s = await this.prisma.sede.findFirst({
+          where: { id: dto.sedeId, activa: true },
+          include: { sedePadre: true },
+        });
+        if (!s) throw new UnauthorizedException('Sede no válida');
+        sedeIdEfectivo = s.id;
+        sedeEfectiva = s;
+      } else if (!sedeIdEfectivo) {
+        const primera = await this.prisma.sede.findFirst({
+          // Solo una sede operativa (hoja), nunca un agrupador de edificios.
+          where: { activa: true, edificios: { none: {} } },
+          orderBy: { id: 'asc' },
+          include: { sedePadre: true },
+        });
+        if (primera) {
+          sedeIdEfectivo = primera.id;
+          sedeEfectiva = primera;
+        }
       }
-      sedeIdEfectivo = permitida.sedeId;
-      sedeEfectiva = permitida.sede;
+    } else if (dto.sedeId) {
+      // Sedes a las que el usuario tiene acceso: su sede principal + accesos.
+      const permitidas = new Set<number>();
+      if (user.sedeId) permitidas.add(user.sedeId);
+      for (const a of user.sedesAcceso) permitidas.add(a.sedeId);
+
+      if (!permitidas.has(dto.sedeId)) {
+        // Credenciales correctas, pero la sede elegida no es suya → no entra.
+        this.audit.record({
+          usuarioId: user.id,
+          username: user.username,
+          rol: user.rol,
+          sedeId: user.sedeId,
+          accion: 'LOGIN_FAIL',
+          metodo: 'POST',
+          path: '/api/auth/login',
+          ip: ctx.ip ?? null,
+          userAgent: ctx.userAgent ?? null,
+          detalle: { motivo: 'sede_no_permitida', sedeIntento: dto.sedeId },
+          ok: false,
+          statusCode: 401,
+        });
+        throw new UnauthorizedException('No tienes acceso a esa sede');
+      }
+
+      sedeIdEfectivo = dto.sedeId;
+      // Cargar la sede elegida (puede ser la principal o una de acceso).
+      if (user.sede?.id === dto.sedeId) {
+        sedeEfectiva = user.sede;
+      } else {
+        const acc = user.sedesAcceso.find((a) => a.sedeId === dto.sedeId);
+        sedeEfectiva = acc
+          ? acc.sede
+          : await this.prisma.sede.findUnique({
+              where: { id: dto.sedeId },
+              include: { sedePadre: true },
+            });
+      }
     }
 
     const payload: JwtPayload = {

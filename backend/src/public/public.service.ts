@@ -6,6 +6,25 @@ export class PublicService {
   constructor(private prisma: PrismaService) {}
 
   /**
+   * Sedes para el selector del login (sin autenticación). Solo sedes
+   * operativas (hojas: sin edificios) y activas. El login las lista TODAS;
+   * la validación de a cuáles puede entrar cada usuario se hace al iniciar
+   * sesión (auth.service.login).
+   */
+  async sedesLogin() {
+    const sedes = await this.prisma.sede.findMany({
+      where: { activa: true, edificios: { none: {} } },
+      orderBy: [{ esPrincipal: 'desc' }, { nombre: 'asc' }],
+      include: { sedePadre: { select: { nombre: true } } },
+    });
+    return sedes.map((s) => ({
+      id: s.id,
+      nombre: s.nombre,
+      grupo: s.sedePadre?.nombre ?? null,
+    }));
+  }
+
+  /**
    * Datos completos para la landing pública (sin autenticación).
    * Retorna sedes activas + habitaciones con sus fotos.
    */

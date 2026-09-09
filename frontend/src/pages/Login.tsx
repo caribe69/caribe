@@ -1,4 +1,4 @@
-import { FormEvent, useState } from 'react';
+import { FormEvent, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   LogIn,
@@ -18,20 +18,20 @@ interface SedeOpcion {
   grupo?: string | null;
 }
 
+const ULTIMA_SEDE_KEY = 'hotel-login-sede';
+
 export default function Login() {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [showPwd, setShowPwd] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  // Flujo en 2 pasos: primero el usuario, luego (sede si aplica) + contraseña.
-  const [paso, setPaso] = useState<'usuario' | 'credenciales'>('usuario');
+  // Todas las sedes se listan por defecto en el selector; el usuario elige a
+  // cuál entra. Si no le pertenece, el backend simplemente no lo deja.
   const [sedes, setSedes] = useState<SedeOpcion[]>([]);
   const [sedeId, setSedeId] = useState<number | null>(null);
   const setAuth = useAuthStore((s) => s.setAuth);
   const navigate = useNavigate();
-
-  const esMultisede = sedes.length >= 2;
 
   // Sedes agrupadas para el selector: sueltas + edificios bajo su complejo.
   const sedesSueltas = sedes.filter((s) => !s.grupo);
@@ -44,53 +44,42 @@ export default function Login() {
     }
   }
 
-  // Paso 1 → 2: consulta a qué sedes tiene acceso el usuario.
-  const continuar = async (e: FormEvent) => {
-    e.preventDefault();
-    setError(null);
-    if (!username.trim()) return setError('Escribe tu usuario.');
-    setLoading(true);
-    try {
-      const { data } = await api.post('/auth/login-options', {
-        username: username.trim(),
-      });
-      if (data?.multisede && Array.isArray(data.sedes) && data.sedes.length) {
-        setSedes(data.sedes);
-        setSedeId(data.sedes[0].id);
-      } else {
-        setSedes([]);
-        setSedeId(null);
+  // Al abrir el login: trae TODAS las sedes operativas (endpoint público).
+  // Preselecciona la última usada en este equipo, o la primera de la lista.
+  useEffect(() => {
+    let vivo = true;
+    (async () => {
+      try {
+        const { data } = await api.get('/public/sedes');
+        if (!vivo || !Array.isArray(data)) return;
+        setSedes(data);
+        const guardada = Number(localStorage.getItem(ULTIMA_SEDE_KEY));
+        const existe = data.find((s: SedeOpcion) => s.id === guardada);
+        setSedeId(existe ? guardada : data[0]?.id ?? null);
+      } catch {
+        /* si falla, se puede intentar login igual (fallback a sede propia) */
       }
-    } catch {
-      setSedes([]);
-      setSedeId(null);
-    } finally {
-      setLoading(false);
-      setPaso('credenciales');
-    }
-  };
+    })();
+    return () => {
+      vivo = false;
+    };
+  }, []);
 
-  const volverAUsuario = () => {
-    setPaso('usuario');
-    setError(null);
-    setPassword('');
-  };
-
-  // Paso 2: login definitivo.
   const submit = async (e: FormEvent) => {
     e.preventDefault();
     setError(null);
-    if (esMultisede && !sedeId) {
-      setError('Elige la sede a la que quieres ingresar.');
-      return;
+    if (!username.trim()) return setError('Escribe tu usuario.');
+    if (sedes.length && !sedeId) {
+      return setError('Elige la sede a la que quieres ingresar.');
     }
     setLoading(true);
     try {
       const { data } = await api.post('/auth/login', {
-        username,
+        username: username.trim(),
         password,
-        ...(esMultisede && sedeId ? { sedeId } : {}),
+        ...(sedeId ? { sedeId } : {}),
       });
+      if (sedeId) localStorage.setItem(ULTIMA_SEDE_KEY, String(sedeId));
       setAuth(data.access_token, data.usuario);
       navigate('/');
     } catch (err: any) {
@@ -218,153 +207,99 @@ export default function Login() {
               </p>
             </div>
 
-            {/* PASO 1 · Usuario */}
-            {paso === 'usuario' && (
-              <form onSubmit={continuar} className="space-y-4">
+            {/* Formulario único · Sede + Usuario + Contraseña */}
+            <form onSubmit={submit} className="space-y-4">
+              {/* Selector de sede — se listan TODAS las sedes por defecto */}
+              {sedes.length > 0 && (
                 <div>
-                  <label className="text-[10px] font-semibold text-slate-600 uppercase tracking-widest">
-                    Usuario
+                  <label className="text-[10px] font-semibold text-violet-700 uppercase tracking-widest flex items-center gap-1.5">
+                    <BedDouble size={12} /> Sede
                   </label>
+                  <select
+                    value={sedeId ?? ''}
+                    onChange={(e) => setSedeId(Number(e.target.value))}
+                    className="mt-1.5 w-full border border-violet-300 rounded-xl px-4 py-3 text-sm outline-none focus:ring-4 focus:ring-violet-100 focus:border-violet-500 transition bg-violet-50/50"
+                  >
+                    {sedesSueltas.map((s) => (
+                      <option key={s.id} value={s.id}>
+                        {s.nombre}
+                      </option>
+                    ))}
+                    {Array.from(gruposSede.entries()).map(([grupo, items]) => (
+                      <optgroup key={grupo} label={grupo}>
+                        {items.map((s) => (
+                          <option key={s.id} value={s.id}>
+                            {s.nombre}
+                          </option>
+                        ))}
+                      </optgroup>
+                    ))}
+                  </select>
+                </div>
+              )}
+
+              <div>
+                <label className="text-[10px] font-semibold text-slate-600 uppercase tracking-widest">
+                  Usuario
+                </label>
+                <input
+                  autoFocus
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                  autoComplete="username"
+                  className="mt-1.5 w-full border border-slate-200 rounded-xl px-4 py-3 text-sm outline-none focus:ring-4 focus:ring-violet-100 focus:border-violet-500 transition bg-slate-50 focus:bg-white"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="text-[10px] font-semibold text-slate-600 uppercase tracking-widest">
+                  Contraseña
+                </label>
+                <div className="relative mt-1.5">
                   <input
-                    autoFocus
-                    value={username}
-                    onChange={(e) => setUsername(e.target.value)}
-                    autoComplete="username"
-                    className="mt-1.5 w-full border border-slate-200 rounded-xl px-4 py-3 text-sm outline-none focus:ring-4 focus:ring-violet-100 focus:border-violet-500 transition bg-slate-50 focus:bg-white"
+                    type={showPwd ? 'text' : 'password'}
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    autoComplete="current-password"
+                    className="w-full border border-slate-200 rounded-xl px-4 py-3 pr-12 text-sm outline-none focus:ring-4 focus:ring-violet-100 focus:border-violet-500 transition bg-slate-50 focus:bg-white"
                     required
                   />
-                </div>
-
-                {error && (
-                  <div className="text-sm text-rose-700 bg-rose-50 border border-rose-200 rounded-xl p-3 animate-fade-in">
-                    {error}
-                  </div>
-                )}
-
-                <button
-                  type="submit"
-                  disabled={loading || !username.trim()}
-                  className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-violet-700 via-violet-600 to-violet-500 hover:shadow-violet-500/40 text-white py-3.5 rounded-xl font-semibold shadow-lg shadow-violet-600/30 transition-all disabled:opacity-60 active:scale-[0.98]"
-                >
-                  {loading ? (
-                    <>
-                      <Loader2 size={18} className="animate-spin" /> Verificando…
-                    </>
-                  ) : (
-                    <>
-                      Continuar <LogIn size={18} />
-                    </>
-                  )}
-                </button>
-              </form>
-            )}
-
-            {/* PASO 2 · Sede (si aplica) + contraseña */}
-            {paso === 'credenciales' && (
-              <form onSubmit={submit} className="space-y-4">
-                {/* Usuario elegido, con opción de cambiar */}
-                <div className="flex items-center justify-between bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5">
-                  <div className="min-w-0">
-                    <div className="text-[10px] uppercase tracking-widest text-slate-400">
-                      Usuario
-                    </div>
-                    <div className="text-sm font-semibold text-slate-800 truncate">
-                      {username}
-                    </div>
-                  </div>
                   <button
                     type="button"
-                    onClick={volverAUsuario}
-                    className="text-xs font-semibold text-violet-600 hover:text-violet-800 shrink-0"
+                    onClick={() => setShowPwd((v) => !v)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 p-1.5 text-slate-400 hover:text-violet-600 rounded-lg"
+                    tabIndex={-1}
                   >
-                    Cambiar
+                    {showPwd ? <EyeOff size={16} /> : <Eye size={16} />}
                   </button>
                 </div>
+              </div>
 
-                {/* Selector de sede — solo cuentas multisede (edificios agrupados) */}
-                {esMultisede && (
-                  <div className="animate-fade-in">
-                    <label className="text-[10px] font-semibold text-violet-700 uppercase tracking-widest flex items-center gap-1.5">
-                      <BedDouble size={12} /> Sede a la que ingresas
-                    </label>
-                    <select
-                      autoFocus
-                      value={sedeId ?? ''}
-                      onChange={(e) => setSedeId(Number(e.target.value))}
-                      className="mt-1.5 w-full border border-violet-300 rounded-xl px-4 py-3 text-sm outline-none focus:ring-4 focus:ring-violet-100 focus:border-violet-500 transition bg-violet-50/50"
-                    >
-                      {sedesSueltas.map((s) => (
-                        <option key={s.id} value={s.id}>
-                          {s.nombre}
-                        </option>
-                      ))}
-                      {Array.from(gruposSede.entries()).map(([grupo, items]) => (
-                        <optgroup key={grupo} label={grupo}>
-                          {items.map((s) => (
-                            <option key={s.id} value={s.id}>
-                              {s.nombre}
-                            </option>
-                          ))}
-                        </optgroup>
-                      ))}
-                    </select>
-                    <p className="text-[11px] text-slate-500 mt-1">
-                      Tu cuenta tiene acceso a varias sedes. Elige con cuál
-                      trabajar en esta sesión.
-                    </p>
-                  </div>
-                )}
-
-                <div>
-                  <label className="text-[10px] font-semibold text-slate-600 uppercase tracking-widest">
-                    Contraseña
-                  </label>
-                  <div className="relative mt-1.5">
-                    <input
-                      autoFocus={!esMultisede}
-                      type={showPwd ? 'text' : 'password'}
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      autoComplete="current-password"
-                      className="w-full border border-slate-200 rounded-xl px-4 py-3 pr-12 text-sm outline-none focus:ring-4 focus:ring-violet-100 focus:border-violet-500 transition bg-slate-50 focus:bg-white"
-                      required
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowPwd((v) => !v)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 p-1.5 text-slate-400 hover:text-violet-600 rounded-lg"
-                      tabIndex={-1}
-                    >
-                      {showPwd ? <EyeOff size={16} /> : <Eye size={16} />}
-                    </button>
-                  </div>
+              {error && (
+                <div className="text-sm text-rose-700 dark:text-rose-200 bg-rose-50 border border-rose-200 dark:border-rose-500/30 rounded-xl p-3 animate-fade-in">
+                  {error}
                 </div>
+              )}
 
-                {error && (
-                  <div className="text-sm text-rose-700 dark:text-rose-200 bg-rose-50 border border-rose-200 dark:border-rose-500/30 rounded-xl p-3 animate-fade-in">
-                    {error}
-                  </div>
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-violet-700 via-violet-600 to-violet-500 hover:shadow-violet-500/40 text-white py-3.5 rounded-xl font-semibold shadow-lg shadow-violet-600/30 transition-all disabled:opacity-60 active:scale-[0.98]"
+              >
+                {loading ? (
+                  <>
+                    <Loader2 size={18} className="animate-spin" />
+                    Ingresando...
+                  </>
+                ) : (
+                  <>
+                    <LogIn size={18} />
+                    Iniciar sesión
+                  </>
                 )}
-
-                <button
-                  type="submit"
-                  disabled={loading}
-                  className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-violet-700 via-violet-600 to-violet-500 hover:shadow-violet-500/40 text-white py-3.5 rounded-xl font-semibold shadow-lg shadow-violet-600/30 transition-all disabled:opacity-60 active:scale-[0.98]"
-                >
-                  {loading ? (
-                    <>
-                      <Loader2 size={18} className="animate-spin" />
-                      Ingresando...
-                    </>
-                  ) : (
-                    <>
-                      <LogIn size={18} />
-                      Iniciar sesión
-                    </>
-                  )}
-                </button>
-              </form>
-            )}
+              </button>
+            </form>
           </div>
 
           <div className="text-center mt-6 text-[11px] text-slate-500 lg:text-slate-400">

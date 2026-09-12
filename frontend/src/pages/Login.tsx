@@ -10,7 +10,7 @@ import {
   Loader2,
 } from 'lucide-react';
 import { api } from '@/lib/api';
-import { useAuthStore } from '@/store/auth';
+import { useAuthStore, rutaInicial } from '@/store/auth';
 
 interface SedeOpcion {
   id: number;
@@ -81,7 +81,8 @@ export default function Login() {
       });
       if (sedeId) localStorage.setItem(ULTIMA_SEDE_KEY, String(sedeId));
       setAuth(data.access_token, data.usuario);
-      navigate('/');
+      // Lleva directo al módulo inicial según el rol (Alquileres si tiene acceso).
+      navigate(rutaInicial(data.usuario?.rol));
     } catch (err: any) {
       setError(err.response?.data?.message || 'Error al iniciar sesión');
     } finally {

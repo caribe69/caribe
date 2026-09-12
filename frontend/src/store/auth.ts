@@ -19,6 +19,24 @@ export function rolLabel(rol?: string | null): string {
   return rol === 'HOTELERO' ? 'Recepcionista' : rol;
 }
 
+/** Roles con acceso al módulo de Alquileres (mismo criterio que el menú). */
+const ROLES_ALQUILERES: Rol[] = [
+  'SUPERADMIN',
+  'ADMIN_SEDE',
+  'HOTELERO',
+  'CAJERO',
+];
+
+/**
+ * Ruta a la que se lleva al usuario al iniciar sesión / entrar a "/".
+ * Si tiene permiso a Alquileres, va directo a ese módulo; el resto
+ * (LIMPIEZA/LAVANDERIA) cae al Dashboard.
+ */
+export function rutaInicial(rol?: string | null): string {
+  if (rol && ROLES_ALQUILERES.includes(rol as Rol)) return '/alquileres';
+  return '/';
+}
+
 export interface UsuarioInfo {
   id: number;
   nombre: string;

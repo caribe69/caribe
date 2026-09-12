@@ -1,6 +1,6 @@
 import { lazy, Suspense } from 'react';
 import { Navigate, Route, Routes } from 'react-router-dom';
-import { useAuthStore } from '@/store/auth';
+import { useAuthStore, rutaInicial } from '@/store/auth';
 import Layout from '@/components/Layout';
 import Login from '@/pages/Login';
 
@@ -37,6 +37,21 @@ function Protected({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
+/**
+ * Página de inicio ("/"): redirige según el rol. Quien tiene acceso a
+ * Alquileres entra directo a ese módulo; el resto ve el Dashboard.
+ */
+function HomeRedirect() {
+  const rol = useAuthStore((s) => s.usuario?.rol);
+  const destino = rutaInicial(rol);
+  if (destino !== '/') return <Navigate to={destino} replace />;
+  return (
+    <Suspense fallback={<RouteFallback />}>
+      <Dashboard />
+    </Suspense>
+  );
+}
+
 /** Spinner mientras se carga el chunk de la ruta destino. */
 function RouteFallback() {
   return (
@@ -61,14 +76,7 @@ export default function App() {
           </Protected>
         }
       >
-        <Route
-          index
-          element={
-            <Suspense fallback={<RouteFallback />}>
-              <Dashboard />
-            </Suspense>
-          }
-        />
+        <Route index element={<HomeRedirect />} />
         <Route
           path="habitaciones"
           element={

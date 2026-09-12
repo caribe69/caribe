@@ -35,6 +35,15 @@ export class CajaController {
     return this.service.turnoAbierto(user);
   }
 
+  /** Turno abierto de la sede (de cualquier usuario) + si es del usuario actual. */
+  @Get('estado-sede')
+  estadoSede(
+    @CurrentUser() user: JwtPayload,
+    @Query('sedeId') sedeId?: string,
+  ) {
+    return this.service.estadoSede(user, sedeId ? Number(sedeId) : undefined);
+  }
+
   @Roles(Rol.SUPERADMIN, Rol.ADMIN_SEDE, Rol.CAJERO, Rol.HOTELERO)
   @Post('abrir')
   abrir(@Body() dto: AbrirTurnoDto, @CurrentUser() user: JwtPayload) {

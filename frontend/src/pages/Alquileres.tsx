@@ -18,6 +18,9 @@ import {
   CalendarClock,
   Briefcase,
   Package,
+  Play,
+  StopCircle,
+  Lock,
 } from 'lucide-react';
 import { api } from '@/lib/api';
 import { useDialog } from '@/components/ConfirmProvider';
@@ -112,6 +115,9 @@ export default function Alquileres() {
 
   return (
     <div>
+      {/* Atajo de turno de caja: abrir/cerrar sin salir de Alquileres */}
+      <TurnoBar />
+
       <div className="flex items-center justify-between mb-5 flex-wrap gap-3">
         <button
           onClick={() => setGrupalOpen(true)}
@@ -148,6 +154,189 @@ export default function Alquileres() {
       {grupalOpen && (
         <ReservaGrupalModal onClose={() => setGrupalOpen(false)} />
       )}
+    </div>
+  );
+}
+
+/* ============================================================
+ * ATAJO DE TURNO DE CAJA (en la misma página de Alquileres)
+ * Regla: un solo turno abierto por sede. Solo puede operar quien
+ * tiene ESE turno abierto. Abrir/cerrar muestran un modal.
+ * ============================================================ */
+
+interface EstadoTurnoSede {
+  turno:
+    | {
+        id: number;
+        abiertoEn: string;
+        usuario: { id: number; nombre: string; username: string };
+        sede: { id: number; nombre: string };
+      }
+    | null;
+  esMio: boolean;
+}
+
+/** Hook compartido: turno abierto de la sede + si es del usuario actual. */
+function useEstadoTurnoSede() {
+  return useQuery<EstadoTurnoSede>({
+    queryKey: ['caja', 'estado-sede'],
+    queryFn: async () => (await api.get('/caja/estado-sede')).data,
+  });
+}
+
+function TurnoBar() {
+  const qc = useQueryClient();
+  const dialog = useDialog();
+  const { show: toast } = useToast();
+  const usuario = useAuthStore((s) => s.usuario);
+  const esAdmin =
+    usuario?.rol === 'SUPERADMIN' || usuario?.rol === 'ADMIN_SEDE';
+
+  const { data } = useEstadoTurnoSede();
+  const turno = data?.turno ?? null;
+  const esMio = !!data?.esMio;
+
+  const refrescar = () => {
+    qc.invalidateQueries({ queryKey: ['caja'] });
+    qc.invalidateQueries({ queryKey: ['habitaciones'] });
+  };
+
+  const abrir = useMutation({
+    mutationFn: async () => (await api.post('/caja/abrir', {})).data,
+    onSuccess: () => {
+      refrescar();
+      toast({
+        type: 'success',
+        title: 'Turno abierto',
+        description: 'Ya puedes registrar alquileres y ventas.',
+      });
+    },
+    onError: (e: any) =>
+      toast({
+        type: 'error',
+        title: 'No se pudo abrir el turno',
+        description: e.response?.data?.message || e.message,
+      }),
+  });
+
+  const cerrar = useMutation({
+    mutationFn: async (id: number) =>
+      (await api.patch(`/caja/${id}/cerrar`, {})).data,
+    onSuccess: () => {
+      refrescar();
+      toast({ type: 'success', title: 'Turno cerrado' });
+    },
+    onError: (e: any) =>
+      toast({
+        type: 'error',
+        title: 'No se pudo cerrar el turno',
+        description: e.response?.data?.message || e.message,
+      }),
+  });
+
+  const pedirAbrir = async () => {
+    const ok = await dialog.confirm({
+      title: 'Iniciar turno de caja',
+      message:
+        'Se abrirá tu turno para registrar alquileres y ventas en esta sede. Mientras esté abierto, nadie más podrá abrir otro turno aquí.',
+      confirmText: 'Iniciar turno',
+      variant: 'success',
+    });
+    if (ok) abrir.mutate();
+  };
+
+  const pedirCerrar = async (deOtro: boolean) => {
+    if (!turno) return;
+    const ok = await dialog.confirm({
+      title: deOtro ? 'Cerrar turno de otro usuario' : 'Cerrar turno de caja',
+      message: deOtro
+        ? `Vas a cerrar el turno abierto por ${turno.usuario.nombre}. Se registrarán sus totales finales y la sede quedará libre para abrir un turno nuevo.`
+        : 'Se registrarán los totales finales del turno. No podrás registrar más operaciones hasta abrir uno nuevo.',
+      confirmText: 'Cerrar turno',
+      variant: 'warning',
+      confirmDelaySec: 3,
+    });
+    if (ok) cerrar.mutate(turno.id);
+  };
+
+  // ── Estado 1: mi turno abierto → verde, con opción de cerrar ──
+  if (turno && esMio) {
+    return (
+      <div className="mb-4 bg-white dark:bg-slate-900 dark:ring-1 dark:ring-slate-800 rounded-2xl p-3.5 shadow-sm flex flex-wrap items-center gap-3">
+        <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-emerald-500 to-emerald-600 text-white flex items-center justify-center shrink-0">
+          <span className="w-2 h-2 rounded-full bg-white animate-pulse" />
+        </div>
+        <div className="min-w-0 flex-1">
+          <div className="text-[10px] uppercase tracking-widest font-bold text-emerald-700 dark:text-emerald-300">
+            Turno abierto · #{String(turno.id).padStart(3, '0')}
+          </div>
+          <div className="text-[12px] text-slate-500 dark:text-slate-400">
+            Desde {new Date(turno.abiertoEn).toLocaleString('es-PE')}
+          </div>
+        </div>
+        <button
+          onClick={() => pedirCerrar(false)}
+          disabled={cerrar.isPending}
+          className="inline-flex items-center gap-2 bg-gradient-to-r from-rose-600 to-rose-500 hover:from-rose-700 hover:to-rose-600 text-white px-4 py-2 rounded-xl text-sm font-semibold shadow-md shadow-rose-500/30 btn-press transition disabled:opacity-50"
+        >
+          <StopCircle size={15} /> {cerrar.isPending ? 'Cerrando...' : 'Cerrar turno'}
+        </button>
+      </div>
+    );
+  }
+
+  // ── Estado 2: turno de OTRO usuario → bloqueado (admin puede cerrarlo) ──
+  if (turno && !esMio) {
+    return (
+      <div className="mb-4 bg-amber-50 dark:bg-amber-900/20 ring-1 ring-amber-200 dark:ring-amber-900/40 rounded-2xl p-3.5 shadow-sm flex flex-wrap items-center gap-3">
+        <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-amber-500 to-amber-600 text-white flex items-center justify-center shrink-0">
+          <Lock size={16} />
+        </div>
+        <div className="min-w-0 flex-1">
+          <div className="text-[10px] uppercase tracking-widest font-bold text-amber-700 dark:text-amber-300">
+            Turno abierto por otro usuario
+          </div>
+          <div className="text-sm font-semibold text-slate-800 dark:text-slate-100">
+            {turno.usuario.nombre}
+          </div>
+          <div className="text-[12px] text-amber-700/80 dark:text-amber-200/70">
+            No puedes registrar alquileres hasta que ese turno se cierre.
+          </div>
+        </div>
+        {esAdmin && (
+          <button
+            onClick={() => pedirCerrar(true)}
+            disabled={cerrar.isPending}
+            className="inline-flex items-center gap-2 bg-gradient-to-r from-rose-600 to-rose-500 hover:from-rose-700 hover:to-rose-600 text-white px-4 py-2 rounded-xl text-sm font-semibold shadow-md shadow-rose-500/30 btn-press transition disabled:opacity-50"
+          >
+            <StopCircle size={15} /> Cerrar su turno
+          </button>
+        )}
+      </div>
+    );
+  }
+
+  // ── Estado 3: sin turno en la sede → invitar a iniciar ──
+  return (
+    <div className="mb-4 bg-white dark:bg-slate-900 dark:ring-1 dark:ring-slate-800 rounded-2xl p-3.5 shadow-sm flex flex-wrap items-center gap-3">
+      <div className="w-9 h-9 rounded-xl bg-slate-200 dark:bg-slate-700 text-slate-500 dark:text-slate-300 flex items-center justify-center shrink-0">
+        <Lock size={16} />
+      </div>
+      <div className="min-w-0 flex-1">
+        <div className="text-[10px] uppercase tracking-widest font-bold text-slate-500 dark:text-slate-400">
+          Sin turno abierto
+        </div>
+        <div className="text-[12px] text-slate-500 dark:text-slate-400">
+          Inicia tu turno para poder registrar alquileres y ventas.
+        </div>
+      </div>
+      <button
+        onClick={pedirAbrir}
+        disabled={abrir.isPending}
+        className="inline-flex items-center gap-2 bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-700 hover:to-emerald-600 text-white px-5 py-2.5 rounded-xl text-sm font-semibold shadow-md shadow-emerald-500/30 btn-press transition disabled:opacity-50"
+      >
+        <Play size={15} /> {abrir.isPending ? 'Abriendo...' : 'Iniciar turno'}
+      </button>
     </div>
   );
 }
@@ -260,6 +449,12 @@ function MapaHabitaciones() {
     queryFn: async () =>
       (await api.get<Habitacion[]>('/habitaciones')).data,
   });
+
+  // Bloqueo por turno: solo se opera si el usuario tiene abierto el turno de la
+  // sede. Si no (sin turno o el turno es de otro), la grilla se ve en gris y no
+  // se puede seleccionar ninguna habitación. Mientras carga, no se bloquea.
+  const estadoTurno = useEstadoTurnoSede();
+  const bloqueado = estadoTurno.data ? !estadoTurno.data.esMio : false;
 
   // Reservas PENDIENTES (para pintar "Reservada" en la grilla). Se refresca
   // cada minuto para que "cubre ahora" se actualice.
@@ -431,7 +626,12 @@ function MapaHabitaciones() {
         </div>
       )}
 
-      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-7 gap-3 stagger-children">
+      <div
+        className={`grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-7 gap-3 stagger-children transition ${
+          bloqueado ? 'opacity-50 grayscale pointer-events-none select-none' : ''
+        }`}
+        aria-disabled={bloqueado}
+      >
         {habitacionesFiltradas.map((h) => {
           const s = ESTADO_STYLES[h.estado] || ESTADO_STYLES.FUERA_SERVICIO;
           const alquilerRef = h.alquileres?.[0];

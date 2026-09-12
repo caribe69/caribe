@@ -27,13 +27,39 @@ export class CajaService {
     });
   }
 
+  /**
+   * Estado de caja de la sede: el turno abierto (de cualquier usuario) y si
+   * pertenece al usuario actual. Se usa como atajo en Alquileres para saber
+   * si puede operar (solo puede quien tiene ESTE turno abierto).
+   */
+  async estadoSede(user: JwtPayload, sedeIdQuery?: number) {
+    const sedeId = resolveSedeId(user, sedeIdQuery);
+    const turno = await this.prisma.turnoCaja.findFirst({
+      where: { sedeId, estado: EstadoTurno.ABIERTO },
+      orderBy: { abiertoEn: 'asc' },
+      include: {
+        usuario: { select: { id: true, nombre: true, username: true } },
+        sede: { select: { id: true, nombre: true } },
+      },
+    });
+    return { turno, esMio: !!turno && turno.usuarioId === user.sub };
+  }
+
   async abrir(user: JwtPayload, sedeIdBody?: number) {
     const sedeId = resolveSedeId(user, sedeIdBody);
+    // Regla: un solo turno abierto por sede. Si ya hay uno (mío o de otro),
+    // no se puede abrir otro hasta cerrarlo.
     const abierto = await this.prisma.turnoCaja.findFirst({
-      where: { usuarioId: user.sub, estado: EstadoTurno.ABIERTO },
+      where: { sedeId, estado: EstadoTurno.ABIERTO },
+      include: { usuario: { select: { nombre: true } } },
     });
-    if (abierto)
-      throw new BadRequestException('Ya tienes un turno abierto');
+    if (abierto) {
+      if (abierto.usuarioId === user.sub)
+        throw new BadRequestException('Ya tienes un turno abierto');
+      throw new BadRequestException(
+        `Ya hay un turno abierto en esta sede (por ${abierto.usuario.nombre}). Debe cerrarse antes de abrir otro.`,
+      );
+    }
 
     return this.prisma.turnoCaja.create({
       data: { sedeId, usuarioId: user.sub },
@@ -51,7 +77,11 @@ export class CajaService {
     });
     if (!turno) throw new NotFoundException('Turno no encontrado');
     enforceSede(user, turno.sedeId);
-    if (turno.usuarioId !== user.sub)
+    // El dueño del turno lo cierra siempre. ADMIN_SEDE/SUPERADMIN pueden cerrar
+    // el de otro (p. ej. el cajero se fue y dejó la caja abierta), para que la
+    // sede no quede bloqueada por la regla de un turno por sede.
+    const esAdmin = user.rol === 'SUPERADMIN' || user.rol === 'ADMIN_SEDE';
+    if (turno.usuarioId !== user.sub && !esAdmin)
       throw new BadRequestException('No puedes cerrar turno de otro usuario');
     if (turno.estado === EstadoTurno.CERRADO)
       throw new BadRequestException('Turno ya cerrado');

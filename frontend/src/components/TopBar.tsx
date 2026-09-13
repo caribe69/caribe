@@ -173,8 +173,16 @@ export default function TopBar({ usuario }: { usuario: UsuarioInfo | null }) {
     setSwitching(sede.nombre);
     setActiveSede(id);
     switchSocketSede(id);
-    qc.clear();
-    setTimeout(() => setSwitching(null), 1500);
+    // Refresco global por sede:
+    // - Módulos no visibles: se descartan sus datos (de la sede anterior) para
+    //   que al navegar allí se recarguen con la nueva sede, sin mostrar datos
+    //   de otra sede.
+    // - Página actual: refetch inmediato con la nueva sede activa. El overlay
+    //   se mantiene hasta que termina ese refetch (con un tope de seguridad).
+    qc.removeQueries({ type: 'inactive' });
+    const cerrar = () => setSwitching(null);
+    qc.refetchQueries({ type: 'active' }).finally(cerrar);
+    setTimeout(cerrar, 4000);
   };
 
   // Solo se opera en sedes hoja (edificios/sedes normales), no en agrupadores.

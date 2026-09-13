@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { Fragment, useEffect, useMemo, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   ClipboardList,
@@ -695,7 +695,12 @@ function MapaHabitaciones() {
         }`}
         aria-disabled={bloqueado}
       >
-        {habitacionesFiltradas.map((h) => {
+        {habitacionesFiltradas.map((h, idx, arr) => {
+          // En "Todas" de un complejo, una cabecera separa cada torre.
+          const mostrarCabeceraTorre =
+            esComplejo &&
+            !filtroSede &&
+            (idx === 0 || arr[idx - 1].sede?.id !== h.sede?.id);
           const s = ESTADO_STYLES[h.estado] || ESTADO_STYLES.FUERA_SERVICIO;
           const alquilerRef = h.alquileres?.[0];
           const reserva = reservaPorHab.get(h.id);
@@ -746,10 +751,21 @@ function MapaHabitaciones() {
           }
 
           return (
-            <button
-              key={h.id}
-              disabled={!clickable}
-              title={tooltip || undefined}
+            <Fragment key={h.id}>
+              {mostrarCabeceraTorre && (
+                <div className="col-span-full flex items-center gap-2 mt-2 first:mt-0">
+                  <span className="inline-flex items-center gap-1.5 bg-violet-100 dark:bg-violet-900/40 text-violet-700 dark:text-violet-200 text-xs font-bold uppercase tracking-wide px-2.5 py-1 rounded-lg">
+                    <BedDouble size={13} /> {h.sede?.nombre}
+                  </span>
+                  <span className="text-[11px] text-slate-400 font-medium">
+                    {arr.filter((x) => x.sede?.id === h.sede?.id).length} hab.
+                  </span>
+                  <div className="flex-1 h-px bg-slate-200 dark:bg-slate-700" />
+                </div>
+              )}
+              <button
+                disabled={!clickable}
+                title={tooltip || undefined}
               onClick={() => {
                 if (h.estado === 'DISPONIBLE') setReservar(h);
                 else if (h.estado === 'OCUPADA') setVerAlquiler(h);
@@ -901,6 +917,7 @@ function MapaHabitaciones() {
                 </div>
               )}
             </button>
+            </Fragment>
           );
         })}
       </div>

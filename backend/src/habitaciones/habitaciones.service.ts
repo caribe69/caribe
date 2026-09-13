@@ -12,7 +12,11 @@ import {
 } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { JwtPayload } from '../auth/auth.service';
-import { resolveSedeId, enforceSede } from '../common/sede-scope';
+import {
+  resolveSedeId,
+  enforceSedeScope,
+  resolveSedeScope,
+} from '../common/sede-scope';
 import {
   CreateHabitacionDto,
   UpdateHabitacionDto,
@@ -29,18 +33,20 @@ export class HabitacionesService {
     estado?: EstadoHabitacion,
     options?: { onlyInactive?: boolean },
   ) {
-    const sedeId = resolveSedeId(user, sedeIdQuery);
+    // Recepción ve todas las torres del complejo (si la sede es de doble torre).
+    const { scopeIds } = await resolveSedeScope(this.prisma, user, sedeIdQuery);
     const filtroActiva = options?.onlyInactive
       ? { activa: false }
       : { activa: true };
     const habitaciones = await this.prisma.habitacion.findMany({
       where: {
-        sedeId,
+        sedeId: { in: scopeIds },
         ...(estado ? { estado } : {}),
         ...filtroActiva,
       },
       include: {
         piso: true,
+        sede: { select: { id: true, nombre: true } },
         fotos: {
           orderBy: [{ orden: 'asc' }, { id: 'asc' }],
           take: 10,
@@ -84,7 +90,8 @@ export class HabitacionesService {
       include: { piso: true },
     });
     if (!h) throw new NotFoundException('Habitación no encontrada');
-    enforceSede(user, h.sedeId);
+    // Complejo de doble torre: permite ver/operar habitaciones de la torre hermana.
+    await enforceSedeScope(this.prisma, user, h.sedeId);
     return h;
   }
 

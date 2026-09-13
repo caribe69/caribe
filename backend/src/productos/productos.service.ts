@@ -6,7 +6,11 @@ import {
 import { TipoMovimiento } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { JwtPayload } from '../auth/auth.service';
-import { enforceSede, resolveSedeId } from '../common/sede-scope';
+import {
+  enforceSede,
+  resolveSedeId,
+  resolveSedeScope,
+} from '../common/sede-scope';
 import {
   CreateProductoDto,
   UpdateProductoDto,
@@ -17,8 +21,17 @@ import {
 export class ProductosService {
   constructor(private prisma: PrismaService) {}
 
-  findAll(user: JwtPayload, sedeIdQuery?: number) {
-    const sedeId = resolveSedeId(user, sedeIdQuery);
+  async findAll(user: JwtPayload, sedeIdQuery?: number) {
+    // Por defecto, los productos son POR TORRE (Almacén). Pero recepción puede
+    // pedir los de una torre hermana del complejo (para vender en habitaciones
+    // de esa torre): si la sede pedida está dentro del complejo, se respeta.
+    const { base, scopeIds } = await resolveSedeScope(
+      this.prisma,
+      user,
+      sedeIdQuery,
+    );
+    const sedeId =
+      sedeIdQuery && scopeIds.includes(sedeIdQuery) ? sedeIdQuery : base;
     return this.prisma.producto.findMany({
       where: { sedeId, activo: true },
       orderBy: { nombre: 'asc' },

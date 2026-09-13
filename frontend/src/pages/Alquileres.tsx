@@ -38,6 +38,8 @@ interface Habitacion {
   precioNoche: string;
   estado: string;
   piso: { id: number; numero: number; nombre?: string };
+  // Sede/torre a la que pertenece (para sedes de doble torre).
+  sede?: { id: number; nombre: string };
   fotos?: Array<{ id: number; path: string; orden: number }>;
   alquileres?: Array<{
     id: number;
@@ -440,6 +442,8 @@ function MapaHabitaciones() {
 
   const [busqueda, setBusqueda] = useState('');
   const [filtroEstado, setFiltroEstado] = useState<string>('');
+  // Filtro de torre (solo aplica en sedes de doble torre / complejo).
+  const [filtroSede, setFiltroSede] = useState<number | ''>('');
   const [orden, setOrden] = useState<
     'numero-asc' | 'numero-desc' | 'piso-numero' | 'precio-asc' | 'precio-desc'
   >('numero-asc');
@@ -483,11 +487,23 @@ function MapaHabitaciones() {
   }, [data]);
 
   // Filtrado por búsqueda + estado + ordenamiento
+  // Torres/sedes presentes en la grilla (para sedes de doble torre). Si hay más
+  // de una, mostramos el filtro de torre y la etiqueta de torre en cada card.
+  const sedesEnGrilla = useMemo(() => {
+    const m = new Map<number, string>();
+    for (const h of data || []) if (h.sede) m.set(h.sede.id, h.sede.nombre);
+    return Array.from(m, ([id, nombre]) => ({ id, nombre })).sort(
+      (a, b) => a.id - b.id,
+    );
+  }, [data]);
+  const esComplejo = sedesEnGrilla.length > 1;
+
   const habitacionesFiltradas = useMemo(() => {
     if (!data) return [];
     const q = busqueda.trim().toLowerCase();
     const filtradas = data.filter((h) => {
       if (filtroEstado && h.estado !== filtroEstado) return false;
+      if (filtroSede && h.sede?.id !== filtroSede) return false;
       if (!q) return true;
       const alq = h.alquileres?.[0];
       return (
@@ -526,12 +542,56 @@ function MapaHabitaciones() {
         });
         break;
     }
+    // En un complejo, agrupamos por torre (orden estable: respeta el orden
+    // anterior dentro de cada torre) para que no se mezclen los números iguales.
+    if (esComplejo) {
+      sorted.sort((a, b) => (a.sede?.id ?? 0) - (b.sede?.id ?? 0));
+    }
     return sorted;
-  }, [data, busqueda, filtroEstado, orden]);
+  }, [data, busqueda, filtroEstado, filtroSede, orden, esComplejo]);
 
   return (
     <div>
       {/* Buscador + Leyenda clickable (filtra por estado) */}
+      {/* Filtro de torre — solo en sedes de doble torre (complejo) */}
+      {esComplejo && (
+        <div className="flex flex-wrap items-center gap-2 mb-3">
+          <span className="text-[10px] uppercase tracking-widest font-bold text-slate-500 mr-1">
+            Torre
+          </span>
+          <button
+            onClick={() => setFiltroSede('')}
+            className={`inline-flex items-center gap-2 border rounded-full px-3 py-1.5 text-xs transition ${
+              filtroSede === ''
+                ? 'bg-violet-600 border-violet-600 text-white shadow-md shadow-violet-500/30'
+                : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'
+            }`}
+          >
+            <span className="font-medium">Todas</span>
+            <span className={filtroSede === '' ? 'text-violet-100' : 'text-slate-400'}>
+              {data?.length || 0}
+            </span>
+          </button>
+          {sedesEnGrilla.map((s) => (
+            <button
+              key={s.id}
+              onClick={() => setFiltroSede(filtroSede === s.id ? '' : s.id)}
+              className={`inline-flex items-center gap-2 border rounded-full px-3 py-1.5 text-xs transition ${
+                filtroSede === s.id
+                  ? 'bg-slate-900 border-slate-900 text-white shadow-md'
+                  : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'
+              }`}
+            >
+              <BedDouble size={12} />
+              <span className="font-medium">{s.nombre}</span>
+              <span className={filtroSede === s.id ? 'text-slate-300' : 'text-slate-400'}>
+                {data?.filter((h) => h.sede?.id === s.id).length || 0}
+              </span>
+            </button>
+          ))}
+        </div>
+      )}
+
       <div className="flex flex-wrap gap-3 mb-5 items-center">
         <Reloj />
         <div className="relative flex-1 min-w-[240px] max-w-md">
@@ -750,6 +810,13 @@ function MapaHabitaciones() {
               <div className="mt-1.5 text-[11px] text-slate-600 dark:text-slate-300 font-medium line-clamp-1">
                 {h.descripcion || 'Habitación estándar'}
               </div>
+
+              {/* Torre a la que pertenece (solo en sedes de doble torre) */}
+              {esComplejo && h.sede && (
+                <div className="mt-1.5 inline-flex items-center gap-1 bg-violet-100 dark:bg-violet-900/40 text-violet-700 dark:text-violet-200 text-[9px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded">
+                  <BedDouble size={9} /> {h.sede.nombre}
+                </div>
+              )}
 
               {/* Reserva pendiente (aunque esté disponible ahora) */}
               {reserva && (
@@ -1461,6 +1528,7 @@ function AlquilerActivoModal({
             {addProdOpen && (
               <AgregarProductoModal
                 alquilerId={alquiler.id}
+                sedeId={habitacion.sede?.id}
                 onClose={() => setAddProdOpen(false)}
               />
             )}
@@ -1562,8 +1630,14 @@ function NuevoAlquilerModal({
   >([]);
 
   const productosQ = useQuery({
-    queryKey: ['productos'],
-    queryFn: async () => (await api.get<any[]>('/productos')).data,
+    // Productos de la torre de esta habitación (stock por torre).
+    queryKey: ['productos', habitacion.sede?.id],
+    queryFn: async () =>
+      (
+        await api.get<any[]>('/productos', {
+          params: habitacion.sede?.id ? { sedeId: habitacion.sede.id } : {},
+        })
+      ).data,
   });
   const productosCortesia = (productosQ.data || []).filter(
     (p: any) => p.esCortesia && p.stock > 0,
@@ -2566,9 +2640,12 @@ function NuevoAlquilerModal({
 
 function AgregarProductoModal({
   alquilerId,
+  sedeId,
   onClose,
 }: {
   alquilerId: number;
+  // Torre de la habitación: los productos deben ser de esa torre (stock por torre).
+  sedeId?: number;
   onClose: () => void;
 }) {
   const qc = useQueryClient();
@@ -2583,8 +2660,9 @@ function AgregarProductoModal({
     precio: string;
     stock: number;
   }>>({
-    queryKey: ['productos'],
-    queryFn: async () => (await api.get('/productos')).data,
+    queryKey: ['productos', sedeId],
+    queryFn: async () =>
+      (await api.get('/productos', { params: sedeId ? { sedeId } : {} })).data,
   });
 
   const productosFiltrados = useMemo(() => {

@@ -11,17 +11,18 @@ import {
 } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { JwtPayload } from '../auth/auth.service';
-import { enforceSede, resolveSedeId } from '../common/sede-scope';
+import { enforceSedeScope, resolveSedeScope } from '../common/sede-scope';
 import { AnularVentaDto, CreateVentaDto } from './venta.dto';
 
 @Injectable()
 export class VentasService {
   constructor(private prisma: PrismaService) {}
 
-  findAll(user: JwtPayload, sedeIdQuery?: number, estado?: EstadoVenta) {
-    const sedeId = resolveSedeId(user, sedeIdQuery);
+  async findAll(user: JwtPayload, sedeIdQuery?: number, estado?: EstadoVenta) {
+    // Caja del complejo: ventas de todas las torres.
+    const { scopeIds } = await resolveSedeScope(this.prisma, user, sedeIdQuery);
     return this.prisma.venta.findMany({
-      where: { sedeId, ...(estado ? { estado } : {}) },
+      where: { sedeId: { in: scopeIds }, ...(estado ? { estado } : {}) },
       include: {
         items: { include: { producto: true } },
         usuario: { select: { id: true, nombre: true, username: true } },
@@ -41,7 +42,7 @@ export class VentasService {
       },
     });
     if (!v) throw new NotFoundException('Venta no encontrada');
-    enforceSede(user, v.sedeId);
+    await enforceSedeScope(this.prisma, user, v.sedeId);
     return v;
   }
 
@@ -49,11 +50,16 @@ export class VentasService {
     if (!dto.items?.length)
       throw new BadRequestException('Debe incluir al menos un producto');
 
-    const sedeId = resolveSedeId(user, dto.sedeId);
+    const { base: sedeId, scopeIds } = await resolveSedeScope(
+      this.prisma,
+      user,
+      dto.sedeId,
+    );
 
+    // El turno es del complejo (una torre o su hermana comparten turno).
     const turno = await this.prisma.turnoCaja.findFirst({
       where: {
-        sedeId,
+        sedeId: { in: scopeIds },
         usuarioId: user.sub,
         estado: EstadoTurno.ABIERTO,
       },

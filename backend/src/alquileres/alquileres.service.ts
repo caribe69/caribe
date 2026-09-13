@@ -15,7 +15,12 @@ import {
 } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { JwtPayload } from '../auth/auth.service';
-import { enforceSede, resolveSedeId } from '../common/sede-scope';
+import {
+  enforceSede,
+  enforceSedeScope,
+  resolveSedeId,
+  resolveSedeScope,
+} from '../common/sede-scope';
 import { SettingsService } from '../settings/settings.service';
 import {
   AgregarConsumoDto,
@@ -39,10 +44,10 @@ export class AlquileresService {
   async buscarCliente(user: JwtPayload, dni: string) {
     if (!dni || !/^\d{8}$/.test(dni))
       throw new BadRequestException('DNI inválido (8 dígitos)');
-    const sedeId = resolveSedeId(user);
+    const { scopeIds } = await resolveSedeScope(this.prisma, user);
 
     const previos = await this.prisma.alquiler.findMany({
-      where: { sedeId, clienteDni: dni },
+      where: { sedeId: { in: scopeIds }, clienteDni: dni },
       orderBy: { creadoEn: 'desc' },
       select: {
         clienteNombre: true,
@@ -365,14 +370,15 @@ export class AlquileresService {
     });
   }
 
-  findAll(
+  async findAll(
     user: JwtPayload,
     sedeIdQuery?: number,
     estado?: EstadoAlquiler,
   ) {
-    const sedeId = resolveSedeId(user, sedeIdQuery);
+    // Recepción ve los alquileres de todas las torres del complejo.
+    const { scopeIds } = await resolveSedeScope(this.prisma, user, sedeIdQuery);
     return this.prisma.alquiler.findMany({
-      where: { sedeId, ...(estado ? { estado } : {}) },
+      where: { sedeId: { in: scopeIds }, ...(estado ? { estado } : {}) },
       include: {
         habitacion: { include: { piso: true } },
         consumos: { include: { producto: true } },
@@ -391,8 +397,8 @@ export class AlquileresService {
     hasta: string | undefined,
     sedeIdQuery?: number,
   ) {
-    const sedeId = resolveSedeId(user, sedeIdQuery);
-    const where: any = { sedeId };
+    const { scopeIds } = await resolveSedeScope(this.prisma, user, sedeIdQuery);
+    const where: any = { sedeId: { in: scopeIds } };
     // HOTELERO / CAJERO solo ven sus propios alquileres
     if (user.rol !== 'SUPERADMIN' && user.rol !== 'ADMIN_SEDE') {
       where.creadoPorId = user.sub;
@@ -432,28 +438,29 @@ export class AlquileresService {
       },
     });
     if (!a) throw new NotFoundException('Alquiler no encontrado');
-    enforceSede(user, a.sedeId);
+    await enforceSedeScope(this.prisma, user, a.sedeId);
     return a;
   }
 
   async create(dto: CreateAlquilerDto, user: JwtPayload) {
-    const sedeId = resolveSedeId(user, dto.sedeId);
-
-    // Bug fix: si la sede fue pausada (activa=false), bloqueamos crear
-    // alquileres. El frontend lo ocultaba pero un POST directo lo
-    // dejaba pasar.
-    const sede = await this.prisma.sede.findUnique({ where: { id: sedeId } });
-    if (!sede) throw new BadRequestException('Sede inválida');
-    if (!sede.activa)
-      throw new ForbiddenException(
-        `La sede "${sede.nombre}" está pausada. Pedile al admin que la reactive antes de operar.`,
-      );
+    // Recepción puede alquilar en cualquier torre del complejo (doble torre).
+    const { scopeIds } = await resolveSedeScope(this.prisma, user, dto.sedeId);
 
     const hab = await this.prisma.habitacion.findUnique({
       where: { id: dto.habitacionId },
+      include: { sede: true },
     });
-    if (!hab || hab.sedeId !== sedeId)
+    if (!hab || !scopeIds.includes(hab.sedeId))
       throw new BadRequestException('Habitación inválida');
+    // El alquiler pertenece a la TORRE real de la habitación (no al complejo).
+    const sedeId = hab.sedeId;
+
+    // Bug fix: si la sede fue pausada (activa=false), bloqueamos crear
+    // alquileres. El frontend lo ocultaba pero un POST directo lo dejaba pasar.
+    if (!hab.sede.activa)
+      throw new ForbiddenException(
+        `La sede "${hab.sede.nombre}" está pausada. Pedile al admin que la reactive antes de operar.`,
+      );
     if (hab.estado !== EstadoHabitacion.DISPONIBLE)
       throw new ConflictException(
         `Habitación no disponible (estado: ${hab.estado})`,
@@ -501,9 +508,11 @@ export class AlquileresService {
       reservaCumplir = { id: r.id, adelanto: r.adelanto };
     }
 
+    // El turno es del complejo (una torre o su hermana): se busca en todo el
+    // alcance, no solo en la torre de esta habitación.
     const turno = await this.prisma.turnoCaja.findFirst({
       where: {
-        sedeId,
+        sedeId: { in: scopeIds },
         usuarioId: user.sub,
         estado: EstadoTurno.ABIERTO,
       },
@@ -685,13 +694,14 @@ export class AlquileresService {
     if (alquiler.estado !== EstadoAlquiler.ACTIVO)
       throw new BadRequestException('Alquiler no está activo');
 
-    // Bug fix: chequeo explícito de pertenencia a sede para defensa en
-    // profundidad (findOne ya lo hace, pero hacemos esto explícito).
-    enforceSede(user, alquiler.sedeId);
+    // Defensa en profundidad; findOne ya valida el alcance del complejo.
+    await enforceSedeScope(this.prisma, user, alquiler.sedeId);
+    const { scopeIds } = await resolveSedeScope(this.prisma, user);
 
     const producto = await this.prisma.producto.findUnique({
       where: { id: dto.productoId },
     });
+    // El producto debe ser de la MISMA torre que la habitación (stock por torre).
     if (!producto || producto.sedeId !== alquiler.sedeId)
       throw new BadRequestException('Producto inválido');
     if (producto.stock < dto.cantidad)
@@ -705,7 +715,7 @@ export class AlquileresService {
     // y se cobra después con marcarPagado (botón "Cobrar productos").
     const turnoActual = await this.prisma.turnoCaja.findFirst({
       where: {
-        sedeId: alquiler.sedeId,
+        sedeId: { in: scopeIds },
         usuarioId: user.sub,
         estado: EstadoTurno.ABIERTO,
       },
@@ -1000,10 +1010,12 @@ export class AlquileresService {
     const nuevoPagado = yaPagado + monto;
     const completo = nuevoPagado >= total - 0.005;
 
+    // Turno del complejo (una torre o su hermana comparten el mismo turno).
+    const { scopeIds } = await resolveSedeScope(this.prisma, user);
     // Turno actual del cajero (donde se recibe el dinero)
     const turnoActual = await this.prisma.turnoCaja.findFirst({
       where: {
-        sedeId: alquiler.sedeId,
+        sedeId: { in: scopeIds },
         usuarioId: user.sub,
         estado: EstadoTurno.ABIERTO,
       },

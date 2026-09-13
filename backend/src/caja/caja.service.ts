@@ -11,7 +11,7 @@ import {
 } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { JwtPayload } from '../auth/auth.service';
-import { enforceSede, resolveSedeId } from '../common/sede-scope';
+import { enforceSedeScope, resolveSedeScope } from '../common/sede-scope';
 
 @Injectable()
 export class CajaService {
@@ -33,9 +33,10 @@ export class CajaService {
    * si puede operar (solo puede quien tiene ESTE turno abierto).
    */
   async estadoSede(user: JwtPayload, sedeIdQuery?: number) {
-    const sedeId = resolveSedeId(user, sedeIdQuery);
+    // El turno es UNO por complejo: se busca en todas las torres del complejo.
+    const { scopeIds } = await resolveSedeScope(this.prisma, user, sedeIdQuery);
     const turno = await this.prisma.turnoCaja.findFirst({
-      where: { sedeId, estado: EstadoTurno.ABIERTO },
+      where: { sedeId: { in: scopeIds }, estado: EstadoTurno.ABIERTO },
       orderBy: { abiertoEn: 'asc' },
       include: {
         usuario: { select: { id: true, nombre: true, username: true } },
@@ -46,11 +47,15 @@ export class CajaService {
   }
 
   async abrir(user: JwtPayload, sedeIdBody?: number) {
-    const sedeId = resolveSedeId(user, sedeIdBody);
-    // Regla: un solo turno abierto por sede. Si ya hay uno (mío o de otro),
-    // no se puede abrir otro hasta cerrarlo.
+    const { root, scopeIds } = await resolveSedeScope(
+      this.prisma,
+      user,
+      sedeIdBody,
+    );
+    // Regla: un solo turno abierto por sede/complejo. Si ya hay uno (mío o de
+    // otro) en cualquiera de sus torres, no se puede abrir otro hasta cerrarlo.
     const abierto = await this.prisma.turnoCaja.findFirst({
-      where: { sedeId, estado: EstadoTurno.ABIERTO },
+      where: { sedeId: { in: scopeIds }, estado: EstadoTurno.ABIERTO },
       include: { usuario: { select: { nombre: true } } },
     });
     if (abierto) {
@@ -61,8 +66,9 @@ export class CajaService {
       );
     }
 
+    // El turno vive bajo la raíz del complejo (para una sede normal, es la misma).
     return this.prisma.turnoCaja.create({
-      data: { sedeId, usuarioId: user.sub },
+      data: { sedeId: root, usuarioId: user.sub },
     });
   }
 
@@ -76,7 +82,7 @@ export class CajaService {
       },
     });
     if (!turno) throw new NotFoundException('Turno no encontrado');
-    enforceSede(user, turno.sedeId);
+    await enforceSedeScope(this.prisma, user, turno.sedeId);
     // El dueño del turno lo cierra siempre. ADMIN_SEDE/SUPERADMIN pueden cerrar
     // el de otro (p. ej. el cajero se fue y dejó la caja abierta), para que la
     // sede no quede bloqueada por la regla de un turno por sede.
@@ -143,7 +149,7 @@ export class CajaService {
       },
     });
     if (!turno) throw new NotFoundException('Turno no encontrado');
-    enforceSede(user, turno.sedeId);
+    await enforceSedeScope(this.prisma, user, turno.sedeId);
 
     // Pagos registrados en este turno (soporta pagos parciales)
     const pagosTurno = await this.prisma.pagoAlquiler.findMany({
@@ -370,7 +376,7 @@ export class CajaService {
       },
     });
     if (!turno) throw new NotFoundException('Turno no encontrado');
-    enforceSede(user, turno.sedeId);
+    await enforceSedeScope(this.prisma, user, turno.sedeId);
 
     const pagosTurno = await this.prisma.pagoAlquiler.findMany({
       where: { turnoCajaId: id },
@@ -535,8 +541,8 @@ export class CajaService {
   }
 
   async listarTurnos(user: JwtPayload, sedeIdQuery?: number) {
-    const sedeId = resolveSedeId(user, sedeIdQuery);
-    const where: any = { sedeId };
+    const { scopeIds } = await resolveSedeScope(this.prisma, user, sedeIdQuery);
+    const where: any = { sedeId: { in: scopeIds } };
     // ADMIN_SEDE / SUPERADMIN ven todos los turnos de la sede;
     // otros roles (HOTELERO / CAJERO / LIMPIEZA) ven solo los suyos.
     if (user.rol !== 'SUPERADMIN' && user.rol !== 'ADMIN_SEDE') {
@@ -554,8 +560,8 @@ export class CajaService {
 
   /** Estadísticas agregadas (alcance según rol) */
   async estadisticas(user: JwtPayload, sedeIdQuery?: number) {
-    const sedeId = resolveSedeId(user, sedeIdQuery);
-    const where: any = { sedeId, estado: 'CERRADO' };
+    const { scopeIds } = await resolveSedeScope(this.prisma, user, sedeIdQuery);
+    const where: any = { sedeId: { in: scopeIds }, estado: 'CERRADO' };
     if (user.rol !== 'SUPERADMIN' && user.rol !== 'ADMIN_SEDE') {
       where.usuarioId = user.sub;
     }

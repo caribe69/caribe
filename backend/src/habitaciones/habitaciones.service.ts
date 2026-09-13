@@ -76,6 +76,8 @@ export class HabitacionesService {
             amenitiesEntregados: true,
             tipoComprobante: true,
             clienteRuc: true,
+            conCochera: true,
+            cocheraNumero: true,
           },
         },
       },

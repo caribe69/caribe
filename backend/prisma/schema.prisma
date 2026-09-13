@@ -436,6 +436,7 @@ model Alquiler {
   amenitiesEntregados Boolean     @default(false) // chocolates/bienvenida
   amenitiesNotas      String?
   conCochera          Boolean     @default(false) // huésped trae auto y usa cochera
+  cocheraNumero       String?     // número de puesto de cochera (1-2 dígitos, manual)
   /// Cómo llegó el huésped: 'PIE' (a pie) o 'VEHICULO' (en auto/moto). Null = sin registrar.
   modoLlegada         String?
 

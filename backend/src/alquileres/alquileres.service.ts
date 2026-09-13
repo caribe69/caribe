@@ -548,6 +548,8 @@ export class AlquileresService {
           cobradoPorId: pagadoNow ? user.sub : null,
           amenitiesEntregados: dto.amenitiesEntregados ?? false,
           conCochera: dto.conCochera ?? false,
+          // El número solo se guarda si realmente usa cochera.
+          cocheraNumero: dto.conCochera ? dto.cocheraNumero || null : null,
           modoLlegada: dto.modoLlegada ?? null,
           tipoComprobante: dto.tipoComprobante || 'BOLETA',
           clienteRuc: dto.clienteRuc || null,

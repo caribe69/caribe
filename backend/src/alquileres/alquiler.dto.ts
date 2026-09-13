@@ -45,6 +45,11 @@ export class CreateAlquilerDto {
   @IsOptional() @IsBoolean() pagado?: boolean;
   @IsOptional() @IsBoolean() amenitiesEntregados?: boolean;
   @IsOptional() @IsBoolean() conCochera?: boolean;
+  // Número de puesto de cochera (1-2 dígitos, manual). Solo si conCochera.
+  @IsOptional()
+  @IsString()
+  @Matches(/^\d{1,2}$/, { message: 'El número de cochera debe ser 1 o 2 dígitos' })
+  cocheraNumero?: string;
   // Cómo llegó el huésped: 'PIE' o 'VEHICULO'.
   @IsOptional() @IsString() modoLlegada?: string;
 

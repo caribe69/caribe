@@ -55,6 +55,8 @@ interface Habitacion {
     pagado?: boolean;
     montoPagado?: string;
     amenitiesEntregados?: boolean;
+    conCochera?: boolean;
+    cocheraNumero?: string | null;
   }>;
 }
 
@@ -77,6 +79,7 @@ interface Alquiler {
   amenitiesEntregados?: boolean;
   amenitiesNotas?: string | null;
   conCochera?: boolean;
+  cocheraNumero?: string | null;
   modoLlegada?: string | null;
   fechaIngreso: string;
   fechaSalida: string;
@@ -872,6 +875,15 @@ function MapaHabitaciones() {
                     <Clock3 size={9} />
                     {formatDuracion(minutosEn)}
                   </div>
+                  {/* Cochera: puesto asignado por la recepcionista */}
+                  {alquilerRef.conCochera && (
+                    <div className="mt-1 inline-flex items-center gap-1 bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-200 text-[9px] font-bold px-1.5 py-0.5 rounded">
+                      🚗 Cochera
+                      {alquilerRef.cocheraNumero
+                        ? ` N° ${alquilerRef.cocheraNumero}`
+                        : ''}
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -1165,6 +1177,9 @@ function AlquilerActivoModal({
                     {alquiler.conCochera && (
                       <span className="text-[10px] bg-blue-50 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 font-semibold px-2 py-0.5 rounded">
                         🚗 con cochera
+                        {alquiler.cocheraNumero
+                          ? ` · N° ${alquiler.cocheraNumero}`
+                          : ''}
                       </span>
                     )}
                   </div>
@@ -1600,6 +1615,7 @@ function NuevoAlquilerModal({
     pagado: true,
     amenitiesEntregados: false,
     conCochera: false,
+    cocheraNumero: '',
     modoLlegada: 'PIE' as 'PIE' | 'VEHICULO',
   });
   // La hora de INGRESO debe ser la del REGISTRO (cuando se guarda), no la de
@@ -1814,6 +1830,10 @@ function NuevoAlquilerModal({
         pagado: form.pagado,
         amenitiesEntregados: form.amenitiesEntregados,
         conCochera: form.conCochera,
+        cocheraNumero:
+          form.conCochera && form.cocheraNumero
+            ? form.cocheraNumero
+            : undefined,
         modoLlegada: form.modoLlegada,
         deseaEmitirSunat: emitirSunat,
         cortesias: cortesias.length ? cortesias : undefined,
@@ -2129,6 +2149,29 @@ function NuevoAlquilerModal({
                 (el huésped trae auto y ocupa un puesto)
               </span>
             </label>
+
+            {/* Número de puesto de cochera (manual, 1-2 dígitos) */}
+            {form.conCochera && (
+              <div className="flex items-center gap-2 animate-fade-in pl-6">
+                <span className="text-xs font-medium text-slate-600 dark:text-slate-300">
+                  N° de cochera
+                </span>
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  maxLength={2}
+                  value={form.cocheraNumero}
+                  onChange={(e) =>
+                    setForm({
+                      ...form,
+                      cocheraNumero: e.target.value.replace(/\D/g, '').slice(0, 2),
+                    })
+                  }
+                  placeholder="Ej. 5"
+                  className="w-20 text-center bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-1.5 text-sm font-bold focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
+                />
+              </div>
+            )}
 
             {/* Cómo llegó el huésped */}
             <div>

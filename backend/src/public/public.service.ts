@@ -13,7 +13,13 @@ export class PublicService {
    */
   async sedesLogin() {
     const sedes = await this.prisma.sede.findMany({
-      where: { activa: true, edificios: { none: {} } },
+      where: {
+        activa: true,
+        edificios: { none: {} },
+        // Excluir "almacenes" (sedes de inventario, no operativas): no deben
+        // aparecer como opción de sede en el login.
+        NOT: { nombre: { contains: 'almac', mode: 'insensitive' } },
+      },
       orderBy: [{ esPrincipal: 'desc' }, { nombre: 'asc' }],
       include: { sedePadre: { select: { nombre: true } } },
     });

@@ -435,6 +435,11 @@ const ESTADO_STYLES: Record<string, EstadoStyle> = {
 function MapaHabitaciones() {
   const [reservar, setReservar] = useState<Habitacion | null>(null);
   const [verAlquiler, setVerAlquiler] = useState<Habitacion | null>(null);
+  // Cambio manual de estado (para cuartos en ALISTANDO / mantenimiento / fuera
+  // de servicio) — se opera aquí mismo porque no se usará el app de limpieza.
+  const [cambiarEstadoHab, setCambiarEstadoHab] = useState<Habitacion | null>(
+    null,
+  );
 
   // Tick cada 60s para actualizar "hace X min" en vivo
   const [tick, setTick] = useState(Date.now());
@@ -707,8 +712,14 @@ function MapaHabitaciones() {
           // Si tiene una reserva (vigente o próxima), la habitación está
           // "apartada": no se abre el modal de alquilar. Para atenderla se usa
           // Reservas → Check-in.
-          const clickable =
+          const esOperable =
             (h.estado === 'DISPONIBLE' || h.estado === 'OCUPADA') && !reserva;
+          // Estados no operativos: se puede cambiar su estado a mano.
+          const esCambioEstado =
+            h.estado === 'ALISTANDO' ||
+            h.estado === 'MANTENIMIENTO' ||
+            h.estado === 'FUERA_SERVICIO';
+          const clickable = esOperable || esCambioEstado;
           const hhmm = (x: string) =>
             new Date(x).toLocaleTimeString('es-PE', { hour: '2-digit', minute: '2-digit' });
 
@@ -769,6 +780,7 @@ function MapaHabitaciones() {
               onClick={() => {
                 if (h.estado === 'DISPONIBLE') setReservar(h);
                 else if (h.estado === 'OCUPADA') setVerAlquiler(h);
+                else if (esCambioEstado) setCambiarEstadoHab(h);
               }}
               className={`group relative text-left bg-gradient-to-br ${s.gradient} border ${s.border} rounded-xl p-3 shadow-sm transition-all duration-200 overflow-hidden ${
                 clickable
@@ -829,13 +841,6 @@ function MapaHabitaciones() {
               <div className="mt-1.5 text-[11px] text-slate-600 dark:text-slate-300 font-medium line-clamp-1">
                 {h.descripcion || 'Habitación estándar'}
               </div>
-
-              {/* Torre a la que pertenece (solo en sedes de doble torre) */}
-              {esComplejo && h.sede && (
-                <div className="mt-1.5 inline-flex items-center gap-1 bg-violet-100 dark:bg-violet-900/40 text-violet-700 dark:text-violet-200 text-[9px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded">
-                  <BedDouble size={9} /> {h.sede.nombre}
-                </div>
-              )}
 
               {/* Reserva pendiente (aunque esté disponible ahora) */}
               {reserva && (
@@ -935,6 +940,112 @@ function MapaHabitaciones() {
           onClose={() => setVerAlquiler(null)}
         />
       )}
+      {cambiarEstadoHab && (
+        <CambiarEstadoModal
+          habitacion={cambiarEstadoHab}
+          onClose={() => setCambiarEstadoHab(null)}
+        />
+      )}
+    </div>
+  );
+}
+
+/* ============================================================
+ * MODAL: cambiar el estado de una habitación a mano (sin app de limpieza)
+ * ============================================================ */
+function CambiarEstadoModal({
+  habitacion,
+  onClose,
+}: {
+  habitacion: Habitacion;
+  onClose: () => void;
+}) {
+  const qc = useQueryClient();
+  const { show: toast } = useToast();
+
+  // Estados a los que se puede pasar a mano (nunca a OCUPADA: eso es un alquiler).
+  const OPCIONES: Array<{ estado: string; label: string; clase: string }> = [
+    {
+      estado: 'DISPONIBLE',
+      label: '✓ Disponible',
+      clase: 'from-emerald-600 to-emerald-500 shadow-emerald-500/30',
+    },
+    {
+      estado: 'ALISTANDO',
+      label: '🧹 Alistando',
+      clase: 'from-amber-500 to-amber-400 shadow-amber-500/30',
+    },
+    {
+      estado: 'MANTENIMIENTO',
+      label: '🔧 Mantenimiento',
+      clase: 'from-sky-600 to-sky-500 shadow-sky-500/30',
+    },
+    {
+      estado: 'FUERA_SERVICIO',
+      label: '⛔ Fuera de servicio',
+      clase: 'from-slate-600 to-slate-500 shadow-slate-500/30',
+    },
+  ];
+
+  const cambiar = useMutation({
+    mutationFn: async (estado: string) =>
+      (await api.patch(`/habitaciones/${habitacion.id}/estado`, { estado }))
+        .data,
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['habitaciones'] });
+      toast({ type: 'success', title: 'Estado actualizado' });
+      onClose();
+    },
+    onError: (e: any) =>
+      toast({
+        type: 'error',
+        title: 'No se pudo cambiar el estado',
+        description: e.response?.data?.message || e.message,
+      }),
+  });
+
+  return (
+    <div
+      className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4"
+      onClick={onClose}
+    >
+      <div
+        className="w-full max-w-sm bg-white dark:bg-slate-900 rounded-2xl shadow-2xl overflow-hidden"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="bg-gradient-to-r from-violet-700 to-violet-500 px-5 py-4 text-white">
+          <div className="text-[10px] uppercase tracking-widest opacity-80">
+            Cambiar estado
+          </div>
+          <div className="text-lg font-hotel font-bold">
+            Habitación {habitacion.numero}
+          </div>
+          {habitacion.sede && (
+            <div className="text-[11px] opacity-80">{habitacion.sede.nombre}</div>
+          )}
+        </div>
+        <div className="p-5 space-y-2">
+          <div className="text-xs text-slate-500 dark:text-slate-400 mb-1">
+            Estado actual: <b>{habitacion.estado}</b>
+          </div>
+          {OPCIONES.filter((o) => o.estado !== habitacion.estado).map((o) => (
+            <button
+              key={o.estado}
+              disabled={cambiar.isPending}
+              onClick={() => cambiar.mutate(o.estado)}
+              className={`w-full text-left bg-gradient-to-r ${o.clase} text-white px-4 py-3 rounded-xl text-sm font-semibold shadow-md btn-press transition disabled:opacity-50`}
+            >
+              {o.label}
+            </button>
+          ))}
+          <button
+            onClick={onClose}
+            className="w-full mt-1 px-4 py-2.5 rounded-xl text-sm font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition"
+          >
+            Cancelar
+          </button>
+        </div>
+      </div>
     </div>
   );
 }

@@ -192,10 +192,35 @@ export default function TopBar({ usuario }: { usuario: UsuarioInfo | null }) {
   const sedesOperativas = (sedes || []).filter(
     (s: any) => !((s._count?.edificios ?? 0) > 0),
   );
-  const etiquetaSede = (s: any) =>
-    s.sedePadreId
-      ? `${nombreSedeById.get(s.sedePadreId) ?? ''} · ${s.nombre}`
-      : s.nombre;
+  // Un complejo (varias torres) aparece como UNA sola opción; al elegirlo se
+  // activa su primera torre (recepción y caja ya consolidan todas las torres).
+  const torresPorPadre = new Map<number, any[]>();
+  for (const s of sedesOperativas) {
+    if (!s.sedePadreId) continue;
+    const arr = torresPorPadre.get(s.sedePadreId) || [];
+    arr.push(s);
+    torresPorPadre.set(s.sedePadreId, arr);
+  }
+  const primeraTorre = (padreId: number) =>
+    Math.min(...(torresPorPadre.get(padreId) || []).map((t: any) => t.id));
+  const opcionesSede: Array<{ id: number; label: string }> = [];
+  const padresAgregados = new Set<number>();
+  for (const s of sedesOperativas) {
+    if (!s.sedePadreId) {
+      opcionesSede.push({ id: s.id, label: s.nombre });
+    } else if (!padresAgregados.has(s.sedePadreId)) {
+      padresAgregados.add(s.sedePadreId);
+      const n = torresPorPadre.get(s.sedePadreId)?.length ?? 1;
+      opcionesSede.push({
+        id: primeraTorre(s.sedePadreId),
+        label: `${nombreSedeById.get(s.sedePadreId) ?? s.nombre} · ${n} torres`,
+      });
+    }
+  }
+  const sedeActivaObj = (sedes || []).find((s: any) => s.id === activeSedeId);
+  const valorSelector = sedeActivaObj?.sedePadreId
+    ? primeraTorre(sedeActivaObj.sedePadreId)
+    : activeSedeId;
 
   return (
     <>
@@ -236,16 +261,16 @@ export default function TopBar({ usuario }: { usuario: UsuarioInfo | null }) {
         {usuario?.rol === 'SUPERADMIN' && sedesOperativas.length > 0 ? (
           <div className="relative">
             <select
-              value={activeSedeId ?? ''}
+              value={valorSelector ?? ''}
               onChange={(e) => {
                 const id = Number(e.target.value);
-                if (id && id !== activeSedeId) handleSedeChange(id);
+                if (id && id !== valorSelector) handleSedeChange(id);
               }}
               className="appearance-none bg-slate-50 dark:bg-slate-800 dark:text-slate-200 hover:bg-white dark:hover:bg-slate-700 rounded-xl text-sm pl-8 pr-8 py-2 border border-slate-200 dark:border-slate-700 focus:outline-none focus:border-violet-400 focus:ring-2 focus:ring-violet-100 dark:focus:ring-violet-900/30 font-medium cursor-pointer btn-press transition"
             >
-              {sedesOperativas.map((s: any) => (
-                <option key={s.id} value={s.id}>
-                  {etiquetaSede(s)}
+              {opcionesSede.map((o) => (
+                <option key={o.id} value={o.id}>
+                  {o.label}
                 </option>
               ))}
             </select>

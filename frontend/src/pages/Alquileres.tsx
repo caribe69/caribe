@@ -26,6 +26,7 @@ import { api } from '@/lib/api';
 import { useDialog } from '@/components/ConfirmProvider';
 import { openBoletaPdfNewTab } from '@/lib/openPdfNewTab';
 import ReservaGrupalModal from '@/components/ReservaGrupalModal';
+import { NuevaReservaModal } from '@/pages/Reservas';
 import { useAuthStore } from '@/store/auth';
 import { useToast } from '@/components/ToastProvider';
 
@@ -117,6 +118,9 @@ interface Alquiler {
 export default function Alquileres() {
   const [vista, setVista] = useState<'mapa' | 'lista'>('mapa');
   const [grupalOpen, setGrupalOpen] = useState(false);
+  const [reservaOpen, setReservaOpen] = useState(false);
+  const activeSedeId = useAuthStore((s) => s.activeSedeId);
+  const qc = useQueryClient();
 
   return (
     <div>
@@ -124,12 +128,21 @@ export default function Alquileres() {
       <TurnoBar />
 
       <div className="flex items-center justify-between mb-5 flex-wrap gap-3">
-        <button
-          onClick={() => setGrupalOpen(true)}
-          className="inline-flex items-center gap-2 bg-gradient-to-r from-amber-500 to-amber-400 hover:from-amber-600 hover:to-amber-500 text-white px-4 py-2.5 rounded-xl text-sm font-semibold shadow-md shadow-amber-500/30 transition btn-press"
-        >
-          <Briefcase size={16} /> Reserva corporativa
-        </button>
+        <div className="flex items-center gap-2 flex-wrap">
+          <button
+            onClick={() => setGrupalOpen(true)}
+            className="inline-flex items-center gap-2 bg-gradient-to-r from-amber-500 to-amber-400 hover:from-amber-600 hover:to-amber-500 text-white px-4 py-2.5 rounded-xl text-sm font-semibold shadow-md shadow-amber-500/30 transition btn-press"
+          >
+            <Briefcase size={16} /> Reserva corporativa
+          </button>
+          {/* Reserva normal: un cliente (por DNI) y una habitación */}
+          <button
+            onClick={() => setReservaOpen(true)}
+            className="inline-flex items-center gap-2 bg-gradient-to-r from-indigo-600 to-indigo-500 hover:from-indigo-700 hover:to-indigo-600 text-white px-4 py-2.5 rounded-xl text-sm font-semibold shadow-md shadow-indigo-500/30 transition btn-press"
+          >
+            <CalendarClock size={16} /> Reserva
+          </button>
+        </div>
         <div className="flex gap-1 bg-white border border-slate-200 rounded-xl p-1 shadow-sm">
           <button
             onClick={() => setVista('mapa')}
@@ -158,6 +171,19 @@ export default function Alquileres() {
 
       {grupalOpen && (
         <ReservaGrupalModal onClose={() => setGrupalOpen(false)} />
+      )}
+      {reservaOpen && (
+        <NuevaReservaModal
+          sedeId={activeSedeId}
+          onClose={() => setReservaOpen(false)}
+          onSaved={() => {
+            setReservaOpen(false);
+            qc.invalidateQueries({ queryKey: ['reservas'] });
+            qc.invalidateQueries({ queryKey: ['reservas-dispo'] });
+            qc.invalidateQueries({ queryKey: ['reservas-estado-hab'] });
+            qc.invalidateQueries({ queryKey: ['habitaciones'] });
+          }}
+        />
       )}
     </div>
   );

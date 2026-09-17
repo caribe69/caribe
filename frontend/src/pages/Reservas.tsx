@@ -357,7 +357,7 @@ function EstadoBadge({ estado, vencida }: { estado: EstadoReserva; vencida: bool
 }
 
 // ── Nueva reserva: elige franja → muestra qué habitaciones están libres ──
-function NuevaReservaModal({ sedeId, onClose, onSaved }: { sedeId: number | null; onClose: () => void; onSaved: () => void }) {
+export function NuevaReservaModal({ sedeId, onClose, onSaved }: { sedeId: number | null; onClose: () => void; onSaved: () => void }) {
   const { show: toast } = useToast();
   const ahora = useMemo(() => new Date(), []);
   const [inicio, setInicio] = useState(toInput(new Date(ahora.getTime() + 60 * 60 * 1000)));

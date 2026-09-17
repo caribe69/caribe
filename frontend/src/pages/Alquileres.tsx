@@ -140,7 +140,7 @@ export default function Alquileres() {
             onClick={() => setReservaOpen(true)}
             className="inline-flex items-center gap-2 bg-gradient-to-r from-indigo-600 to-indigo-500 hover:from-indigo-700 hover:to-indigo-600 text-white px-4 py-2.5 rounded-xl text-sm font-semibold shadow-md shadow-indigo-500/30 transition btn-press"
           >
-            <CalendarClock size={16} /> Reserva
+            <CalendarClock size={16} /> Reserva natural
           </button>
         </div>
         <div className="flex gap-1 bg-white border border-slate-200 rounded-xl p-1 shadow-sm">

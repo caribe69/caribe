@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   CalendarClock,
@@ -12,6 +12,9 @@ import {
   Ban,
   CheckCircle2,
   AlertTriangle,
+  Loader2,
+  Search,
+  UserCheck,
 } from 'lucide-react';
 import { api } from '@/lib/api';
 import { useAuthStore } from '@/store/auth';
@@ -367,6 +370,29 @@ export function NuevaReservaModal({ sedeId, onClose, onSaved }: { sedeId: number
   const [form, setForm] = useState({ clienteNombre: '', clienteDni: '', clienteTelefono: '', total: '', adelanto: '', notas: '', modoLlegada: 'PIE' as 'PIE' | 'VEHICULO' });
   const [guardando, setGuardando] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [lookup, setLookup] = useState<any | null>(null);
+  const [buscando, setBuscando] = useState(false);
+
+  // Con 8 dígitos busca el cliente: primero historial local, luego RENIEC (mismo endpoint que Alquileres).
+  useEffect(() => {
+    const dni = form.clienteDni.trim();
+    if (!/^\d{8}$/.test(dni)) { setLookup(null); return; }
+    const t = setTimeout(async () => {
+      setBuscando(true);
+      try {
+        const { data } = await api.get('/alquileres/clientes/buscar', { params: { dni } });
+        setLookup(data);
+        if (data?.encontrado) {
+          setForm((f) => ({ ...f, clienteNombre: data.nombre || f.clienteNombre, clienteTelefono: data.telefono || f.clienteTelefono }));
+        }
+      } catch {
+        setLookup(null);
+      } finally {
+        setBuscando(false);
+      }
+    }, 500);
+    return () => clearTimeout(t);
+  }, [form.clienteDni]);
 
   const franjaValida = !!inicio && !!fin && new Date(fin) > new Date(inicio);
 
@@ -506,8 +532,32 @@ export function NuevaReservaModal({ sedeId, onClose, onSaved }: { sedeId: number
 
           {/* Datos del cliente */}
           <div className="grid grid-cols-2 gap-3">
+            <Campo label="DNI *">
+              <div className="relative">
+                <input className={`${inp} pr-10 font-mono`} inputMode="numeric" value={form.clienteDni} onChange={(e) => setForm({ ...form, clienteDni: e.target.value })} placeholder="8 dígitos" />
+                <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                  {buscando ? <Loader2 size={16} className="text-indigo-500 animate-spin" /> : <Search size={15} className="text-slate-400" />}
+                </div>
+              </div>
+            </Campo>
             <Campo label="Nombre del cliente *"><input className={inp} value={form.clienteNombre} onChange={(e) => setForm({ ...form, clienteNombre: e.target.value })} placeholder="Juan Pérez" /></Campo>
-            <Campo label="DNI *"><input className={inp} inputMode="numeric" value={form.clienteDni} onChange={(e) => setForm({ ...form, clienteDni: e.target.value })} placeholder="12345678" /></Campo>
+            {lookup && !buscando && (
+              <div className="col-span-2 -mt-1">
+                {lookup.fuente === 'local' ? (
+                  <div className="flex items-center gap-2 bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-900/50 text-emerald-800 dark:text-emerald-200 rounded-lg px-3 py-2 text-xs">
+                    <UserCheck size={14} /> <span><b>Cliente recurrente</b> · {lookup.visitas} visita{lookup.visitas === 1 ? '' : 's'} en el sistema</span>
+                  </div>
+                ) : lookup.fuente === 'reniec' ? (
+                  <div className="flex items-center gap-2 bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-200 dark:border-indigo-900/50 text-indigo-800 dark:text-indigo-200 rounded-lg px-3 py-2 text-xs">
+                    <Search size={14} /> <span><b>Encontrado en RENIEC</b> · {lookup.nombre}{lookup.edad != null && <> · <b>{lookup.edad} años</b></>}</span>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-900/50 text-amber-800 dark:text-amber-200 rounded-lg px-3 py-2 text-xs">
+                    <span><b>No encontrado</b>{lookup.error ? ` · ${lookup.error}` : ' · no está en el sistema ni en RENIEC'}. Escribe el nombre a mano.</span>
+                  </div>
+                )}
+              </div>
+            )}
             <Campo label="Teléfono (opcional)"><input className={inp} value={form.clienteTelefono} onChange={(e) => setForm({ ...form, clienteTelefono: e.target.value })} placeholder="999 888 777" /></Campo>
             <Campo label="Notas (opcional)"><input className={inp} value={form.notas} onChange={(e) => setForm({ ...form, notas: e.target.value })} placeholder="Llega 8pm, pidió cama extra…" /></Campo>
           </div>

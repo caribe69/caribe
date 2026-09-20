@@ -25,6 +25,8 @@ import {
 import { api } from '@/lib/api';
 import { useDialog } from '@/components/ConfirmProvider';
 import { openBoletaPdfNewTab } from '@/lib/openPdfNewTab';
+import { imprimirEnAgente } from '@/lib/printAgent';
+import { construirTicketAlquiler } from '@/lib/ticketAlquiler';
 import ReservaGrupalModal from '@/components/ReservaGrupalModal';
 import { NuevaReservaModal } from '@/pages/Reservas';
 import { useAuthStore } from '@/store/auth';
@@ -1603,6 +1605,33 @@ function AlquilerActivoModal({
                   {alquiler.tipoComprobante === 'FACTURA'
                     ? `Factura · RUC ${alquiler.clienteRuc}`
                     : 'Cambiar a factura con RUC'}
+                </button>
+                <button
+                  onClick={async () => {
+                    const texto = construirTicketAlquiler(alquiler, empresaQ.data);
+                    const ok = await imprimirEnAgente({
+                      titulo: `Ticket Hab. ${alquiler.habitacion?.numero ?? alquiler.id}`,
+                      contenido: texto,
+                    });
+                    if (ok) {
+                      toast.show({
+                        type: 'success',
+                        title: 'Ticket impreso',
+                        description: 'Enviado a la impresora configurada',
+                      });
+                    } else {
+                      toast.show({
+                        type: 'error',
+                        title: 'Agente de impresión no disponible',
+                        description: 'Abro el PDF para imprimir desde el navegador.',
+                      });
+                      await openBoletaPdfNewTab(alquiler, empresaQ.data);
+                    }
+                  }}
+                  className="flex items-center justify-center gap-1.5 bg-slate-900 hover:bg-slate-800 text-white py-2.5 rounded-xl btn-press text-xs font-semibold"
+                  title="Imprime el ticket directo en la impresora configurada (agente local)"
+                >
+                  <Printer size={14} /> Imprimir ticket
                 </button>
                 <button
                   disabled={imprimiendoPDF}

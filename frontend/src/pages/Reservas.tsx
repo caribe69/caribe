@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { Fragment, useEffect, useMemo, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   CalendarClock,
@@ -54,6 +54,7 @@ interface Dispo {
   precioNoche: number;
   estadoFranja: 'LIBRE' | 'OCUPADA' | 'RESERVADA' | 'BLOQUEADA';
   detalle: string | null;
+  sede?: { id: number; nombre: string } | null;
 }
 
 const money = (n: number | string) => `S/ ${Number(n || 0).toFixed(2)}`;
@@ -245,7 +246,12 @@ export default function Reservas() {
 // ── Vista Timeline (tape chart tipo PMS): habitaciones × 24h ──
 interface TimelineData {
   fecha: string;
-  habitaciones: Array<{ id: number; numero: string; piso: number }>;
+  habitaciones: Array<{
+    id: number;
+    numero: string;
+    piso: number;
+    sede?: { id: number; nombre: string } | null;
+  }>;
   bloques: Array<{ tipo: 'reserva' | 'alquiler'; habitacionId: number; inicio: string; fin: string; label: string; estado: string }>;
 }
 function TimelineDia({ sedeId }: { sedeId: number | null }) {
@@ -303,12 +309,31 @@ function TimelineDia({ sedeId }: { sedeId: number | null }) {
             </div>
             {/* Filas por habitación */}
             <div className="space-y-1">
-              {(data?.habitaciones || []).map((h) => (
-                <div key={h.id} className="flex items-center gap-2">
-                  <div className="w-12 shrink-0 text-right">
-                    <div className="font-bold text-sm text-slate-700 dark:text-slate-200 leading-none">{h.numero}</div>
-                    <div className="text-[8px] text-slate-400">P{h.piso}</div>
-                  </div>
+              {(() => {
+                const habs = data?.habitaciones || [];
+                const torres = new Set(
+                  habs.map((h) => h.sede?.id).filter(Boolean),
+                );
+                const complejo = torres.size > 1;
+                return habs.map((h, idx, arr) => {
+                  const cabecera =
+                    complejo &&
+                    (idx === 0 || arr[idx - 1].sede?.id !== h.sede?.id);
+                  return (
+                    <Fragment key={h.id}>
+                      {cabecera && (
+                        <div className="flex items-center gap-2 pt-1">
+                          <span className="inline-flex items-center gap-1.5 bg-violet-100 dark:bg-violet-900/40 text-violet-700 dark:text-violet-200 text-[11px] font-bold uppercase tracking-wide px-2 py-0.5 rounded">
+                            {h.sede?.nombre}
+                          </span>
+                          <div className="flex-1 h-px bg-slate-200 dark:bg-slate-700" />
+                        </div>
+                      )}
+                      <div className="flex items-center gap-2">
+                        <div className="w-12 shrink-0 text-right">
+                          <div className="font-bold text-sm text-slate-700 dark:text-slate-200 leading-none">{h.numero}</div>
+                          <div className="text-[8px] text-slate-400">P{h.piso}</div>
+                        </div>
                   <div className="relative flex-1 h-8 bg-slate-50 dark:bg-slate-800/50 rounded-md overflow-hidden">
                     {/* Líneas de hora */}
                     {horas.filter((x) => x % 2 === 0).map((x) => (
@@ -335,9 +360,12 @@ function TimelineDia({ sedeId }: { sedeId: number | null }) {
                         </div>
                       );
                     })}
-                  </div>
-                </div>
-              ))}
+                        </div>
+                      </div>
+                    </Fragment>
+                  );
+                });
+              })()}
               {(data?.habitaciones?.length ?? 0) === 0 && <div className="text-sm text-slate-400 py-6 text-center">Sin habitaciones.</div>}
             </div>
           </div>
@@ -501,18 +529,39 @@ export function NuevaReservaModal({ sedeId, onClose, onSaved }: { sedeId: number
             ) : (
               <>
                 <div className="mt-2 grid grid-cols-4 sm:grid-cols-6 gap-2">
-                  {(dispo.data || []).map((h) => (
-                    <button
-                      key={h.id}
-                      disabled={h.estadoFranja !== 'LIBRE'}
-                      onClick={() => setHabSel(h)}
-                      title={h.detalle || ''}
-                      className={`relative rounded-xl border p-2 text-center transition ${estiloFranja[h.estadoFranja]} ${habSel?.id === h.id ? 'ring-2 ring-indigo-500' : ''}`}
-                    >
-                      <div className="font-bold text-sm">{h.numero}</div>
-                      <div className="text-[9px] uppercase tracking-wide">{h.estadoFranja.toLowerCase()}</div>
-                    </button>
-                  ))}
+                  {(() => {
+                    const lista = dispo.data || [];
+                    const torres = new Set(
+                      lista.map((h) => h.sede?.id).filter(Boolean),
+                    );
+                    const complejo = torres.size > 1;
+                    return lista.map((h, idx, arr) => {
+                      const cabecera =
+                        complejo &&
+                        (idx === 0 || arr[idx - 1].sede?.id !== h.sede?.id);
+                      return (
+                        <Fragment key={h.id}>
+                          {cabecera && (
+                            <div className="col-span-full flex items-center gap-2 mt-1 first:mt-0">
+                              <span className="inline-flex items-center gap-1.5 bg-violet-100 dark:bg-violet-900/40 text-violet-700 dark:text-violet-200 text-[11px] font-bold uppercase tracking-wide px-2 py-0.5 rounded">
+                                {h.sede?.nombre}
+                              </span>
+                              <div className="flex-1 h-px bg-slate-200 dark:bg-slate-700" />
+                            </div>
+                          )}
+                          <button
+                            disabled={h.estadoFranja !== 'LIBRE'}
+                            onClick={() => setHabSel(h)}
+                            title={h.detalle || ''}
+                            className={`relative rounded-xl border p-2 text-center transition ${estiloFranja[h.estadoFranja]} ${habSel?.id === h.id ? 'ring-2 ring-indigo-500' : ''}`}
+                          >
+                            <div className="font-bold text-sm">{h.numero}</div>
+                            <div className="text-[9px] uppercase tracking-wide">{h.estadoFranja.toLowerCase()}</div>
+                          </button>
+                        </Fragment>
+                      );
+                    });
+                  })()}
                   {(dispo.data?.length ?? 0) === 0 && <div className="col-span-full text-sm text-slate-400 py-4 text-center">Sin habitaciones.</div>}
                 </div>
                 <div className="mt-2 flex items-center gap-3 text-[10px] text-slate-500">

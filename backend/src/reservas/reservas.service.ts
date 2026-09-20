@@ -7,7 +7,7 @@ import {
 import { EstadoAlquiler, EstadoReserva, TipoReserva } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { JwtPayload } from '../auth/auth.service';
-import { enforceSede, resolveSedeId } from '../common/sede-scope';
+import { enforceSedeScope, resolveSedeScope } from '../common/sede-scope';
 
 export interface CrearReservaInput {
   sedeId?: number;
@@ -71,7 +71,8 @@ export class ReservasService {
   }
 
   async crear(user: JwtPayload, dto: CrearReservaInput) {
-    const sedeId = resolveSedeId(user, dto.sedeId);
+    // Recepción puede reservar en cualquier torre del complejo (doble torre).
+    const { scopeIds } = await resolveSedeScope(this.prisma, user, dto.sedeId);
     if (!dto.clienteNombre?.trim())
       throw new BadRequestException('El nombre del cliente es obligatorio');
     if (!dto.clienteDni?.trim() || dto.clienteDni.trim().length < 6)
@@ -87,8 +88,10 @@ export class ReservasService {
     const hab = await this.prisma.habitacion.findUnique({
       where: { id: dto.habitacionId },
     });
-    if (!hab || hab.sedeId !== sedeId)
+    if (!hab || !scopeIds.includes(hab.sedeId))
       throw new BadRequestException('Habitación inválida');
+    // La reserva pertenece a la torre real de la habitación.
+    const sedeId = hab.sedeId;
 
     const conflicto = await this.hayConflicto(dto.habitacionId, inicio, fin);
     if (conflicto)
@@ -120,8 +123,8 @@ export class ReservasService {
     user: JwtPayload,
     opts: { sedeId?: number; estado?: EstadoReserva; desde?: string; hasta?: string },
   ) {
-    const sedeId = resolveSedeId(user, opts.sedeId);
-    const where: any = { sedeId };
+    const { scopeIds } = await resolveSedeScope(this.prisma, user, opts.sedeId);
+    const where: any = { sedeId: { in: scopeIds } };
     if (opts.estado) where.estado = opts.estado;
     if (opts.desde || opts.hasta) {
       where.inicio = {};
@@ -144,7 +147,7 @@ export class ReservasService {
    * reservas PENDIENTES que aún no terminan (cubren ahora o son próximas).
    */
   async estadoHabitaciones(user: JwtPayload, sedeIdQuery?: number) {
-    const sedeId = resolveSedeId(user, sedeIdQuery);
+    const { scopeIds } = await resolveSedeScope(this.prisma, user, sedeIdQuery);
     const ahora = new Date();
     // Una reserva PENDIENTE aparta la habitación hasta que:
     //  - la cancelen (pasa a CANCELADA, deja de aparecer), o
@@ -153,7 +156,7 @@ export class ReservasService {
     const limite = new Date(ahora.getTime() + 24 * 60 * 60 * 1000);
     const reservas = await this.prisma.reserva.findMany({
       where: {
-        sedeId,
+        sedeId: { in: scopeIds },
         estado: EstadoReserva.PENDIENTE,
         fin: { gte: ahora },
         inicio: { lte: limite },
@@ -185,7 +188,7 @@ export class ReservasService {
     finStr: string,
     sedeIdQuery?: number,
   ) {
-    const sedeId = resolveSedeId(user, sedeIdQuery);
+    const { scopeIds } = await resolveSedeScope(this.prisma, user, sedeIdQuery);
     const inicio = new Date(inicioStr);
     const fin = new Date(finStr);
     if (isNaN(inicio.getTime()) || isNaN(fin.getTime()) || fin <= inicio)
@@ -193,8 +196,8 @@ export class ReservasService {
 
     const [habitaciones, reservas, alquileres] = await Promise.all([
       this.prisma.habitacion.findMany({
-        where: { sedeId, activa: true },
-        orderBy: [{ pisoId: 'asc' }, { numero: 'asc' }],
+        where: { sedeId: { in: scopeIds }, activa: true },
+        orderBy: [{ sedeId: 'asc' }, { pisoId: 'asc' }, { numero: 'asc' }],
         select: {
           id: true,
           numero: true,
@@ -203,11 +206,12 @@ export class ReservasService {
           precioNoche: true,
           estado: true,
           piso: { select: { numero: true } },
+          sede: { select: { id: true, nombre: true } },
         },
       }),
       this.prisma.reserva.findMany({
         where: {
-          sedeId,
+          sedeId: { in: scopeIds },
           estado: EstadoReserva.PENDIENTE,
           inicio: { lt: fin },
           fin: { gt: inicio },
@@ -216,7 +220,7 @@ export class ReservasService {
       }),
       this.prisma.alquiler.findMany({
         where: {
-          sedeId,
+          sedeId: { in: scopeIds },
           estado: EstadoAlquiler.ACTIVO,
           fechaIngreso: { lt: fin },
           fechaSalida: { gt: inicio },
@@ -251,6 +255,7 @@ export class ReservasService {
         numero: h.numero,
         descripcion: h.descripcion,
         piso: h.piso.numero,
+        sede: h.sede ? { id: h.sede.id, nombre: h.sede.nombre } : null,
         precioHora: Number(h.precioHora),
         precioNoche: Number(h.precioNoche),
         estadoFranja: estado,
@@ -264,7 +269,7 @@ export class ReservasService {
    * reservas y alquileres, para verlo tipo PMS de hotel.
    */
   async timeline(user: JwtPayload, fechaStr: string, sedeIdQuery?: number) {
-    const sedeId = resolveSedeId(user, sedeIdQuery);
+    const { scopeIds } = await resolveSedeScope(this.prisma, user, sedeIdQuery);
     const base = fechaStr ? new Date(fechaStr) : new Date();
     const inicioDia = new Date(base);
     inicioDia.setHours(0, 0, 0, 0);
@@ -273,13 +278,18 @@ export class ReservasService {
 
     const [habitaciones, reservas, alquileres] = await Promise.all([
       this.prisma.habitacion.findMany({
-        where: { sedeId, activa: true },
-        orderBy: [{ pisoId: 'asc' }, { numero: 'asc' }],
-        select: { id: true, numero: true, piso: { select: { numero: true } } },
+        where: { sedeId: { in: scopeIds }, activa: true },
+        orderBy: [{ sedeId: 'asc' }, { pisoId: 'asc' }, { numero: 'asc' }],
+        select: {
+          id: true,
+          numero: true,
+          piso: { select: { numero: true } },
+          sede: { select: { id: true, nombre: true } },
+        },
       }),
       this.prisma.reserva.findMany({
         where: {
-          sedeId,
+          sedeId: { in: scopeIds },
           estado: { in: [EstadoReserva.PENDIENTE, EstadoReserva.CUMPLIDA] },
           inicio: { lt: finDia },
           fin: { gt: inicioDia },
@@ -288,7 +298,7 @@ export class ReservasService {
       }),
       this.prisma.alquiler.findMany({
         where: {
-          sedeId,
+          sedeId: { in: scopeIds },
           estado: { in: [EstadoAlquiler.ACTIVO, EstadoAlquiler.FINALIZADO] },
           fechaIngreso: { lt: finDia },
           OR: [{ fechaSalidaReal: { gt: inicioDia } }, { fechaSalida: { gt: inicioDia } }],
@@ -326,7 +336,12 @@ export class ReservasService {
 
     return {
       fecha: inicioDia.toISOString(),
-      habitaciones: habitaciones.map((h) => ({ id: h.id, numero: h.numero, piso: h.piso.numero })),
+      habitaciones: habitaciones.map((h) => ({
+        id: h.id,
+        numero: h.numero,
+        piso: h.piso.numero,
+        sede: h.sede ? { id: h.sede.id, nombre: h.sede.nombre } : null,
+      })),
       bloques,
     };
   }
@@ -334,7 +349,7 @@ export class ReservasService {
   async cancelar(user: JwtPayload, id: number) {
     const r = await this.prisma.reserva.findUnique({ where: { id } });
     if (!r) throw new NotFoundException('Reserva no encontrada');
-    enforceSede(user, r.sedeId);
+    await enforceSedeScope(this.prisma, user, r.sedeId);
     if (r.estado !== EstadoReserva.PENDIENTE)
       throw new BadRequestException(
         `No se puede cancelar una reserva ${r.estado.toLowerCase()}`,

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { Fragment, useEffect, useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   X,
@@ -22,6 +22,8 @@ interface Habitacion {
   precioHora: string;
   precioNoche: string;
   piso: { numero: number };
+  // Torre/sede (para sedes de doble torre: los números se repiten entre torres).
+  sede?: { id: number; nombre: string };
 }
 
 export default function ReservaGrupalModal({
@@ -73,11 +75,19 @@ export default function ReservaGrupalModal({
         .filter((h) => h.estado === 'DISPONIBLE')
         .sort(
           (a, b) =>
+            // Primero agrupadas por torre (sede), luego piso y número.
+            (a.sede?.id ?? 0) - (b.sede?.id ?? 0) ||
             a.piso.numero - b.piso.numero ||
             a.numero.localeCompare(b.numero, 'es', { numeric: true }),
         ),
     [habitaciones.data],
   );
+
+  // Sede de doble torre: hay habitaciones de más de una torre en la lista.
+  const esComplejo = useMemo(() => {
+    const ids = new Set(disponibles.map((h) => h.sede?.id).filter(Boolean));
+    return ids.size > 1;
+  }, [disponibles]);
 
   // Sugerir precio desde la primera habitación seleccionada
   useEffect(() => {
@@ -245,42 +255,56 @@ export default function ReservaGrupalModal({
                 )}
               </div>
               <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-2.5">
-                {disponibles.map((h) => {
+                {disponibles.map((h, idx, arr) => {
                   const sel = seleccion.has(h.id);
+                  // En un complejo, una cabecera separa cada torre.
+                  const mostrarCabecera =
+                    esComplejo &&
+                    (idx === 0 || arr[idx - 1].sede?.id !== h.sede?.id);
                   return (
-                    <button
-                      key={h.id}
-                      onClick={() => {
-                        setSeleccion((prev) => {
-                          const next = new Set(prev);
-                          if (next.has(h.id)) next.delete(h.id);
-                          else next.add(h.id);
-                          return next;
-                        });
-                      }}
-                      className={`relative p-3 rounded-xl border-2 transition text-left ${
-                        sel
-                          ? 'border-amber-500 dark:border-amber-600 bg-gradient-to-br from-amber-50 to-amber-100 shadow-md'
-                          : 'border-slate-200 bg-white hover:border-slate-300 dark:hover:border-slate-600'
-                      }`}
-                    >
-                      {sel && (
-                        <CheckCircle
-                          size={16}
-                          className="absolute top-1.5 right-1.5 text-amber-600 fill-amber-100"
-                        />
+                    <Fragment key={h.id}>
+                      {mostrarCabecera && (
+                        <div className="col-span-full flex items-center gap-2 mt-1 first:mt-0">
+                          <span className="inline-flex items-center gap-1.5 bg-violet-100 dark:bg-violet-900/40 text-violet-700 dark:text-violet-200 text-xs font-bold uppercase tracking-wide px-2.5 py-1 rounded-lg">
+                            <BedDouble size={13} /> {h.sede?.nombre}
+                          </span>
+                          <div className="flex-1 h-px bg-slate-200 dark:bg-slate-700" />
+                        </div>
                       )}
-                      <BedDouble
-                        size={16}
-                        className={sel ? 'text-amber-600' : 'text-slate-400'}
-                      />
-                      <div className="font-hotel text-2xl font-bold mt-1">
-                        {h.numero}
-                      </div>
-                      <div className="text-[10px] text-slate-500">
-                        Piso {h.piso.numero}
-                      </div>
-                    </button>
+                      <button
+                        onClick={() => {
+                          setSeleccion((prev) => {
+                            const next = new Set(prev);
+                            if (next.has(h.id)) next.delete(h.id);
+                            else next.add(h.id);
+                            return next;
+                          });
+                        }}
+                        className={`relative p-3 rounded-xl border-2 transition text-left ${
+                          sel
+                            ? 'border-amber-500 dark:border-amber-600 bg-gradient-to-br from-amber-50 to-amber-100 shadow-md'
+                            : 'border-slate-200 bg-white hover:border-slate-300 dark:hover:border-slate-600'
+                        }`}
+                      >
+                        {sel && (
+                          <CheckCircle
+                            size={16}
+                            className="absolute top-1.5 right-1.5 text-amber-600 fill-amber-100"
+                          />
+                        )}
+                        <BedDouble
+                          size={16}
+                          className={sel ? 'text-amber-600' : 'text-slate-400'}
+                        />
+                        <div className="font-hotel text-2xl font-bold mt-1">
+                          {h.numero}
+                        </div>
+                        <div className="text-[10px] text-slate-500">
+                          Piso {h.piso.numero}
+                          {esComplejo && h.sede ? ` · ${h.sede.nombre}` : ''}
+                        </div>
+                      </button>
+                    </Fragment>
                   );
                 })}
               </div>
@@ -506,6 +530,7 @@ export default function ReservaGrupalModal({
                           <div className="text-sm">
                             <div className="font-semibold text-slate-800">
                               Hab. {h.numero}
+                              {esComplejo && h.sede ? ` · ${h.sede.nombre}` : ''}
                             </div>
                             <div className="text-[10px] text-slate-500 uppercase tracking-widest">
                               Piso {h.piso.numero}

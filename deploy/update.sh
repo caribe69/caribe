@@ -150,6 +150,13 @@ SNIPPET_SISTEMA_BODY='    root /var/www/hotel;
         proxy_send_timeout 3600s;
     }
 
+    # index.html nunca se cachea: el navegador siempre toma la version nueva
+    # (los assets JS/CSS llevan hash y si se cachean, pero el index apunta a los
+    # nuevos tras cada deploy — evita la pantalla en negro por chunks viejos).
+    location = /index.html {
+        add_header Cache-Control "no-store, must-revalidate";
+    }
+
     location / {
         try_files $uri $uri/ /index.html;
     }

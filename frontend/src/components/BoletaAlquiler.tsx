@@ -3,6 +3,8 @@ import { Printer, X, Download } from 'lucide-react';
 import { PDFDownloadLink } from '@react-pdf/renderer';
 import { api } from '@/lib/api';
 import { BoletaPDFDoc, boletaFileName } from './BoletaPDF';
+import { imprimirEnAgente } from '@/lib/printAgent';
+import { construirTicketAlquiler } from '@/lib/ticketAlquiler';
 
 interface Consumo {
   id?: number;
@@ -80,9 +82,15 @@ export default function BoletaAlquiler({
                 )}
               </PDFDownloadLink>
               <button
-                onClick={() => window.print()}
+                onClick={async () => {
+                  const ok = await imprimirEnAgente({
+                    titulo: `Ticket Hab. ${alquiler.habitacion?.numero ?? alquiler.id}`,
+                    contenido: construirTicketAlquiler(alquiler, empresa),
+                  });
+                  if (!ok) window.print();
+                }}
                 className="flex items-center gap-1 bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1.5 rounded-lg text-xs btn-press"
-                title="Imprimir directo a impresora térmica"
+                title="Imprime directo en la impresora configurada (agente local)"
               >
                 <Printer size={13} /> Imprimir
               </button>

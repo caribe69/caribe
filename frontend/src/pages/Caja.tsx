@@ -22,6 +22,9 @@ import { PDFDownloadLink, PDFViewer } from '@react-pdf/renderer';
 import { api } from '@/lib/api';
 import { useAuthStore } from '@/store/auth';
 import { useDialog } from '@/components/ConfirmProvider';
+import { useToast } from '@/components/ToastProvider';
+import { imprimirEnAgente } from '@/lib/printAgent';
+import { construirTicketTurno } from '@/lib/ticketTurno';
 import { usePagination } from '@/hooks/usePagination';
 import Pagination from '@/components/Pagination';
 import { Skeleton } from '@/components/ui/Skeleton';
@@ -364,6 +367,26 @@ function ModalDetalle({
   const [tab, setTab] = useState<'resumen' | 'habitaciones' | 'productos' | 'pagos'>('resumen');
   const [previewPdf, setPreviewPdf] = useState(false);
   const [boleta2, setBoleta2] = useState(false);
+  const { show: toast } = useToast();
+
+  // Imprime el reporte del turno por el puente (agente local); si no está,
+  // usa la impresión del navegador.
+  const imprimirTurno = async () => {
+    try {
+      const { data } = await api.get(`/caja/${turno.id}/reporte-boleta2`);
+      const ok = await imprimirEnAgente({
+        titulo: `Reporte turno #${turno.id}`,
+        contenido: construirTicketTurno(data),
+      });
+      if (ok) {
+        toast({ type: 'success', title: 'Reporte impreso', description: 'Enviado a la impresora' });
+        return;
+      }
+    } catch {
+      /* cae a impresión del navegador */
+    }
+    window.print();
+  };
 
   const fecha = new Date(turno.abiertoEn);
 
@@ -435,7 +458,7 @@ function ModalDetalle({
               )}
             </PDFDownloadLink>
             <button
-              onClick={() => window.print()}
+              onClick={imprimirTurno}
               className="inline-flex items-center gap-1.5 bg-white/20 hover:bg-white/30 backdrop-blur text-white px-3 py-2 rounded-lg text-sm btn-press"
             >
               <Printer size={14} /> Imprimir
@@ -681,9 +704,10 @@ function Boleta2Modal({ turnoId, onClose }: { turnoId: number; onClose: () => vo
     queryFn: async () => (await api.get(`/caja/${turnoId}/reporte-boleta2`)).data,
   });
 
+  const { show: toast } = useToast();
   const html = data ? buildBoleta2Html(data) : '';
 
-  const imprimir = () => {
+  const imprimirNavegador = () => {
     if (!html) return;
     const w = window.open('', '_blank', 'width=440,height=820');
     if (!w) return;
@@ -694,6 +718,20 @@ function Boleta2Modal({ turnoId, onClose }: { turnoId: number; onClose: () => vo
     w.document.close();
     w.focus();
     setTimeout(() => w.print(), 300);
+  };
+
+  const imprimir = async () => {
+    if (!data) return;
+    // Primero el puente (agente local, impresión nativa); si no está, navegador.
+    const ok = await imprimirEnAgente({
+      titulo: `Reporte turno #${turnoId}`,
+      contenido: construirTicketTurno(data),
+    });
+    if (ok) {
+      toast({ type: 'success', title: 'Reporte impreso', description: 'Enviado a la impresora' });
+    } else {
+      imprimirNavegador();
+    }
   };
 
   return (

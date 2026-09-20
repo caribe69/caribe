@@ -1626,6 +1626,17 @@ function AlquilerActivoModal({
                 </button>
                 <button
                   onClick={async () => {
+                    // No se puede finalizar con saldo pendiente (habitación o
+                    // productos): avisa claro en vez de fallar con un error.
+                    if (saldo > 0.01) {
+                      await dialog.confirm({
+                        title: 'Falta cobrar',
+                        message: `Antes de finalizar, cobra el saldo pendiente de S/ ${saldo.toFixed(2)}. Usa "Cobrar productos" o "Cobrar todo".`,
+                        confirmText: 'Entendido',
+                        variant: 'warning',
+                      });
+                      return;
+                    }
                     const ok = await dialog.confirm({
                       title: 'Finalizar alquiler',
                       message:
@@ -1635,7 +1646,16 @@ function AlquilerActivoModal({
                     });
                     if (ok) finalizar.mutate(alquiler.id);
                   }}
-                  className="flex items-center justify-center gap-1.5 bg-slate-900 hover:bg-slate-800 text-white py-2.5 rounded-xl btn-press text-xs font-semibold"
+                  title={
+                    saldo > 0.01
+                      ? 'Cobra el saldo pendiente antes de finalizar'
+                      : undefined
+                  }
+                  className={`flex items-center justify-center gap-1.5 text-white py-2.5 rounded-xl btn-press text-xs font-semibold ${
+                    saldo > 0.01
+                      ? 'bg-slate-400 dark:bg-slate-600 cursor-not-allowed'
+                      : 'bg-slate-900 hover:bg-slate-800'
+                  }`}
                 >
                   <CheckCircle size={14} /> Finalizar
                 </button>

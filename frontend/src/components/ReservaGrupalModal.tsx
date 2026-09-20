@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   X,
@@ -10,6 +10,8 @@ import {
   CheckCircle,
   UserCheck,
   Briefcase,
+  ChevronDown,
+  ChevronRight,
 } from 'lucide-react';
 import { api } from '@/lib/api';
 import { useToast } from '@/components/ToastProvider';
@@ -88,6 +90,66 @@ export default function ReservaGrupalModal({
     const ids = new Set(disponibles.map((h) => h.sede?.id).filter(Boolean));
     return ids.size > 1;
   }, [disponibles]);
+
+  // Habitaciones agrupadas por torre (para el acordeón del complejo).
+  const torres = useMemo(() => {
+    const m = new Map<
+      number,
+      { id: number; nombre: string; habs: Habitacion[] }
+    >();
+    for (const h of disponibles) {
+      const id = h.sede?.id ?? 0;
+      if (!m.has(id))
+        m.set(id, { id, nombre: h.sede?.nombre ?? 'Sede', habs: [] });
+      m.get(id)!.habs.push(h);
+    }
+    return Array.from(m.values());
+  }, [disponibles]);
+
+  // Acordeón: siempre exactamente UNA torre abierta (por defecto la primera).
+  const [torreAbierta, setTorreAbierta] = useState<number | null>(null);
+  useEffect(() => {
+    if (!esComplejo) return;
+    if (torreAbierta == null || !torres.some((t) => t.id === torreAbierta)) {
+      setTorreAbierta(torres[0]?.id ?? null);
+    }
+  }, [esComplejo, torres, torreAbierta]);
+
+  // Card de una habitación (se reutiliza en el acordeón y en la lista simple).
+  const renderCard = (h: Habitacion) => {
+    const sel = seleccion.has(h.id);
+    return (
+      <button
+        key={h.id}
+        onClick={() =>
+          setSeleccion((prev) => {
+            const next = new Set(prev);
+            if (next.has(h.id)) next.delete(h.id);
+            else next.add(h.id);
+            return next;
+          })
+        }
+        className={`relative p-3 rounded-xl border-2 transition text-left ${
+          sel
+            ? 'border-amber-500 dark:border-amber-600 bg-gradient-to-br from-amber-50 to-amber-100 shadow-md'
+            : 'border-slate-200 bg-white hover:border-slate-300 dark:hover:border-slate-600'
+        }`}
+      >
+        {sel && (
+          <CheckCircle
+            size={16}
+            className="absolute top-1.5 right-1.5 text-amber-600 fill-amber-100"
+          />
+        )}
+        <BedDouble
+          size={16}
+          className={sel ? 'text-amber-600' : 'text-slate-400'}
+        />
+        <div className="font-hotel text-2xl font-bold mt-1">{h.numero}</div>
+        <div className="text-[10px] text-slate-500">Piso {h.piso.numero}</div>
+      </button>
+    );
+  };
 
   // Sugerir precio desde la primera habitación seleccionada
   useEffect(() => {
@@ -254,60 +316,56 @@ export default function ReservaGrupalModal({
                   </div>
                 )}
               </div>
-              <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-2.5">
-                {disponibles.map((h, idx, arr) => {
-                  const sel = seleccion.has(h.id);
-                  // En un complejo, una cabecera separa cada torre.
-                  const mostrarCabecera =
-                    esComplejo &&
-                    (idx === 0 || arr[idx - 1].sede?.id !== h.sede?.id);
-                  return (
-                    <Fragment key={h.id}>
-                      {mostrarCabecera && (
-                        <div className="col-span-full flex items-center gap-2 mt-1 first:mt-0">
-                          <span className="inline-flex items-center gap-1.5 bg-violet-100 dark:bg-violet-900/40 text-violet-700 dark:text-violet-200 text-xs font-bold uppercase tracking-wide px-2.5 py-1 rounded-lg">
-                            <BedDouble size={13} /> {h.sede?.nombre}
-                          </span>
-                          <div className="flex-1 h-px bg-slate-200 dark:bg-slate-700" />
-                        </div>
-                      )}
-                      <button
-                        onClick={() => {
-                          setSeleccion((prev) => {
-                            const next = new Set(prev);
-                            if (next.has(h.id)) next.delete(h.id);
-                            else next.add(h.id);
-                            return next;
-                          });
-                        }}
-                        className={`relative p-3 rounded-xl border-2 transition text-left ${
-                          sel
-                            ? 'border-amber-500 dark:border-amber-600 bg-gradient-to-br from-amber-50 to-amber-100 shadow-md'
-                            : 'border-slate-200 bg-white hover:border-slate-300 dark:hover:border-slate-600'
-                        }`}
+              {esComplejo ? (
+                // Acordeón por torre: solo una abierta a la vez (evita listas larguísimas).
+                <div className="space-y-2">
+                  {torres.map((t) => {
+                    const abierta = torreAbierta === t.id;
+                    const selEnTorre = t.habs.filter((h) =>
+                      seleccion.has(h.id),
+                    ).length;
+                    return (
+                      <div
+                        key={t.id}
+                        className="border border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden"
                       >
-                        {sel && (
-                          <CheckCircle
-                            size={16}
-                            className="absolute top-1.5 right-1.5 text-amber-600 fill-amber-100"
-                          />
+                        <button
+                          type="button"
+                          onClick={() => setTorreAbierta(t.id)}
+                          className="w-full flex items-center gap-2 px-3 py-2.5 bg-slate-50 dark:bg-slate-800/60 hover:bg-slate-100 dark:hover:bg-slate-800 transition"
+                        >
+                          {abierta ? (
+                            <ChevronDown size={16} className="text-violet-600" />
+                          ) : (
+                            <ChevronRight size={16} className="text-slate-400" />
+                          )}
+                          <BedDouble size={14} className="text-violet-600" />
+                          <span className="font-bold text-sm text-slate-800 dark:text-slate-100">
+                            {t.nombre}
+                          </span>
+                          <span className="text-xs text-slate-400">
+                            {t.habs.length} hab.
+                          </span>
+                          {selEnTorre > 0 && (
+                            <span className="ml-auto text-[11px] font-semibold text-amber-600 bg-amber-100 dark:bg-amber-900/40 px-2 py-0.5 rounded-full">
+                              {selEnTorre} sel.
+                            </span>
+                          )}
+                        </button>
+                        {abierta && (
+                          <div className="p-2.5 grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-2.5">
+                            {t.habs.map(renderCard)}
+                          </div>
                         )}
-                        <BedDouble
-                          size={16}
-                          className={sel ? 'text-amber-600' : 'text-slate-400'}
-                        />
-                        <div className="font-hotel text-2xl font-bold mt-1">
-                          {h.numero}
-                        </div>
-                        <div className="text-[10px] text-slate-500">
-                          Piso {h.piso.numero}
-                          {esComplejo && h.sede ? ` · ${h.sede.nombre}` : ''}
-                        </div>
-                      </button>
-                    </Fragment>
-                  );
-                })}
-              </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-2.5">
+                  {disponibles.map(renderCard)}
+                </div>
+              )}
               {disponibles.length === 0 && (
                 <div className="text-center text-slate-400 py-12">
                   No hay habitaciones disponibles en esta sede

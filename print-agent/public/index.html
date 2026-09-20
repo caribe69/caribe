@@ -169,6 +169,9 @@
   .stepper button { border: none; background: transparent; color: var(--ink); width: 34px; height: 36px; cursor: pointer; display: grid; place-items: center; }
   .stepper button:hover { background: var(--surface-2); }
   .stepper .val { min-width: 40px; text-align: center; font-weight: 700; font-variant-numeric: tabular-nums; border-inline: 1px solid var(--line); height: 36px; display: grid; place-items: center; }
+  .seg { display: inline-flex; border: 1px solid var(--line-strong); border-radius: 11px; overflow: hidden; background: var(--surface); }
+  .seg button { border: none; background: transparent; color: var(--muted); font-family: inherit; font-size: 12px; font-weight: 650; padding: 9px 13px; cursor: pointer; transition: background .15s, color .15s; }
+  .seg button.on { background: var(--brand); color: #fff; }
 
   /* Actividad */
   .log { display: flex; flex-direction: column; gap: 8px; max-height: 250px; overflow: auto; }
@@ -270,6 +273,14 @@
             <button id="copMas" aria-label="Más copias"><svg class="icon" style="width:16px;height:16px"><use href="#i-plus"/></svg></button>
           </div>
         </div>
+
+        <div class="copies">
+          <span class="lbl">Tipo de impresora</span>
+          <div class="seg" id="segTipo">
+            <button type="button" data-tipo="termica">Térmica (ESC/POS)</button>
+            <button type="button" data-tipo="normal">Normal</button>
+          </div>
+        </div>
       </div>
 
       <!-- Actividad -->
@@ -296,7 +307,25 @@
   let seleccion = null;
   let configurada = null;
   let copias = 1;
+  let tipo = 'termica';
   let listaActual = [];
+
+  function pintarTipo() {
+    document.querySelectorAll('#segTipo button').forEach((b) =>
+      b.classList.toggle('on', b.dataset.tipo === tipo),
+    );
+  }
+  document.querySelectorAll('#segTipo button').forEach((b) => {
+    b.onclick = () => {
+      tipo = b.dataset.tipo;
+      pintarTipo();
+      api('/api/config', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tipoImpresora: tipo }),
+      }).catch(() => {});
+    };
+  });
+  pintarTipo();
 
   function svgUse(id) { return '<svg class="icon"><use href="#' + id + '"/></svg>'; }
   function escapeHtml(s){ return String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
@@ -405,6 +434,8 @@
       if (seleccion === null && configurada) seleccion = configurada;
       copias = s.copiasPorDefecto || 1;
       $('#copVal').textContent = copias;
+      tipo = s.tipoImpresora || 'termica';
+      pintarTipo();
       pintarHero();
       pintarLog(s.ultimos);
       if (configurada) $('#btnPrueba').disabled = false;

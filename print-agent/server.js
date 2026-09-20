@@ -33,11 +33,14 @@ const state = {
 };
 
 function leerConfig() {
+  let c = {};
   try {
-    return JSON.parse(fs.readFileSync(CONFIG_PATH, 'utf8'));
+    c = JSON.parse(fs.readFileSync(CONFIG_PATH, 'utf8'));
   } catch {
-    return { impresora: null, copiasPorDefecto: 1 };
+    /* sin config aún */
   }
+  // Defaults: impresora térmica (ESC/POS) por ser el caso del hotel (TM-T20III).
+  return { impresora: null, copiasPorDefecto: 1, tipoImpresora: 'termica', ...c };
 }
 function guardarConfig(cfg) {
   fs.writeFileSync(CONFIG_PATH, JSON.stringify(cfg, null, 2), 'utf8');
@@ -99,8 +102,65 @@ async function listarImpresoras() {
     .map((l) => ({ nombre: l.split(' ')[1], estado: '', predeterminada: false, tipo: '' }));
 }
 
-// ── Imprimir texto a una impresora por nombre ─────────────────────
-async function imprimirTexto(impresora, contenido, copias) {
+// ── Quitar acentos/ñ (ESC/POS por defecto imprime ASCII sin problemas) ────
+function soloAscii(s) {
+  return String(s)
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+    .replace(/ñ/g, 'n')
+    .replace(/Ñ/g, 'N')
+    .replace(/[^\x00-\x7F]/g, '');
+}
+
+// ── Ticket ESC/POS para térmica (Epson TM-T20III y compatibles) ───────────
+// Init + texto (48 cols Fuente A) + avance + corte parcial automático.
+function escposBuffer(contenido, copias) {
+  const ESC = 0x1b, GS = 0x1d;
+  const init = Buffer.from([ESC, 0x40]); // ESC @ inicializar
+  const cut = Buffer.from([GS, 0x56, 0x42, 0x00]); // GS V B 0 corte parcial con avance
+  const feed = Buffer.from('\n\n\n\n', 'ascii');
+  const body = Buffer.from(
+    soloAscii(contenido).replace(/\r?\n/g, '\n') + '\n',
+    'ascii',
+  );
+  const uno = Buffer.concat([init, body, feed, cut]);
+  const n = Math.max(1, Math.min(10, Number(copias) || 1));
+  return Buffer.concat(Array.from({ length: n }, () => uno));
+}
+
+// Envía bytes CRUDOS (RAW) a la impresora de Windows vía winspool (sin libs).
+async function imprimirRawWin(impresora, buffer) {
+  const tmp = path.join(os.tmpdir(), `solcaribe_escpos_${Date.now()}.bin`);
+  fs.writeFileSync(tmp, buffer);
+  const nombreEsc = String(impresora).replace(/'/g, "''");
+  const tmpEsc = tmp.replace(/'/g, "''");
+  const script = `
+$ErrorActionPreference='Stop'
+Add-Type -Language CSharp -TypeDefinition @'
+using System;using System.IO;using System.Runtime.InteropServices;
+public class RawPrinter{
+ [StructLayout(LayoutKind.Sequential,CharSet=CharSet.Unicode)] public struct DOCINFO{ [MarshalAs(UnmanagedType.LPWStr)]public string pDocName;[MarshalAs(UnmanagedType.LPWStr)]public string pOutputFile;[MarshalAs(UnmanagedType.LPWStr)]public string pDataType;}
+ [DllImport("winspool.Drv",EntryPoint="OpenPrinterW",SetLastError=true,CharSet=CharSet.Unicode)] static extern bool OpenPrinter(string p,out IntPtr h,IntPtr d);
+ [DllImport("winspool.Drv",EntryPoint="ClosePrinter",SetLastError=true)] static extern bool ClosePrinter(IntPtr h);
+ [DllImport("winspool.Drv",EntryPoint="StartDocPrinterW",SetLastError=true,CharSet=CharSet.Unicode)] static extern bool StartDocPrinter(IntPtr h,int l,ref DOCINFO di);
+ [DllImport("winspool.Drv",EntryPoint="EndDocPrinter",SetLastError=true)] static extern bool EndDocPrinter(IntPtr h);
+ [DllImport("winspool.Drv",EntryPoint="StartPagePrinter",SetLastError=true)] static extern bool StartPagePrinter(IntPtr h);
+ [DllImport("winspool.Drv",EntryPoint="EndPagePrinter",SetLastError=true)] static extern bool EndPagePrinter(IntPtr h);
+ [DllImport("winspool.Drv",EntryPoint="WritePrinter",SetLastError=true)] static extern bool WritePrinter(IntPtr h,byte[] b,int n,out int w);
+ public static void Send(string printer,byte[] bytes){ IntPtr h; if(!OpenPrinter(printer,out h,IntPtr.Zero)) throw new Exception("No se pudo abrir la impresora"); DOCINFO di=new DOCINFO(); di.pDocName="SolCaribe"; di.pDataType="RAW"; StartDocPrinter(h,1,ref di); StartPagePrinter(h); int w; WritePrinter(h,bytes,bytes.Length,out w); EndPagePrinter(h); EndDocPrinter(h); ClosePrinter(h);}
+}
+'@
+[RawPrinter]::Send('${nombreEsc}', [System.IO.File]::ReadAllBytes('${tmpEsc}'))
+`;
+  try {
+    await ps(script);
+  } finally {
+    fs.unlink(tmp, () => {});
+  }
+}
+
+// Impresión por el driver (texto GDI) — para impresoras normales (no térmicas).
+async function imprimirGDI(impresora, contenido, copias) {
   const tmp = path.join(os.tmpdir(), `solcaribe_ticket_${Date.now()}.txt`);
   fs.writeFileSync(tmp, contenido, 'utf8');
   try {
@@ -108,7 +168,6 @@ async function imprimirTexto(impresora, contenido, copias) {
     for (let i = 0; i < n; i++) {
       if (IS_WIN) {
         const nombreEsc = String(impresora).replace(/'/g, "''");
-        // Out-Printer imprime el texto en la impresora indicada, silencioso.
         await ps(
           `Get-Content -Raw -Encoding UTF8 -LiteralPath '${tmp.replace(/'/g, "''")}' | Out-Printer -Name '${nombreEsc}'`,
         );
@@ -121,23 +180,42 @@ async function imprimirTexto(impresora, contenido, copias) {
   }
 }
 
-// ── Ticket de prueba ──────────────────────────────────────────────
+// Despacha según el tipo de impresora configurada.
+async function imprimirTexto(impresora, contenido, copias, tipo) {
+  if (tipo === 'normal') return imprimirGDI(impresora, contenido, copias);
+  // térmica (por defecto): ESC/POS crudo
+  if (IS_WIN) return imprimirRawWin(impresora, escposBuffer(contenido, copias));
+  // Linux/Mac: manda el ESC/POS crudo por CUPS
+  const tmp = path.join(os.tmpdir(), `solcaribe_escpos_${Date.now()}.bin`);
+  fs.writeFileSync(tmp, escposBuffer(contenido, copias));
+  try {
+    await sh('lp', ['-d', impresora, '-o', 'raw', tmp]);
+  } finally {
+    fs.unlink(tmp, () => {});
+  }
+}
+
+// ── Ticket de prueba (48 columnas, Fuente A del TM-T20III) ────────────────
 function ticketPrueba(impresora) {
-  const line = '------------------------------';
+  const W = 48;
+  const line = '-'.repeat(W);
+  const center = (s) => {
+    s = String(s).slice(0, W);
+    return ' '.repeat(Math.max(0, Math.floor((W - s.length) / 2))) + s;
+  };
   return [
     line,
-    '       HOTEL SOL CARIBE',
-    '     Agente de impresion',
+    center('HOTEL SOL CARIBE'),
+    center('Agente de impresion'),
     line,
     'Impresora: ' + impresora,
     'Fecha: ' + new Date().toLocaleString('es-PE'),
     '',
     'Esta es una impresion de PRUEBA.',
-    'Si la lees, la impresora quedo',
-    'configurada correctamente. :)',
+    'Si la lees a lo ancho del papel, la',
+    'impresora quedo configurada bien.',
     line,
-    '',
-    '',
+    center('* * *'),
   ].join('\n');
 }
 
@@ -198,6 +276,7 @@ const server = http.createServer(async (req, res) => {
         version: state.version,
         impresora: cfg.impresora,
         copiasPorDefecto: cfg.copiasPorDefecto ?? 1,
+        tipoImpresora: cfg.tipoImpresora || 'termica',
         arrancadoEn: state.arrancadoEn,
         ultimos: state.ultimos,
       });
@@ -216,8 +295,10 @@ const server = http.createServer(async (req, res) => {
       if (typeof body.impresora === 'string') cfg.impresora = body.impresora;
       if (body.copiasPorDefecto != null)
         cfg.copiasPorDefecto = Math.max(1, Math.min(10, Number(body.copiasPorDefecto) || 1));
+      if (body.tipoImpresora === 'termica' || body.tipoImpresora === 'normal')
+        cfg.tipoImpresora = body.tipoImpresora;
       guardarConfig(cfg);
-      return json(res, 200, { ok: true, impresora: cfg.impresora, copiasPorDefecto: cfg.copiasPorDefecto });
+      return json(res, 200, { ok: true, ...cfg });
     }
 
     // Imprimir (desde la web)
@@ -231,7 +312,7 @@ const server = http.createServer(async (req, res) => {
       if (!contenido.trim())
         return json(res, 400, { ok: false, error: 'Contenido vacío.' });
       const copias = body.copias ?? cfg.copiasPorDefecto ?? 1;
-      await imprimirTexto(impresora, contenido, copias);
+      await imprimirTexto(impresora, contenido, copias, cfg.tipoImpresora);
       registrarTrabajo({ ok: true, impresora, titulo: body.titulo || 'Ticket', copias });
       return json(res, 200, { ok: true });
     }
@@ -243,7 +324,8 @@ const server = http.createServer(async (req, res) => {
       const impresora = body.impresora || cfg.impresora;
       if (!impresora)
         return json(res, 400, { ok: false, error: 'Elige una impresora primero.' });
-      await imprimirTexto(impresora, ticketPrueba(impresora), 1);
+      const tipoT = body.tipoImpresora || cfg.tipoImpresora;
+      await imprimirTexto(impresora, ticketPrueba(impresora), 1, tipoT);
       registrarTrabajo({ ok: true, impresora, titulo: 'Prueba', copias: 1 });
       return json(res, 200, { ok: true });
     }

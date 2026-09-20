@@ -4,7 +4,7 @@
  * también en 80mm.
  */
 
-const W = 32;
+const W = 48;
 const LINE = '-'.repeat(W);
 
 function money(n: any): string {

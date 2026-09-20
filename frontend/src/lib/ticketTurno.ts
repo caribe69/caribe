@@ -4,7 +4,7 @@
  * GET /caja/:id/reporte-boleta2.
  */
 
-const W = 32;
+const W = 48;
 const LINE = '-'.repeat(W);
 const DIAS = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
 

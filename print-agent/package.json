@@ -1,0 +1,11 @@
+{
+  "name": "solcaribe-print-agent",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Agente de impresion local: puente entre la web y la impresora de la PC.",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "engines": { "node": ">=16" }
+}

@@ -52,11 +52,18 @@ Si no se manda `impresora`, usa la que quedó **configurada** en la interfaz.
 Otros endpoints: `GET /api/status`, `GET /api/printers`, `POST /api/config`,
 `POST /api/test`.
 
+## Impresora térmica (Epson TM-T20III)
+
+- Por defecto imprime en **ESC/POS crudo** (modo **Térmica**): inicializa la
+  impresora, imprime a **48 columnas** (80 mm) y hace **corte automático**.
+- Si tu impresora NO es térmica (una común/inkjet), cambia el selector a
+  **Normal** en la interfaz (imprime por el driver de Windows).
+- Instala el **driver de la TM-T20III** de Epson, conéctala (USB o red),
+  elígela en la interfaz, deja **Térmica**, **Guardar** y **Prueba**.
+
 ## Notas
 
-- Imprime **texto** a la impresora elegida (funciona con cualquier impresora de
-  Windows). El soporte de comandos crudos ESC/POS para térmicas se puede agregar
-  después.
+- La impresión entra por la **cola de impresión de Windows** (spooler).
 - La web (`https://sistema.caribeperu.com`) llama a `http://localhost`. Algunos
   navegadores tratan esto como "contenido mixto"; los navegadores basados en
   Chrome permiten `localhost` como origen de confianza. Si algún navegador lo
